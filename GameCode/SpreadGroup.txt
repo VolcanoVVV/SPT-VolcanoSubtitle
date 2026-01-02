@@ -1,0 +1,19 @@
+using System;
+using CommonAssets.Scripts.Audio;
+
+// Token: 0x02000850 RID: 2128
+[Serializable]
+public class SpreadGroup
+{
+	// Token: 0x04003045 RID: 12357
+	public ELoudnessType LoudnessType = ELoudnessType.Normal;
+
+	// Token: 0x04003046 RID: 12358
+	public int Falloff = 50;
+
+	// Token: 0x04003047 RID: 12359
+	public float Volume = 1f;
+
+	// Token: 0x04003048 RID: 12360
+	public TaggedClip[] Clips = Array.Empty<TaggedClip>();
+}

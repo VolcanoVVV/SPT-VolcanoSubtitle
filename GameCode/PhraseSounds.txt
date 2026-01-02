@@ -1,0 +1,62 @@
+using System;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using JetBrains.Annotations;
+using UnityEngine;
+
+namespace EFT
+{
+	// Token: 0x0200193F RID: 6463
+	public class PhraseSounds : ScriptableObject
+	{
+		// Token: 0x0600A35F RID: 41823 RVA: 0x001074F1 File Offset: 0x001056F1
+		public bool TryGetVoice(string voice, out TagBank[] result)
+		{
+			result = this.method_0(voice);
+			return result != null;
+		}
+
+		// Token: 0x0600A360 RID: 41824 RVA: 0x003D6F24 File Offset: 0x003D5124
+		public TagBank[] GetVoice(string voice, EPlayerSide side)
+		{
+			TagBank[] array = this.method_0(voice);
+			if (array == null)
+			{
+				Debug.LogError("Cannot find voice banks for " + voice);
+				return this.method_0((side == EPlayerSide.Bear) ? "Bear_1" : ((side == EPlayerSide.Usec) ? "Usec_1" : "Scav_1"));
+			}
+			return array;
+		}
+
+		// Token: 0x0600A361 RID: 41825 RVA: 0x003D6F70 File Offset: 0x003D5170
+		[CanBeNull]
+		public TagBank[] method_0(string voice)
+		{
+			PhraseSounds.Class1322 @class = new PhraseSounds.Class1322();
+			@class.voice = voice;
+			Voice voice2 = this.Voices.FirstOrDefault(new Func<Voice, bool>(@class.method_0));
+			if (!(voice2 == null))
+			{
+				return voice2.Banks;
+			}
+			return null;
+		}
+
+		// Token: 0x04009298 RID: 37528
+		public Voice[] Voices;
+
+		// Token: 0x02001940 RID: 6464
+		[CompilerGenerated]
+		public class Class1322
+		{
+			// Token: 0x0600A364 RID: 41828 RVA: 0x00107501 File Offset: 0x00105701
+			public bool method_0(Voice x)
+			{
+				return x.Name == this.voice;
+			}
+
+			// Token: 0x04009299 RID: 37529
+			public string voice;
+		}
+	}
+}
