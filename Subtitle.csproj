@@ -57,40 +57,40 @@
     <Reference Include="DissonanceVoip, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
     <Reference Include="DOTween, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\DOTween.dll</HintPath>
+      <HintPath>..\..\..\..\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\DOTween.dll</HintPath>
     </Reference>
     <Reference Include="PhysicsModule">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\BepInEx\core\0Harmony.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="spt-common">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\BepInEx\plugins\spt\spt-common.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\BepInEx\plugins\spt\spt-common.dll</HintPath>
     </Reference>
     <Reference Include="spt-reflection">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\BepInEx\plugins\spt\spt-reflection.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\BepInEx\plugins\spt\spt-reflection.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\BepInEx\core\BepInEx.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\BepInEx\core\BepInEx.dll</HintPath>
     </Reference>
     <Reference Include="Comfort">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\Comfort.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\Comfort.dll</HintPath>
     </Reference>
     <Reference Include="Comfort.Unity, Version=1.0.0.4, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\Comfort.Unity.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\Comfort.Unity.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\Newtonsoft.Json.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Sirenix.Serialization, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\Sirenix.Serialization.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\Sirenix.Serialization.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -102,36 +102,36 @@
     <Reference Include="System.Xml" />
     <Reference Include="Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\Unity.TextMeshPro.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AssetBundleModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>V:\EFToffline\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIModule">
-      <HintPath>..\..\..\..\EFToffline - 4.0debug\EscapeFromTarkov_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+      <HintPath>..\..\..\..\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.UIModule.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -159,7 +159,7 @@
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy "$(TargetPath)" "V:\EFToffline\EFToffline - 4.0debug\BepInEx\plugins\subtitle\$(TargetFileName)"
+    <PostBuildEvent>copy "$(TargetPath)" "V:\EFToffline\EFToffline - 4.1debug\BepInEx\plugins\subtitle\$(TargetFileName)"
 copy "$(TargetPath)" "V:\EFToffline\汉化\Subtitle 实时字幕【开发】\打包\BepInEx\plugins\subtitle\$(TargetFileName)"</PostBuildEvent>
   </PropertyGroup>
 </Project>
