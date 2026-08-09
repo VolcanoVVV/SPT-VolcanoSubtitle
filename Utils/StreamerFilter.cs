@@ -17,7 +17,7 @@ namespace Subtitle.Utils
     }
 
     // 主播模式（脏话打码）过滤器：
-    // - 词表来自 locales/ch/StreamerWords.jsonc（JSON 数组，支持注释）
+    // - 词表来自当前语言的 StreamerWords.jsonc，缺失时按文件回退到 ch（JSON 数组，支持注释）
     // - 文件缺失时自动写出一份默认文件供玩家编辑，并退回内置词表
     // - 文件损坏时打警告日志并退回内置词表
     // - 匹配为子串匹配（拉丁字母不区分大小写），词按长度降序拼成一个正则
@@ -97,10 +97,10 @@ namespace Subtitle.Utils
             List<string> words = null;
             try
             {
-                string dir = Subtitle.Config.PhraseFilterManager.LocalesDir;
+                string path = Subtitle.Config.PhraseFilterManager.ResolveLocaleFile(WordsFileName);
+                string dir = !string.IsNullOrEmpty(path) ? Path.GetDirectoryName(path) : null;
                 if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
                 {
-                    string path = Path.Combine(dir, WordsFileName);
                     if (!File.Exists(path))
                     {
                         // 文件缺失：写出一份默认文件供玩家编辑，随后用内置词表

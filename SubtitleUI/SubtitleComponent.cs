@@ -20,15 +20,15 @@ namespace SubtitleSystem
         private readonly List<GameObject> _activeLines = new List<GameObject>(); // 当前显示的字幕行
 
         // 常量定义，用于控制字幕行为
-        private const float FadeInTime = 0.5f; // 字幕淡入时间
-        private const float FadeOutTime = 0.5f; // 字幕淡出时间
+        private const float FadeInTimeDefault = 0.15f; // 字幕淡入与行高展开默认时间
+        private const float FadeOutTimeDefault = 0.25f; // 字幕淡出与行高收缩默认时间
         private const float LineDuration = 3.0f; // 兜底默认：未传入时使用
-        private const float CooldownTime = 0.5f; // 添加新字幕的冷却时间
-        private const int MaxVisibleLines = 4; // 最多可见的字幕行数
+        private const int MaxVisibleLinesDefault = 4; // 最多可见的字幕行数默认值
+        private const int MaxExitingLines = 2; // 极端并发时最多保留的过渡退出行
 
         // 超长滚动（marquee）相关常量
-        private const float MarqueeEndHoldSec = 0.8f;          // 滚动到句尾后的停留时间（随后正常淡出）
-        private const float MarqueeSpeedPerFontSize = 2.5f;    // 滚动速度 = 字号 × 此系数（px/秒）
+        private const float MarqueeEndHoldSecDefault = 0.8f;          // 滚动到句尾后的默认停留时间
+        private const float MarqueeSpeedPerFontSizeDefault = 2.5f;    // 默认滚动速度 = 字号 × 此系数（px/秒）
         private const float MarqueeMinSpeedPx = 10f;           // 滚动速度下限（防除零/过慢）
 
         // 文本测量余量：加粗等渲染的实际宽度/高度可能比 TextGenerator 一次性估计略大，
@@ -51,12 +51,22 @@ namespace SubtitleSystem
         {
             public int Version;     // 布局版本号
             public bool Active;     // 本行是否处于滚动模式
+            public bool AutoLong;   // 是否由超长台词规则强制进入滚动模式
             public float Duration;  // 滚动时长（与超出长度成正比）
         }
 
-        // 冷却状态标志
-        private bool _cooldownActive;
-        private static readonly WaitForSeconds _cooldownWait = new WaitForSeconds(CooldownTime); // 缓存冷却等待，避免每次分配
+        // 字幕行生命周期状态随对象池复用；版本号用于让旧协程安全退出
+        private sealed class SubtitleLineState : MonoBehaviour
+        {
+            public int Version;
+            public int Priority;
+            public long Sequence;
+            public float TargetHeight;
+            public bool HeightAnimating;
+            public bool Exiting;
+        }
+
+        private long _lineSequence;
 
         // 单例访问器
         public static SubtitleManager Instance => _instance;
@@ -236,6 +246,7 @@ namespace SubtitleSystem
             var fitter = _subtitlePanel.AddComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
+            EnforceSubtitleVisibleLimit();
             ApplySubtitleLayoutSettings();
 
             _subtitlePanel.SetActive(true);
@@ -292,6 +303,7 @@ namespace SubtitleSystem
                 ApplyRowLayoutAndBackground(line, text);
             }
 
+            EnforceSubtitleVisibleLimit();
             ApplySubtitleLayoutSettings();
         }
         // 将字幕系统附加到战斗 UI 屏幕
@@ -312,11 +324,20 @@ namespace SubtitleSystem
             return root;
         }
 
-        // 新：带“本行显示时长”的重载
+        // 兼容旧调用：无法提供角色类别时按“其他角色”优先级处理
         public void AddSubtitle(string text, Color color, float durationSec)
         {
-            if (_subtitlePanel == null || _cooldownActive || _activeLines.Count >= MaxVisibleLines)
-                return;
+            AddSubtitle(text, color, durationSec, Subtitle.Config.Settings.RoleKind.Unknown);
+        }
+
+        // 带角色类别的普通字幕入口：满行时由优先级决定是否抢占
+        internal void AddSubtitle(string text, Color color, float durationSec, Subtitle.Config.Settings.RoleKind roleKind)
+        {
+            if (_subtitlePanel == null || string.IsNullOrEmpty(text)) return;
+
+            int priority = Subtitle.Config.Settings.GetSubtitleRolePriority(roleKind);
+            if (!ReserveSubtitleSlot(priority)) return;
+
             float extraSec = 0f;
             try
             {
@@ -328,23 +349,117 @@ namespace SubtitleSystem
             float dur = durationSec > 0f ? durationSec : LineDuration;
             dur += extraSec;
 
-            // 冷却期间直接丢弃（原队列实现入队后立即出队，冷却期不会累积，行为等价）
             var line = CreateSubtitleLine(text, color);
-            _activeLines.Add(line); // 添加到活动行列表
+            var state = line.GetComponent<SubtitleLineState>();
+            state.Priority = priority;
+            state.Sequence = ++_lineSequence;
+            state.Exiting = false;
+            state.Version++;
+            int version = state.Version;
 
-            // 超长滚动：显示时长至少覆盖 滚动+句尾停留，保证滚完、看清句尾后再进入正常淡出
-            var mq = line.GetComponent<SubtitleMarqueeState>();
-            if (mq != null && mq.Active)
-                dur = Mathf.Max(dur, mq.Duration + MarqueeEndHoldSec);
-
-            StartCoroutine(FadeSubtitle(line, true, dur)); // 开始淡入动画
-            StartCoroutine(CooldownCoroutine());
+            _activeLines.Add(line);
+            StartCoroutine(SubtitleLifecycleCoroutine(line, state, version, dur));
         }
 
-// 添加新字幕
-public void AddSubtitle(string text, Color color)
+        // 添加新字幕
+        public void AddSubtitle(string text, Color color)
         {
             AddSubtitle(text, color, LineDuration);
+        }
+
+        private bool ReserveSubtitleSlot(int incomingPriority)
+        {
+            int visibleCount = 0;
+            GameObject victim = null;
+            SubtitleLineState victimState = null;
+
+            for (int i = 0; i < _activeLines.Count; i++)
+            {
+                var line = _activeLines[i];
+                if (line == null || !line.activeSelf) continue;
+                var state = line.GetComponent<SubtitleLineState>();
+                if (state == null || state.Exiting) continue;
+                visibleCount++;
+
+                if (victimState == null || state.Priority < victimState.Priority ||
+                    (state.Priority == victimState.Priority && state.Sequence < victimState.Sequence))
+                {
+                    victim = line;
+                    victimState = state;
+                }
+            }
+
+            if (visibleCount < GetSubtitleMaxVisibleLines()) return true;
+            if (victimState == null || incomingPriority < victimState.Priority) return false;
+
+            BeginSubtitleExit(victim);
+            TrimExitingLines();
+            return true;
+        }
+
+        private void EnforceSubtitleVisibleLimit()
+        {
+            int maxLines = GetSubtitleMaxVisibleLines();
+            while (true)
+            {
+                int visibleCount = 0;
+                GameObject victim = null;
+                SubtitleLineState victimState = null;
+                for (int i = 0; i < _activeLines.Count; i++)
+                {
+                    var line = _activeLines[i];
+                    if (line == null || !line.activeSelf) continue;
+                    var state = line.GetComponent<SubtitleLineState>();
+                    if (state == null || state.Exiting) continue;
+                    visibleCount++;
+                    if (victimState == null || state.Priority < victimState.Priority ||
+                        (state.Priority == victimState.Priority && state.Sequence < victimState.Sequence))
+                    {
+                        victim = line;
+                        victimState = state;
+                    }
+                }
+                if (visibleCount <= maxLines || victim == null) break;
+                BeginSubtitleExit(victim);
+            }
+            TrimExitingLines();
+        }
+
+        private static int GetSubtitleMaxVisibleLines()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleMaxVisibleLines != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.SubtitleMaxVisibleLines.Value, 1, 10);
+            }
+            catch { }
+            return MaxVisibleLinesDefault;
+        }
+
+        private void TrimExitingLines()
+        {
+            while (true)
+            {
+                int exitingCount = 0;
+                GameObject oldest = null;
+                long oldestSequence = long.MaxValue;
+                for (int i = 0; i < _activeLines.Count; i++)
+                {
+                    var line = _activeLines[i];
+                    if (line == null || !line.activeSelf) continue;
+                    var state = line.GetComponent<SubtitleLineState>();
+                    if (state == null || !state.Exiting) continue;
+                    exitingCount++;
+                    if (state.Sequence < oldestSequence)
+                    {
+                        oldest = line;
+                        oldestSequence = state.Sequence;
+                    }
+                }
+                if (exitingCount <= MaxExitingLines || oldest == null) return;
+                _activeLines.Remove(oldest);
+                RecycleSubtitleLine(oldest);
+            }
         }
 
         // 创建字幕行对象
@@ -381,6 +496,12 @@ public void AddSubtitle(string text, Color color)
             }
             row.SetActive(true);
 
+            var lineState = row.GetComponent<SubtitleLineState>();
+            if (lineState == null) lineState = row.AddComponent<SubtitleLineState>();
+            lineState.Version++;
+            lineState.Exiting = false;
+            lineState.HeightAnimating = false;
+
             // 配置 RectTransform
             var rectTransform = row.GetComponent<RectTransform>();
             rectTransform.anchorMin = new Vector2(0, 0.5f); // 锚点在面板的中间底部
@@ -415,32 +536,37 @@ public void AddSubtitle(string text, Color color)
             ApplyRowLayoutAndBackground(row, textComponent);
             // 兜底：首帧真实渲染后（动态字体图集/度量彻底就绪）再重测重铺一次，
             // 防止任何“测量时机早于渲染就绪”的残余偏差（同步预热已覆盖绝大部分情况，这里双保险）
-            StartCoroutine(DeferredRelayoutCoroutine(row, textComponent));
+            StartCoroutine(DeferredRelayoutCoroutine(row, textComponent, lineState, lineState.Version));
             return row;
         }
 
         // 首帧结束后的延迟重铺：行已被回收（池化复用）则直接退出
-        private IEnumerator DeferredRelayoutCoroutine(GameObject row, Text txt)
+        private IEnumerator DeferredRelayoutCoroutine(GameObject row, Text txt, SubtitleLineState state, int version)
         {
             yield return new WaitForEndOfFrame();
-            if (row == null || !row.activeSelf || txt == null) yield break;
+            if (!LineStateValid(row, state, version) || txt == null) yield break;
             ApplyRowLayoutAndBackground(row, txt);
         }
 
         // 回收字幕行到对象池
         private void RecycleSubtitleLine(GameObject line)
         {
-            if (line == null) return;
+            if (line == null || !line.activeSelf) return;
+            var state = line.GetComponent<SubtitleLineState>();
+            if (state != null)
+            {
+                state.Version++;
+                state.Exiting = true;
+                state.HeightAnimating = false;
+            }
+            var mq = line.GetComponent<SubtitleMarqueeState>();
+            if (mq != null)
+            {
+                mq.Version++;
+                mq.Active = false;
+            }
             line.SetActive(false); // 超长滚动协程靠 activeSelf/版本号检测自行退出，无需手动停止
             _linePool.Push(line);
-        }
-
-        // 冷却协程，控制字幕添加的频率
-        private IEnumerator CooldownCoroutine()
-        {
-            _cooldownActive = true;
-            yield return _cooldownWait;
-            _cooldownActive = false;
         }
 
         private float GetSubtitleStyleMarginY()
@@ -478,6 +604,15 @@ public void AddSubtitle(string text, Color color)
             bool wrapOn = Subtitle.Config.Settings.SubtitleWrap != null && Subtitle.Config.Settings.SubtitleWrap.Value;
             bool marqueeOn = Subtitle.Config.Settings.SubtitleMarqueeEnabled == null
                 || Subtitle.Config.Settings.SubtitleMarqueeEnabled.Value;
+            var rawHolder = row.GetComponent<SubtitleRawText>();
+            bool forceLongMarquee = ShouldUseAutoLongMarquee(rawHolder != null ? rawHolder.Value : txt.text);
+            if (forceLongMarquee)
+            {
+                wrapOn = false;
+                marqueeOn = true;
+                capChars = GetLongLineWindowChars();
+                txt.horizontalOverflow = HorizontalWrapMode.Overflow;
+            }
             // 长度上限的近似像素宽：中文等宽字每字约 1 个字号宽，拉丁字符更窄（估算偏保守，不会裁字）
             float capPx = capChars > 0 ? capChars * txt.fontSize : 0f;
             txt.verticalOverflow = VerticalWrapMode.Overflow;
@@ -547,11 +682,13 @@ public void AddSubtitle(string text, Color color)
             if (mq == null) mq = row.AddComponent<SubtitleMarqueeState>();
             mq.Version++;
             mq.Active = rr.marquee;
+            mq.AutoLong = forceLongMarquee && rr.marquee;
             mq.Duration = 0f;
             if (rr.marquee)
             {
                 // 滚动时长与超出长度成正比；速度随字号缩放
-                mq.Duration = (rr.fullTextW - rr.clipW) / Mathf.Max(MarqueeMinSpeedPx, txt.fontSize * MarqueeSpeedPerFontSize);
+                float charsPerSec = mq.AutoLong ? GetLongLineCharsPerSecond() : GetSubtitleMarqueeCharsPerSecond();
+                mq.Duration = (rr.fullTextW - rr.clipW) / Mathf.Max(MarqueeMinSpeedPx, txt.fontSize * charsPerSec);
                 StartCoroutine(MarqueeScrollCoroutine(row, mq, mq.Version, txt.rectTransform, rr.posX0, rr.posX1, rr.posY));
             }
 
@@ -698,8 +835,13 @@ public void AddSubtitle(string text, Color color)
             le.minWidth = 0f;
             le.preferredWidth = r.boxW;
             le.flexibleWidth = 0f;
-            le.minHeight = r.boxH;
-            le.preferredHeight = r.boxH;
+            var lineState = row.GetComponent<SubtitleLineState>();
+            if (lineState != null) lineState.TargetHeight = r.boxH;
+            if (lineState == null || !lineState.HeightAnimating)
+            {
+                le.minHeight = r.boxH;
+                le.preferredHeight = r.boxH;
+            }
             le.flexibleHeight = 0f;
 
             // 裁剪窗口 + Text 节点（Clip 居中铺在 row 内，Text 居中铺在 Clip 内；
@@ -765,31 +907,200 @@ public void AddSubtitle(string text, Color color)
             return new Vector2(Mathf.Ceil(w), Mathf.Ceil(h));
         }
 
-        // 淡入或淡出字幕
-        private IEnumerator FadeSubtitle(GameObject subtitleLine, bool fadeIn, float durationSec)
+        // 单行完整生命周期：快速淡入并展开行高，停留结束后淡出并收缩行高
+        private IEnumerator SubtitleLifecycleCoroutine(GameObject line, SubtitleLineState state, int version, float durationSec)
         {
-            var canvasGroup = subtitleLine.GetComponent<CanvasGroup>() ?? subtitleLine.AddComponent<CanvasGroup>();
-            float elapsedTime = 0f;
+            var canvasGroup = line.GetComponent<CanvasGroup>() ?? line.AddComponent<CanvasGroup>();
+            var layout = line.GetComponent<LayoutElement>();
+            state.HeightAnimating = true;
+            canvasGroup.alpha = 0f;
+            SetAnimatedLineHeight(layout, 0f);
 
-            // 淡入或淡出动画
-            while (elapsedTime < (fadeIn ? FadeInTime : FadeOutTime))
+            float fadeInSec = GetSubtitleFadeInSec();
+            float elapsed = 0f;
+            while (elapsed < fadeInSec)
             {
-                elapsedTime += Time.deltaTime;
-                canvasGroup.alpha = Mathf.Lerp(fadeIn ? 0 : 1, fadeIn ? 1 : 0, elapsedTime / (fadeIn ? FadeInTime : FadeOutTime));
+                if (!LineStateValid(line, state, version) || state.Exiting) yield break;
+                elapsed += Time.deltaTime;
+                float k = EaseOutCubic(Mathf.Clamp01(elapsed / fadeInSec));
+                canvasGroup.alpha = k;
+                SetAnimatedLineHeight(layout, state.TargetHeight * k);
                 yield return null;
             }
 
-            // 如果是淡出，回收字幕行（回池复用）
-            if (!fadeIn)
+            if (!LineStateValid(line, state, version) || state.Exiting) yield break;
+            canvasGroup.alpha = 1f;
+            state.HeightAnimating = false;
+            SetAnimatedLineHeight(layout, state.TargetHeight);
+
+            float holdDuration = Mathf.Max(durationSec, GetMinimumReadingTime(line));
+            var mq = line.GetComponent<SubtitleMarqueeState>();
+            if (mq != null && mq.Active)
             {
-                _activeLines.Remove(subtitleLine);
-                RecycleSubtitleLine(subtitleLine);
+                float endHold = mq.AutoLong ? GetLongLineEndHoldSec() : GetSubtitleMarqueeEndHoldSec();
+                holdDuration = Mathf.Max(holdDuration, mq.Duration + endHold);
             }
-            else
+
+            elapsed = 0f;
+            while (elapsed < holdDuration)
             {
-                yield return new WaitForSeconds(durationSec);
-                StartCoroutine(FadeSubtitle(subtitleLine, false, 0f));
+                if (!LineStateValid(line, state, version) || state.Exiting) yield break;
+                elapsed += Time.deltaTime;
+                yield return null;
             }
+
+            if (LineStateValid(line, state, version)) BeginSubtitleExit(line);
+        }
+
+        private void BeginSubtitleExit(GameObject line)
+        {
+            if (line == null || !line.activeSelf) return;
+            var state = line.GetComponent<SubtitleLineState>();
+            if (state == null || state.Exiting) return;
+
+            state.Exiting = true;
+            state.Version++;
+            int version = state.Version;
+
+            var mq = line.GetComponent<SubtitleMarqueeState>();
+            if (mq != null)
+            {
+                mq.Version++;
+                mq.Active = false;
+            }
+            StartCoroutine(SubtitleExitCoroutine(line, state, version));
+        }
+
+        private IEnumerator SubtitleExitCoroutine(GameObject line, SubtitleLineState state, int version)
+        {
+            var canvasGroup = line.GetComponent<CanvasGroup>() ?? line.AddComponent<CanvasGroup>();
+            var layout = line.GetComponent<LayoutElement>();
+            float startAlpha = canvasGroup.alpha;
+            float startHeight = layout != null ? Mathf.Max(0f, layout.preferredHeight) : state.TargetHeight;
+            state.HeightAnimating = true;
+
+            float fadeOutSec = GetSubtitleFadeOutSec();
+            float elapsed = 0f;
+            while (elapsed < fadeOutSec)
+            {
+                if (!LineStateValid(line, state, version)) yield break;
+                elapsed += Time.deltaTime;
+                float k = EaseOutCubic(Mathf.Clamp01(elapsed / fadeOutSec));
+                canvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, k);
+                SetAnimatedLineHeight(layout, Mathf.Lerp(startHeight, 0f, k));
+                yield return null;
+            }
+
+            if (!LineStateValid(line, state, version)) yield break;
+            _activeLines.Remove(line);
+            RecycleSubtitleLine(line);
+        }
+
+        private static bool LineStateValid(GameObject line, SubtitleLineState state, int version)
+        {
+            return line != null && line.activeSelf && state != null && state.Version == version;
+        }
+
+        private void SetAnimatedLineHeight(LayoutElement layout, float height)
+        {
+            if (layout == null) return;
+            height = Mathf.Max(0f, height);
+            layout.minHeight = height;
+            layout.preferredHeight = height;
+            if (_subtitlePanel != null)
+            {
+                var panelRt = _subtitlePanel.GetComponent<RectTransform>();
+                if (panelRt != null) LayoutRebuilder.MarkLayoutForRebuild(panelRt);
+            }
+        }
+
+        private static float EaseOutCubic(float value)
+        {
+            float inv = 1f - Mathf.Clamp01(value);
+            return 1f - inv * inv * inv;
+        }
+
+        private static float GetMinimumReadingTime(GameObject line)
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleReadingTimeEnabled != null &&
+                    !Subtitle.Config.Settings.SubtitleReadingTimeEnabled.Value)
+                    return 0f;
+            }
+            catch { }
+
+            var raw = line != null ? line.GetComponent<SubtitleRawText>() : null;
+            int chars = CountVisibleChars(raw != null ? raw.Value : null);
+            float minSec = 1.2f;
+            float leadSec = 0.5f;
+            float charsPerSec = 10f;
+            float maxSec = 6f;
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleMinReadingSec != null)
+                    minSec = Mathf.Clamp(Subtitle.Config.Settings.SubtitleMinReadingSec.Value, 0.3f, 5f);
+                if (Subtitle.Config.Settings.SubtitleReadingLeadSec != null)
+                    leadSec = Mathf.Clamp(Subtitle.Config.Settings.SubtitleReadingLeadSec.Value, 0f, 3f);
+                if (Subtitle.Config.Settings.SubtitleReadingCharsPerSec != null)
+                    charsPerSec = Mathf.Clamp(Subtitle.Config.Settings.SubtitleReadingCharsPerSec.Value, 2f, 30f);
+                if (Subtitle.Config.Settings.SubtitleMaxReadingSec != null)
+                    maxSec = Mathf.Clamp(Subtitle.Config.Settings.SubtitleMaxReadingSec.Value, 2f, 20f);
+            }
+            catch { }
+            maxSec = Mathf.Max(minSec, maxSec);
+            if (chars <= 0) return minSec;
+            return Mathf.Clamp(leadSec + chars / charsPerSec, minSec, maxSec);
+        }
+
+        private static float GetSubtitleFadeInSec()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleAnimationEnabled != null &&
+                    !Subtitle.Config.Settings.SubtitleAnimationEnabled.Value)
+                    return 0f;
+                if (Subtitle.Config.Settings.SubtitleFadeInSec != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.SubtitleFadeInSec.Value, 0f, 0.8f);
+            }
+            catch { }
+            return FadeInTimeDefault;
+        }
+
+        private static float GetSubtitleFadeOutSec()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleAnimationEnabled != null &&
+                    !Subtitle.Config.Settings.SubtitleAnimationEnabled.Value)
+                    return 0f;
+                if (Subtitle.Config.Settings.SubtitleFadeOutSec != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.SubtitleFadeOutSec.Value, 0f, 1f);
+            }
+            catch { }
+            return FadeOutTimeDefault;
+        }
+
+        private static float GetSubtitleMarqueeCharsPerSecond()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleMarqueeCharsPerSecond != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.SubtitleMarqueeCharsPerSecond.Value, 1f, 20f);
+            }
+            catch { }
+            return MarqueeSpeedPerFontSizeDefault;
+        }
+
+        private static float GetSubtitleMarqueeEndHoldSec()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleMarqueeEndHoldSec != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.SubtitleMarqueeEndHoldSec.Value, 0.2f, 3f);
+            }
+            catch { }
+            return MarqueeEndHoldSecDefault;
         }
 
  
@@ -849,7 +1160,8 @@ public void AddSubtitle(string text, Color color)
 
             // 等淡入结束再开始滚动
             float t = 0f;
-            while (t < FadeInTime)
+            float fadeInSec = GetSubtitleFadeInSec();
+            while (t < fadeInSec)
             {
                 if (!MarqueeValid(row, st, version)) yield break;
                 t += Time.deltaTime;
@@ -875,6 +1187,86 @@ public void AddSubtitle(string text, Color color)
         private static bool MarqueeValid(GameObject row, SubtitleMarqueeState st, int version)
         {
             return row != null && row.activeSelf && st != null && st.Active && st.Version == version;
+        }
+
+        private static bool ShouldUseAutoLongMarquee(string src)
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleLongLineMarqueeEnabled == null ||
+                    !Subtitle.Config.Settings.SubtitleLongLineMarqueeEnabled.Value)
+                    return false;
+                int threshold = Subtitle.Config.Settings.SubtitleLongLineThresholdChars != null
+                    ? Mathf.Clamp(Subtitle.Config.Settings.SubtitleLongLineThresholdChars.Value, 40, 300)
+                    : 80;
+                return CountVisibleChars(src) >= threshold;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static int GetLongLineWindowChars()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleLongLineWindowChars != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.SubtitleLongLineWindowChars.Value, 20, 100);
+            }
+            catch { }
+            return 42;
+        }
+
+        private static float GetLongLineCharsPerSecond()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleLongLineCharsPerSecond != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.SubtitleLongLineCharsPerSecond.Value, 2f, 20f);
+            }
+            catch { }
+            return 8f;
+        }
+
+        private static float GetLongLineEndHoldSec()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.SubtitleLongLineEndHoldSec != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.SubtitleLongLineEndHoldSec.Value, 0.3f, 3f);
+            }
+            catch { }
+            return 1f;
+        }
+
+        private static int CountVisibleChars(string src)
+        {
+            if (string.IsNullOrEmpty(src)) return 0;
+            bool inTag = false;
+            int count = 0;
+            for (int i = 0; i < src.Length; i++)
+            {
+                char c = src[i];
+                if (c == '<')
+                {
+                    inTag = true;
+                    continue;
+                }
+                if (inTag)
+                {
+                    if (c == '>') inTag = false;
+                    continue;
+                }
+                if (c != '\n' && c != '\r') count++;
+            }
+            return count;
+        }
+
+        private static string CollapseLineBreaks(string src)
+        {
+            if (string.IsNullOrEmpty(src)) return src;
+            return src.Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' ');
         }
 
         // 字幕长度上限（可见字符数，0 不限制）
@@ -934,6 +1326,9 @@ public void AddSubtitle(string text, Color color)
         // 字幕通道的文本处理入口：自动换行 / 长度上限 / 截断省略号（滚动模式保留全文，由滚动展示完整台词）
         private static string ApplySubtitleWrap(string src)
         {
+            if (ShouldUseAutoLongMarquee(src))
+                return CollapseLineBreaks(src);
+
             bool wrapEnabled = Subtitle.Config.Settings.SubtitleWrap != null && Subtitle.Config.Settings.SubtitleWrap.Value;
             int limit = (Subtitle.Config.Settings.SubtitleWrapLength != null)
                 ? Subtitle.Config.Settings.SubtitleWrapLength.Value

@@ -29,6 +29,7 @@ namespace SubtitleSystem
         {
             public float lastSpawnTime;
             public float lastTextWidth;
+            public float lastSpeed;
         }
 
         private DanmakuLane[] _lanes;
@@ -38,6 +39,14 @@ namespace SubtitleSystem
         private float _speedPxPerSec = 180f;
         private int _minGapPx = 40;
         private int _fontSizeOverride = 0; // 0 表示不覆盖，用预设
+        private float _densityMultiplier = 1f;
+        private float _danmakuOpacity = 1f;
+        private bool _lengthSpeedEnabled;
+        private float _lengthSpeedMultiplier = 0.5f;
+        private int _lengthSpeedStartChars = 20;
+        private int _lengthSpeedStepChars = 20;
+        private float _lengthSpeedMaxMultiplier = 4f;
+        private float _laneVerticalSpacingPx = 8f;
 
         // 简单对象池（减少 GC）
         private readonly Queue<GameObject> _pool = new Queue<GameObject>();
@@ -47,6 +56,7 @@ namespace SubtitleSystem
         private readonly Queue<DanmakuItem> _danmakuQueue = new Queue<DanmakuItem>();
         private bool _spawnLoopRunning;
         private float _spawnDelaySec = 0.2f; // 默认 0.2s（可被设置覆盖）
+        private WaitForSecondsRealtime _spawnDelayWait = new WaitForSecondsRealtime(0.2f);
 
         // ===== 初始化弹幕层 =====
         public void InitializeDanmakuLayer()
@@ -89,13 +99,39 @@ namespace SubtitleSystem
                 }
                 _laneCount = newLaneCount;
                 _speedPxPerSec = Mathf.Max(30f, Subtitle.Config.Settings.DanmakuSpeed.Value);
-                _minGapPx = Mathf.Max(0, Subtitle.Config.Settings.DanmakuMinGapPx.Value);
+                _densityMultiplier = Subtitle.Config.Settings.DanmakuDensityMultiplier != null
+                    ? Mathf.Clamp(Subtitle.Config.Settings.DanmakuDensityMultiplier.Value, 0.25f, 3f)
+                    : 1f;
+                _danmakuOpacity = Subtitle.Config.Settings.DanmakuOpacity != null
+                    ? Mathf.Clamp(Subtitle.Config.Settings.DanmakuOpacity.Value, 0.1f, 1f)
+                    : 1f;
+                _lengthSpeedEnabled = Subtitle.Config.Settings.DanmakuLengthSpeedEnabled != null &&
+                    Subtitle.Config.Settings.DanmakuLengthSpeedEnabled.Value;
+                _lengthSpeedMultiplier = Subtitle.Config.Settings.DanmakuLengthSpeedMultiplier != null
+                    ? Mathf.Clamp(Subtitle.Config.Settings.DanmakuLengthSpeedMultiplier.Value, 0f, 2f)
+                    : 0.5f;
+                _lengthSpeedStartChars = Subtitle.Config.Settings.DanmakuLengthSpeedStartChars != null
+                    ? Mathf.Clamp(Subtitle.Config.Settings.DanmakuLengthSpeedStartChars.Value, 0, 200)
+                    : 20;
+                _lengthSpeedStepChars = Subtitle.Config.Settings.DanmakuLengthSpeedStepChars != null
+                    ? Mathf.Clamp(Subtitle.Config.Settings.DanmakuLengthSpeedStepChars.Value, 1, 100)
+                    : 20;
+                _lengthSpeedMaxMultiplier = Subtitle.Config.Settings.DanmakuLengthSpeedMaxMultiplier != null
+                    ? Mathf.Clamp(Subtitle.Config.Settings.DanmakuLengthSpeedMaxMultiplier.Value, 1f, 10f)
+                    : 4f;
+                _laneVerticalSpacingPx = Subtitle.Config.Settings.DanmakuLaneVerticalSpacingPx != null
+                    ? Mathf.Clamp(Subtitle.Config.Settings.DanmakuLaneVerticalSpacingPx.Value, 0f, 50f)
+                    : 8f;
+                int baseGap = Mathf.Max(0, Subtitle.Config.Settings.DanmakuMinGapPx.Value);
+                _minGapPx = Mathf.RoundToInt(baseGap / _densityMultiplier);
                 _fontSizeOverride = Mathf.Max(0, Subtitle.Config.Settings.DanmakuFontSize.Value);
                 // 发送间隔
-                _spawnDelaySec = Mathf.Clamp(
+                float baseSpawnDelay = Mathf.Clamp(
                     Subtitle.Config.Settings.DanmakuSpawnDelaySec != null 
                     ? Subtitle.Config.Settings.DanmakuSpawnDelaySec.Value
                     : 0.2f, 0f, 1f);
+                _spawnDelaySec = baseSpawnDelay / _densityMultiplier;
+                _spawnDelayWait = _spawnDelaySec > 0f ? new WaitForSecondsRealtime(_spawnDelaySec) : null;
 
                 _danmakuTopOffsetPercent = Mathf.Clamp01(
                     Subtitle.Config.Settings.DanmakuTopOffsetPercent.Value);
@@ -103,11 +139,14 @@ namespace SubtitleSystem
                     Subtitle.Config.Settings.DanmakuAreaMaxPercent.Value);
                 DLog("[Danmaku] ApplySettings lanes=" + _laneCount +
                     " speed=" + _speedPxPerSec +
+                    " density=" + _densityMultiplier +
+                    " opacity=" + _danmakuOpacity +
                     " minGap=" + _minGapPx +
                     " spawnDelay=" + _spawnDelaySec +
                     " fontOverride=" + _fontSizeOverride +
                     " top%=" + _danmakuTopOffsetPercent +
                     " area%=" + _danmakuAreaMaxPercent);
+                ApplyDanmakuOpacityToItems();
             }
             catch { }
         }
@@ -120,6 +159,19 @@ namespace SubtitleSystem
                 var child = _danmakuLayer.GetChild(i);
                 var txt = child.GetComponent<Text>();
                 if (txt != null) Subtitle.Config.Settings.ApplyDanmakuTextOverrides(txt);
+            }
+            ApplyDanmakuOpacityToItems();
+        }
+
+        private void ApplyDanmakuOpacityToItems()
+        {
+            if (_danmakuLayer == null) return;
+            for (int i = 0; i < _danmakuLayer.childCount; i++)
+            {
+                var child = _danmakuLayer.GetChild(i);
+                var group = child.GetComponent<CanvasGroup>();
+                if (group == null) group = child.gameObject.AddComponent<CanvasGroup>();
+                group.alpha = _danmakuOpacity;
             }
         }
 
@@ -138,8 +190,6 @@ namespace SubtitleSystem
         private IEnumerator CoSpawnLoop()
         {
             _spawnLoopRunning = true;
-            // 每条生成循环只取一次间隔配置，避免每轮 yield 都分配
-            var spawnDelayWait = _spawnDelaySec > 0f ? new WaitForSecondsRealtime(_spawnDelaySec) : null;
             while (_danmakuQueue.Count > 0)
             {
                 var item = _danmakuQueue.Peek();
@@ -148,8 +198,8 @@ namespace SubtitleSystem
                 {
                     _danmakuQueue.Dequeue();
                     // 两条弹幕之间留出极短间隔（可在设置改 0.1 或 0.3）
-                    if (spawnDelayWait != null)
-                        yield return spawnDelayWait;
+                    if (_spawnDelayWait != null)
+                        yield return _spawnDelayWait;
                 }
                 else
                 {
@@ -160,13 +210,13 @@ namespace SubtitleSystem
         }
 
         // ===== 内部：移动协程（右→左） =====
-        private IEnumerator CoMoveLeft(GameObject go, float x, float endX)
+        private IEnumerator CoMoveLeft(GameObject go, float x, float endX, float speedPxPerSec)
         {
             var rt = (RectTransform)go.transform;
             bool first = true;
             while (x > endX)
             {
-                x -= _speedPxPerSec * Time.unscaledDeltaTime;
+                x -= speedPxPerSec * Time.unscaledDeltaTime;
                 rt.anchoredPosition = new Vector2(x, rt.anchoredPosition.y);
                 if (first)
                 {
@@ -179,7 +229,7 @@ namespace SubtitleSystem
             Recycle(go);
         }
 
-        private int PickLaneGreedy(float textWidth, int laneCountEffective)
+        private int PickLaneGreedy(int laneCountEffective, float incomingSpeed, float parentWidth)
         {
             float now = Time.unscaledTime;
             if (_lanes == null || _lanes.Length == 0) return 0;
@@ -188,7 +238,17 @@ namespace SubtitleSystem
             // 从 0 开始顺序找——最大化复用低编号车道
                         for (int i = 0; i < laneCountEffective; i++)
                            {
-                float minInterval = (_lanes[i].lastTextWidth + _minGapPx) / Mathf.Max(1f, _speedPxPerSec);
+                float previousSpeed = _lanes[i].lastSpeed > 0f ? _lanes[i].lastSpeed : _speedPxPerSec;
+                float minInterval;
+                if (incomingSpeed > previousSpeed + 0.01f)
+                {
+                    // 后一条更快时会持续追近前一条；保守等待前一条完全离屏，避免同车道追尾重叠
+                    minInterval = (parentWidth + _lanes[i].lastTextWidth + 40f) / Mathf.Max(1f, previousSpeed);
+                }
+                else
+                {
+                    minInterval = (_lanes[i].lastTextWidth + _minGapPx) / Mathf.Max(1f, previousSpeed);
+                }
                                 if (now - _lanes[i].lastSpawnTime >= minInterval) return i;
                             }
             return -1;
@@ -218,6 +278,7 @@ namespace SubtitleSystem
             // 计算尺寸（preferred* 按需计算，无需强制重建所有 Canvas）
             float textWidth = txt.preferredWidth;
             float textHeight = txt.preferredHeight;
+            float itemSpeed = GetDanmakuItemSpeed(text);
 
             // 父尺寸
             float parentW = ((RectTransform)this.transform).rect.width;
@@ -225,14 +286,14 @@ namespace SubtitleSystem
             if (parentW < 1f || parentH < 1f) { parentW = Screen.width; parentH = Screen.height; }
 
             // 区域与车道
-            float laneH = Mathf.Max(textHeight + 8f, txt.fontSize + 8f);
+            float laneH = Mathf.Max(textHeight + _laneVerticalSpacingPx, txt.fontSize + _laneVerticalSpacingPx);
             float topMarginPx = parentH * _danmakuTopOffsetPercent;
             float maxAreaH = Mathf.Max(laneH, parentH * _danmakuAreaMaxPercent);
 
             int maxByArea = Mathf.Max(1, Mathf.FloorToInt(maxAreaH / laneH));
             int laneCountEffective = Mathf.Min(_laneCount, maxByArea);
 
-            int lane = PickLaneGreedy(textWidth, laneCountEffective);
+            int lane = PickLaneGreedy(laneCountEffective, itemSpeed, parentW);
             if (lane < 0)
             {
                 // 车道暂不可用：把对象放回池里，告诉上层“稍后再来”
@@ -258,10 +319,20 @@ namespace SubtitleSystem
             // 占用记录
             _lanes[lane].lastSpawnTime = Time.unscaledTime;
             _lanes[lane].lastTextWidth = textWidth;
+            _lanes[lane].lastSpeed = itemSpeed;
 
             // 开始移动
-            StartCoroutine(CoMoveLeft(go, startX, endX));
+            StartCoroutine(CoMoveLeft(go, startX, endX, itemSpeed));
             return true;
+        }
+
+        private float GetDanmakuItemSpeed(string text)
+        {
+            if (!_lengthSpeedEnabled) return _speedPxPerSec;
+            int visibleChars = CountVisibleChars(text);
+            float extraUnits = Mathf.Max(0f, visibleChars - _lengthSpeedStartChars) / _lengthSpeedStepChars;
+            float factor = Mathf.Clamp(1f + extraUnits * _lengthSpeedMultiplier, 1f, _lengthSpeedMaxMultiplier);
+            return _speedPxPerSec * factor;
         }
 
         // ===== 对象池 =====
@@ -272,7 +343,7 @@ namespace SubtitleSystem
 
             if (go == null)
             {
-                go = new GameObject("DanmakuItem", typeof(RectTransform), typeof(Text));
+                go = new GameObject("DanmakuItem", typeof(RectTransform), typeof(Text), typeof(CanvasGroup));
                 go.transform.SetParent(_danmakuLayer, false);
 
                 var txt = go.GetComponent<Text>();
@@ -282,6 +353,10 @@ namespace SubtitleSystem
                 txt.verticalOverflow = VerticalWrapMode.Overflow;
                 txt.raycastTarget = false;
             }
+
+            var group = go.GetComponent<CanvasGroup>();
+            if (group == null) group = go.AddComponent<CanvasGroup>();
+            group.alpha = _danmakuOpacity;
 
             return go;
         }

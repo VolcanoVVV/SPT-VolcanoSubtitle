@@ -75,11 +75,7 @@ namespace Subtitle.Config
 
         // —— General —— //
         public static ConfigEntry<string> TextPresetName;
-        public static ConfigEntry<string> PhraseFilterPanelButton;
         public static ConfigEntry<string> SettingsWindowButton;
-        public static ConfigEntry<bool> ShowSubtitleOptions;
-        public static ConfigEntry<bool> ShowDanmakuOptions;
-        public static ConfigEntry<bool> ShowWorld3DOptions;
         public static ConfigEntry<bool> StreamerModeEnabled;
         public static ConfigEntry<StreamerMaskStyle> StreamerMaskStyle;
         public static ConfigEntry<KeyboardShortcut> SettingsWindowHotkey;
@@ -96,6 +92,29 @@ namespace Subtitle.Config
         public static ConfigEntry<float> SubtitleMaxDistanceMeters;
         public static ConfigEntry<bool> SubtitleShowDistance;
         public static ConfigEntry<float> SubtitleDisplayDelaySec;
+        public static ConfigEntry<bool> SubtitleAnimationEnabled;
+        public static ConfigEntry<float> SubtitleFadeInSec;
+        public static ConfigEntry<float> SubtitleFadeOutSec;
+        public static ConfigEntry<bool> SubtitleReadingTimeEnabled;
+        public static ConfigEntry<float> SubtitleMinReadingSec;
+        public static ConfigEntry<float> SubtitleReadingLeadSec;
+        public static ConfigEntry<float> SubtitleReadingCharsPerSec;
+        public static ConfigEntry<float> SubtitleMaxReadingSec;
+        public static ConfigEntry<float> SubtitleMarqueeCharsPerSecond;
+        public static ConfigEntry<float> SubtitleMarqueeEndHoldSec;
+        public static ConfigEntry<int> SubtitleMaxVisibleLines;
+        public static ConfigEntry<bool> SubtitleRolePriorityEnabled;
+        public static ConfigEntry<int> SubtitlePriorityPlayer;
+        public static ConfigEntry<int> SubtitlePriorityTeammate;
+        public static ConfigEntry<int> SubtitlePriorityPmc;
+        public static ConfigEntry<int> SubtitlePriorityScav;
+        public static ConfigEntry<int> SubtitlePriorityRaiderRogue;
+        public static ConfigEntry<int> SubtitlePriorityCultist;
+        public static ConfigEntry<int> SubtitlePriorityBossFollower;
+        public static ConfigEntry<int> SubtitlePriorityZombie;
+        public static ConfigEntry<int> SubtitlePriorityGoons;
+        public static ConfigEntry<int> SubtitlePriorityBosses;
+        public static ConfigEntry<int> SubtitlePriorityOther;
         public static ConfigEntry<bool> EnableMapBroadcastSubtitle;
         public static ConfigEntry<bool> SubtitleZombieEnabled;
         public static ConfigEntry<int> SubtitleZombieCooldownSec;
@@ -113,6 +132,11 @@ namespace Subtitle.Config
         public static ConfigEntry<int> SubtitleWrapLength;      // >0 强制断行（按可见字符数）
         public static ConfigEntry<int> SubtitleMaxLineChars;    // 单行可见字符数上限（0 不限制；宽度≈字符数×字号）
         public static ConfigEntry<bool> SubtitleMarqueeEnabled; // 不换行且超限时：固定宽窗口内横向滚动显示全文
+        public static ConfigEntry<bool> SubtitleLongLineMarqueeEnabled;
+        public static ConfigEntry<int> SubtitleLongLineThresholdChars;
+        public static ConfigEntry<int> SubtitleLongLineWindowChars;
+        public static ConfigEntry<float> SubtitleLongLineCharsPerSecond;
+        public static ConfigEntry<float> SubtitleLongLineEndHoldSec;
 
         // 描边
         public static ConfigEntry<bool> SubtitleOutlineEnabled;
@@ -159,6 +183,14 @@ namespace Subtitle.Config
         public static ConfigEntry<float> DanmakuSpeed;
         public static ConfigEntry<int> DanmakuMinGapPx;
         public static ConfigEntry<float> DanmakuSpawnDelaySec;
+        public static ConfigEntry<float> DanmakuDensityMultiplier;
+        public static ConfigEntry<float> DanmakuOpacity;
+        public static ConfigEntry<bool> DanmakuLengthSpeedEnabled;
+        public static ConfigEntry<float> DanmakuLengthSpeedMultiplier;
+        public static ConfigEntry<int> DanmakuLengthSpeedStartChars;
+        public static ConfigEntry<int> DanmakuLengthSpeedStepChars;
+        public static ConfigEntry<float> DanmakuLengthSpeedMaxMultiplier;
+        public static ConfigEntry<float> DanmakuLaneVerticalSpacingPx;
         public static ConfigEntry<int> DanmakuFontSize; // 0 表示不覆盖
         public static ConfigEntry<float> DanmakuTopOffsetPercent;
         public static ConfigEntry<float> DanmakuAreaMaxPercent;
@@ -198,6 +230,7 @@ namespace Subtitle.Config
         public static ConfigEntry<SelfPronounOption> World3DPlayerSelfPronoun;
         public static ConfigEntry<SelfPronounOption> World3DTeammateSelfPronoun;
         public static ConfigEntry<float> World3DMaxDistanceMeters;
+        public static ConfigEntry<int> World3DMaxVisibleCharacters;
         public static ConfigEntry<bool> World3DShowDistance;
         public static ConfigEntry<float> World3DDisplayDelaySec;
         public static ConfigEntry<float> World3DVerticalOffsetY;
@@ -211,18 +244,30 @@ namespace Subtitle.Config
         public static ConfigEntry<string> World3DFontBundleName;
         public static ConfigEntry<string> World3DFontFamilyCsv;
         public static ConfigEntry<int> World3DFontSize;
+        public static ConfigEntry<bool> World3DPreferSdfText;
         public static ConfigEntry<bool> World3DFontBold;
         public static ConfigEntry<bool> World3DFontItalic;
         public static ConfigEntry<TextAnchorOption> World3DAlignment;
         public static ConfigEntry<bool> World3DWrap;
         public static ConfigEntry<int> World3DWrapLength;
         public static ConfigEntry<float> World3DWorldScale;
+        public static ConfigEntry<bool> World3DDistanceScaleEnabled;
+        public static ConfigEntry<float> World3DDistanceScaleReferenceMeters;
+        public static ConfigEntry<float> World3DDistanceScaleMinMultiplier;
+        public static ConfigEntry<float> World3DDistanceScaleMaxMultiplier;
         public static ConfigEntry<float> World3DDynamicPixelsPerUnit;
         public static ConfigEntry<float> World3DFaceUpdateIntervalSec;
         public static ConfigEntry<int> World3DStackMaxLines;
         public static ConfigEntry<float> World3DStackOffsetY;
         public static ConfigEntry<float> World3DFadeInSec;
         public static ConfigEntry<float> World3DFadeOutSec;
+        public static ConfigEntry<float> World3DMaxWidthPx;
+        public static ConfigEntry<float> World3DPaddingX;
+        public static ConfigEntry<float> World3DPaddingY;
+        public static ConfigEntry<float> World3DMaxDurationSec;
+        public static ConfigEntry<bool> World3DSmoothingEnabled;
+        public static ConfigEntry<float> World3DPositionSmoothSpeed;
+        public static ConfigEntry<float> World3DRotationSmoothSpeed;
         public static ConfigEntry<bool> World3DOutlineEnabled;
         public static ConfigEntry<Color> World3DOutlineColor;
         public static ConfigEntry<float> World3DOutlineDistX;
@@ -324,8 +369,6 @@ namespace Subtitle.Config
         public static ConfigEntry<Color> W3dText_LabAnnouncer;
 
         // —— Debug —— //
-        private static ConfigEntry<string> _TestSubtitleButton;
-        public static ConfigEntry<string> TestDanmakuButton;
         public static ConfigEntry<bool> EnableDebugTools;
         public static ConfigEntry<KeyboardShortcut> DebugPanelHotkey;
         public static ConfigEntry<bool> DanmakuDebugVerbose;
@@ -343,9 +386,6 @@ namespace Subtitle.Config
             // 防御：统一注册表在下方 Bind 时顺带填充，先清空以防重复初始化时累积
             s_SnapshotWriters.Clear();
             s_SnapshotReaders.Clear();
-            s_SubtitleFoldTargets.Clear();
-            s_DanmakuFoldTargets.Clear();
-            s_World3DFoldTargets.Clear();
 
             // —— 运行期刷新动作：作为 Reg 的 refresh 参数传入（原 HookChanged 区块的五个分组） —— //
             Action refreshSubtitleLayout = TryApplySubtitleLayoutRuntime;
@@ -375,15 +415,14 @@ namespace Subtitle.Config
                 };
             }
 
-            // 统一注册：Bind 之后顺带登记 折叠组 / 预设快照 / 变更刷新，替代原先三套平行注册表
-            // presetKey 为 null → 不进预设快照（按钮/折叠开关/调试项）；foldGroup 为 null → 不参与折叠；
+            // 统一注册：Bind 之后顺带登记预设快照与变更刷新，替代原先的平行注册表
+            // presetKey 为 null → 不进预设快照；
             // refresh 为 null → 变更时不触发运行期刷新；csv = true → 字符串按 CSV 数组快照（字体候选列表）
             ConfigEntry<T> Reg<T>(string section, string key, T def, ConfigDescription desc,
-                string presetKey = null, List<ConfigEntryBase> foldGroup = null, Action refresh = null, bool csv = false)
+                string presetKey = null, Action refresh = null, bool csv = false)
             {
                 var e = Config.Bind(section, key, def, desc);
                 entries.Add(e);
-                if (foldGroup != null) AddFoldTarget(foldGroup, e);
                 if (presetKey != null) RegSnapshot(presetKey, e, csv);
                 if (refresh != null) HookChanged(e, refresh);
                 return e;
@@ -403,7 +442,6 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                         DispName = "文本样式预设",
-                        CustomDrawer = DrawPresetPicker,   // ★ 使用自绘控件
                         HideDefaultButton = true
                     })));
 
@@ -421,7 +459,7 @@ namespace Subtitle.Config
                 }
             };
 
-            // 扫描 presets 目录，构建可选项（与 DrawPresetPicker 共用 ScanPresets，避免两套扫描逻辑）
+            // 扫描 presets 目录，构建图形化设置界面的可选项
             ScanPresets(true);
 
             // 界面语言：纯环境项，不进预设快照（预设只管视觉样式）；切换后立即重载文本并整体重建设置窗口。
@@ -432,13 +470,12 @@ namespace Subtitle.Config
                 "界面 语言",
                 I18n.DefaultLanguage,
                 new ConfigDescription(
-                    "图形化设置界面的显示语言（locales 下的语言目录名，如 ch）。\n切换后立即重载界面文本并重建设置窗口。",
+                    "界面与字幕资源使用的语言（locales 下的语言目录名，如 ch）。\n切换后立即重载界面、台词、角色名、广播与主播词表；缺失文件回退 ch。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                null, null, delegate
+                null, delegate
                 {
-                    I18n.Reload(UiLanguage.Value);
-                    SettingsUI.SettingsWindow.RebuildAll();
+                    ReloadLocalizedResources(UiLanguage.Value);
                 });
 
             EnableSubtitle = Reg(
@@ -482,7 +519,7 @@ namespace Subtitle.Config
                 "主播模式启用",
                 false,
                 new ConfigDescription(
-                    "启用后，字幕/弹幕/3D气泡与地图广播中的脏话会被打码。\n词表文件：locales/ch/StreamerWords.jsonc，可自由增删，重开战局后生效。",
+                    "启用后，字幕/弹幕/3D气泡与地图广播中的脏话会被打码。\n词表文件：locales/<界面语言>/StreamerWords.jsonc，缺失时回退 ch，可自由增删。",
                     null,
                     new ConfigurationManagerAttributes { }));
 
@@ -519,76 +556,6 @@ namespace Subtitle.Config
                     null,
                     new ConfigurationManagerAttributes { }));
 
-            // 仅 Bind：面板按钮/折叠开关/测试按钮/调试项 不进 折叠/预设快照/刷新 注册表
-            entries.Add(PhraseFilterPanelButton = Config.Bind(
-                GeneralSection,
-                "台词显示控制面板",
-                "",
-                new ConfigDescription(
-                    "打开台词显示控制面板，用于选择声线/触发器/NetId 的显示规则。",
-                    null,
-                    new ConfigurationManagerAttributes
-                    {
-                        CustomDrawer = DrawPhraseFilterPanelButton,
-                        HideDefaultButton = true
-                    })));
-
-            // 设置测试按钮（任意场景弹一条测试字幕）
-            entries.Add(_TestSubtitleButton = Config.Bind(
-                GeneralSection,
-                "▶ 随机测试字幕",
-                "", // 值无意义占位
-                new ConfigDescription(
-                    "点击右侧按钮随机发送一条测试字幕。",
-                    null,
-                    new ConfigurationManagerAttributes
-                    {
-                        CustomDrawer = DrawTestSubtitleButton,
-                        HideDefaultButton = true
-                    })));
-
-            entries.Add(ShowSubtitleOptions = Config.Bind(
-                SubtitleGeneralSection,
-                "展开/收缩 字幕 选项设置",
-                true,
-                new ConfigDescription(
-                    "是否展开字幕设置项。",
-                    null,
-                    new ConfigurationManagerAttributes
-                    {
-                        CustomDrawer = DrawFoldToggleButton,
-                        HideDefaultButton = true,
-                        HideSettingName = true
-                    })));
-
-            entries.Add(ShowDanmakuOptions = Config.Bind(
-                DanmakuGeneralSection,
-                "展开/收缩 弹幕 选项设置",
-                true,
-                new ConfigDescription(
-                    "是否展开弹幕设置项。",
-                    null,
-                    new ConfigurationManagerAttributes
-                    {
-                        CustomDrawer = DrawFoldToggleButton,
-                        HideDefaultButton = true,
-                        HideSettingName = true
-                    })));
-
-            entries.Add(ShowWorld3DOptions = Config.Bind(
-                World3DGeneralSection,
-                "展开/收缩 3D气泡 选项设置",
-                true,
-                new ConfigDescription(
-                    "是否展开 3D 气泡设置项。",
-                    null,
-                    new ConfigurationManagerAttributes
-                    {
-                        CustomDrawer = DrawFoldToggleButton,
-                        HideDefaultButton = true,
-                        HideSettingName = true
-                    })));
-
             SubtitleShowRoleTag = Reg(
                SubtitleGeneralSection,
                "字幕 显示说话者",
@@ -599,10 +566,10 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                     }),
-               "SubtitleShowRoleTag", s_SubtitleFoldTargets);
+               "SubtitleShowRoleTag");
 
-            SubtitleShowPmcName = Reg(SubtitleGeneralSection, "字幕 显示PMC名字", false, new ConfigDescription("是否显示PMC游戏内的ID", null, new ConfigurationManagerAttributes { }), "SubtitleShowPmcName", s_SubtitleFoldTargets);
-            SubtitleShowScavName = Reg(SubtitleGeneralSection, "字幕 显示Scav名字", false, new ConfigDescription("是否显示Scav游戏内的ID\n不推荐，因为Scav游戏名字太长可能会导致台词观感很差。", null, new ConfigurationManagerAttributes { }), "SubtitleShowScavName", s_SubtitleFoldTargets);
+            SubtitleShowPmcName = Reg(SubtitleGeneralSection, "字幕 显示PMC名字", false, new ConfigDescription("是否显示PMC游戏内的ID", null, new ConfigurationManagerAttributes { }), "SubtitleShowPmcName");
+            SubtitleShowScavName = Reg(SubtitleGeneralSection, "字幕 显示Scav名字", false, new ConfigDescription("是否显示Scav游戏内的ID\n不推荐，因为Scav游戏名字太长可能会导致台词观感很差。", null, new ConfigurationManagerAttributes { }), "SubtitleShowScavName");
 
             SubtitlePlayerSelfPronoun = Reg(
                 SubtitleGeneralSection,
@@ -612,7 +579,7 @@ namespace Subtitle.Config
                     "当玩家自己说话时字幕显示风格：\n- 略称：始终显示“你”。\n- 玩家名：显示该玩家昵称。\n- 声线名：显示声线标签（如 Michael）。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "SubtitlePlayerSelfPronoun", s_SubtitleFoldTargets);
+                "SubtitlePlayerSelfPronoun");
 
             SubtitleTeammateSelfPronoun = Reg(
                 SubtitleGeneralSection,
@@ -622,7 +589,7 @@ namespace Subtitle.Config
                     "当友军（队友）说话时字幕显示风格：\n- 略称：始终显示“队友”。\n- 玩家名：显示该玩家昵称。\n- 声线名：显示声线标签（如 Michael）。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "SubtitleTeammateSelfPronoun", s_SubtitleFoldTargets);
+                "SubtitleTeammateSelfPronoun");
 
             SubtitleMaxDistanceMeters = Reg(
                SubtitleGeneralSection,
@@ -634,7 +601,7 @@ namespace Subtitle.Config
                    new ConfigurationManagerAttributes
                    {
                    }),
-               "SubtitleMaxDistanceMeters", s_SubtitleFoldTargets);
+               "SubtitleMaxDistanceMeters");
 
             SubtitleShowDistance = Reg(
                 SubtitleGeneralSection,
@@ -646,7 +613,7 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                     }),
-                "SubtitleShowDistance", s_SubtitleFoldTargets);
+                "SubtitleShowDistance");
 
             SubtitleDisplayDelaySec = Reg(
                 SubtitleGeneralSection,
@@ -656,7 +623,161 @@ namespace Subtitle.Config
                     "字幕显示后，额外延迟消失的秒数，避免短语音瞬间出现又消失。",
                     new AcceptableValueRange<float>(0f, 3f),
                     new ConfigurationManagerAttributes { }),
-                "SubtitleDisplayDelaySec", s_SubtitleFoldTargets);
+                "SubtitleDisplayDelaySec");
+
+            SubtitleAnimationEnabled = Reg(
+                SubtitleGeneralSection,
+                "字幕 启用淡入淡出动画",
+                true,
+                new ConfigDescription(
+                    "控制普通字幕的透明度与行高展开/收缩动画；关闭后字幕会立即出现和退出。",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "SubtitleAnimationEnabled", refreshSubtitleStyle);
+
+            SubtitleFadeInSec = Reg(
+                SubtitleGeneralSection,
+                "字幕 淡入时长（秒）",
+                0.15f,
+                new ConfigDescription(
+                    "普通字幕淡入并展开行高的时长。",
+                    new AcceptableValueRange<float>(0f, 0.8f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
+                "SubtitleFadeInSec", refreshSubtitleStyle);
+
+            SubtitleFadeOutSec = Reg(
+                SubtitleGeneralSection,
+                "字幕 淡出时长（秒）",
+                0.25f,
+                new ConfigDescription(
+                    "普通字幕淡出并收缩行高的时长。",
+                    new AcceptableValueRange<float>(0f, 1.0f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
+                "SubtitleFadeOutSec", refreshSubtitleStyle);
+
+            SubtitleReadingTimeEnabled = Reg(
+                SubtitleGeneralSection,
+                "字幕 启用阅读时间补偿",
+                true,
+                new ConfigDescription(
+                    "根据可见字符数延长字幕停留时间，避免长台词在语音较短时过早消失。",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "SubtitleReadingTimeEnabled", refreshSubtitleStyle);
+
+            SubtitleMinReadingSec = Reg(
+                SubtitleGeneralSection,
+                "字幕 最短阅读时长（秒）",
+                1.2f,
+                new ConfigDescription(
+                    "启用阅读时间补偿时，任何字幕至少保留的时长。",
+                    new AcceptableValueRange<float>(0.3f, 5f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
+                "SubtitleMinReadingSec", refreshSubtitleStyle);
+
+            SubtitleReadingLeadSec = Reg(
+                SubtitleGeneralSection,
+                "字幕 阅读固定补偿（秒）",
+                0.5f,
+                new ConfigDescription(
+                    "按字数计算阅读时长时额外增加的固定时间，用于留出视线定位和理解反应。",
+                    new AcceptableValueRange<float>(0f, 3f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
+                "SubtitleReadingLeadSec", refreshSubtitleStyle);
+
+            SubtitleReadingCharsPerSec = Reg(
+                SubtitleGeneralSection,
+                "字幕 阅读速度（字符/秒）",
+                10f,
+                new ConfigDescription(
+                    "数值越小，按字数计算出的字幕停留时间越长。",
+                    new AcceptableValueRange<float>(2f, 30f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
+                "SubtitleReadingCharsPerSec", refreshSubtitleStyle);
+
+            SubtitleMaxReadingSec = Reg(
+                SubtitleGeneralSection,
+                "字幕 阅读补偿最长时长（秒）",
+                6f,
+                new ConfigDescription(
+                    "普通台词按字数补偿时允许的最长阅读时长；超长滚动台词仍会保证完整滚动。",
+                    new AcceptableValueRange<float>(2f, 20f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
+                "SubtitleMaxReadingSec", refreshSubtitleStyle);
+
+            SubtitleMarqueeCharsPerSecond = Reg(
+                SubtitleGeneralSection,
+                "字幕 普通滚动速度（字符/秒）",
+                2.5f,
+                new ConfigDescription(
+                    "非超长规则触发的单行滚动速度；速度会按字号换算为像素。",
+                    new AcceptableValueRange<float>(1f, 20f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "SubtitleMarqueeCharsPerSecond", refreshSubtitleStyle);
+
+            SubtitleMarqueeEndHoldSec = Reg(
+                SubtitleGeneralSection,
+                "字幕 普通滚动句尾停留（秒）",
+                0.8f,
+                new ConfigDescription(
+                    "非超长规则触发的滚动到达句尾后，淡出前额外停留的时长。",
+                    new AcceptableValueRange<float>(0.2f, 3f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "SubtitleMarqueeEndHoldSec", refreshSubtitleStyle);
+
+            SubtitleMaxVisibleLines = Reg(
+                SubtitleGeneralSection,
+                "字幕 同时显示最大条数",
+                4,
+                new ConfigDescription(
+                    "普通字幕同时保留的最大台词条数（1~10）。达到上限后按照角色优先级决定替换或忽略。",
+                    new AcceptableValueRange<int>(1, 10),
+                    new ConfigurationManagerAttributes { }),
+                "SubtitleMaxVisibleLines", refreshSubtitleStyle);
+
+            SubtitleRolePriorityEnabled = Reg(
+                SubtitleGeneralSection,
+                "字幕 启用角色显示优先级",
+                true,
+                new ConfigDescription(
+                    "同时出现的台词超过字幕行数上限时，优先保留高优先级角色；同优先级时保留较新的台词。关闭后所有角色按同一优先级处理。",
+                    null,
+                    new ConfigurationManagerAttributes { }),
+                "SubtitleRolePriorityEnabled");
+
+            SubtitlePriorityPlayer = Reg(SubtitleGeneralSection, "字幕 优先级 玩家", 100,
+                new ConfigDescription("玩家自己说话的显示优先级（0~100，数值越大越优先）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityPlayer");
+            SubtitlePriorityTeammate = Reg(SubtitleGeneralSection, "字幕 优先级 队友", 90,
+                new ConfigDescription("队友说话的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityTeammate");
+            SubtitlePriorityPmc = Reg(SubtitleGeneralSection, "字幕 优先级 PMC", 70,
+                new ConfigDescription("BEAR 与 USEC 的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityPmc");
+            SubtitlePriorityScav = Reg(SubtitleGeneralSection, "字幕 优先级 Scav", 50,
+                new ConfigDescription("普通 Scav 的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityScav");
+            SubtitlePriorityRaiderRogue = Reg(SubtitleGeneralSection, "字幕 优先级 Raider与Rogue", 65,
+                new ConfigDescription("Raider 与 Rogue 的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityRaiderRogue");
+            SubtitlePriorityCultist = Reg(SubtitleGeneralSection, "字幕 优先级 邪教徒", 60,
+                new ConfigDescription("邪教徒的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityCultist");
+            SubtitlePriorityBossFollower = Reg(SubtitleGeneralSection, "字幕 优先级 Boss小弟", 75,
+                new ConfigDescription("Boss 小弟的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityBossFollower");
+            SubtitlePriorityZombie = Reg(SubtitleGeneralSection, "字幕 优先级 丧尸", 20,
+                new ConfigDescription("普通丧尸的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityZombie");
+            SubtitlePriorityGoons = Reg(SubtitleGeneralSection, "字幕 优先级 三狗", 85,
+                new ConfigDescription("三狗的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityGoons");
+            SubtitlePriorityBosses = Reg(SubtitleGeneralSection, "字幕 优先级 Boss", 85,
+                new ConfigDescription("Boss 的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityBosses");
+            SubtitlePriorityOther = Reg(SubtitleGeneralSection, "字幕 优先级 其他角色", 40,
+                new ConfigDescription("无法归入以上类别的角色与地图广播的显示优先级（0~100）。", new AcceptableValueRange<int>(0, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }), "SubtitlePriorityOther");
 
             EnableMapBroadcastSubtitle = Reg(
                 SubtitleGeneralSection,
@@ -668,7 +789,7 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                     }),
-                "EnableMapBroadcastSubtitle", s_SubtitleFoldTargets);
+                "EnableMapBroadcastSubtitle");
 
             SubtitleZombieEnabled = Reg(
                 SubtitleGeneralSection,
@@ -680,7 +801,7 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                     }),
-                "SubtitleZombieEnabled", s_SubtitleFoldTargets);
+                "SubtitleZombieEnabled");
 
             SubtitleZombieCooldownSec = Reg(
                 SubtitleGeneralSection,
@@ -693,7 +814,7 @@ namespace Subtitle.Config
                     {
                         Indent = 1
                     }),
-                "SubtitleZombieCooldownSec", s_SubtitleFoldTargets);
+                "SubtitleZombieCooldownSec");
             // —— 2.1) Subtitle-Advanced —— //
             SubtitleFontBundleName = Reg(
                 SubtitleAdvancedSection, "字幕 字体资源包", "",
@@ -702,10 +823,9 @@ namespace Subtitle.Config
                     null,
                     new ConfigurationManagerAttributes
                     {
-                        CustomDrawer = DrawFontBundlePicker,
                         HideDefaultButton = true
                     }),
-                "SubtitleFontBundleName", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleFontBundleName", refreshSubtitleStyle);
             SubtitleFontFamilyCsv = Reg(
                 SubtitleAdvancedSection, "字幕 字体类型",
                 "SimHei;Microsoft YaHei;Microsoft YaHei UI;DengXian;Noto Sans CJK SC",
@@ -714,233 +834,259 @@ namespace Subtitle.Config
                     {
                         IsAdvanced = true
                     }),
-                "SubtitleFontFamilyCsv", s_SubtitleFoldTargets, refreshSubtitleStyle, csv: true);
+                "SubtitleFontFamilyCsv", refreshSubtitleStyle, csv: true);
 
             SubtitleFontSize = Reg(
                 SubtitleAdvancedSection, "字幕 字体尺寸（px）", 26,
                 new ConfigDescription("字体尺寸大小（px）", new AcceptableValueRange<int>(12, 64),
                     new ConfigurationManagerAttributes { }),
-                "SubtitleFontSize", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleFontSize", refreshSubtitleStyle);
 
             SubtitleFontBold = Reg(SubtitleAdvancedSection, "字幕 字体加粗", false,
                 new ConfigDescription("字幕字体加粗。", null, new ConfigurationManagerAttributes { }),
-                "SubtitleFontBold", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleFontBold", refreshSubtitleStyle);
             SubtitleFontItalic = Reg(SubtitleAdvancedSection, "字幕 字体斜体", false,
                 new ConfigDescription("字幕字体斜体。", null, new ConfigurationManagerAttributes { }),
-                "SubtitleFontItalic", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleFontItalic", refreshSubtitleStyle);
 
             // 对齐 & 换行
             SubtitleAlignment = Reg(
                 SubtitleAdvancedSection, "字幕 文本对齐", TextAnchorOption.MiddleCenter,
                 new ConfigDescription("文本对齐（TextAnchor）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleAlignment", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleAlignment", refreshSubtitleStyle);
 
             SubtitleWrap = Reg(
                 SubtitleAdvancedSection, "字幕 自动换行", true,
                 new ConfigDescription("是否开启自动换行，若开启则按照下方换行限制进行，禁用则不换行", null,
                     new ConfigurationManagerAttributes { }),
-                "SubtitleWrap", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleWrap", refreshSubtitleStyle);
 
             SubtitleWrapLength = Reg(
                 SubtitleAdvancedSection, "字幕 自动换行长度阈值", 0,
                 new ConfigDescription("超过 N 个可见字符后强制换行（0 关闭）。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "SubtitleWrapLength", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleWrapLength", refreshSubtitleStyle);
 
             SubtitleMaxLineChars = Reg(
                 SubtitleAdvancedSection, "字幕 台词长度上限", 0,
                 new ConfigDescription("单行最多显示的可见字符数（0 不限制）。宽度按 字符数×字号 估算（中文每字约 1 个字号宽）。\n开启自动换行时：作为换行宽度上限，超出部分在框内换行；\n关闭自动换行时：超出后在固定宽窗口内横向滚动或截断（见下项）。", new AcceptableValueRange<int>(0, 200),
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "SubtitleMaxLineChars", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleMaxLineChars", refreshSubtitleStyle);
 
             SubtitleMarqueeEnabled = Reg(
                 SubtitleAdvancedSection, "字幕 超长滚动显示", true,
                 new ConfigDescription("仅在 关闭自动换行 且 台词超过长度上限 时生效：\n开启则在固定宽窗口内横向滚动显示完整台词；关闭则截断并追加“…”。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "SubtitleMarqueeEnabled", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleMarqueeEnabled", refreshSubtitleStyle);
+
+            SubtitleLongLineMarqueeEnabled = Reg(
+                SubtitleAdvancedSection, "字幕 自动处理超长台词", true,
+                new ConfigDescription("台词达到指定长度后，不再继续增加换行高度，而是在固定宽度窗口内滚动显示全文。适用于 Scav 超长喊话等特殊语音。",
+                    null, new ConfigurationManagerAttributes { }),
+                "SubtitleLongLineMarqueeEnabled", refreshSubtitleStyle);
+            SubtitleLongLineThresholdChars = Reg(
+                SubtitleAdvancedSection, "字幕 超长台词触发字数", 80,
+                new ConfigDescription("可见字符数达到该值时自动切换为滚动窗口（40~300）。",
+                    new AcceptableValueRange<int>(40, 300), new ConfigurationManagerAttributes { Indent = 1 }),
+                "SubtitleLongLineThresholdChars", refreshSubtitleStyle);
+            SubtitleLongLineWindowChars = Reg(
+                SubtitleAdvancedSection, "字幕 超长台词窗口字数", 42,
+                new ConfigDescription("滚动窗口约可容纳的中文字符数；实际宽度仍受屏幕安全宽度限制（20~100）。",
+                    new AcceptableValueRange<int>(20, 100), new ConfigurationManagerAttributes { Indent = 1 }),
+                "SubtitleLongLineWindowChars", refreshSubtitleStyle);
+            SubtitleLongLineCharsPerSecond = Reg(
+                SubtitleAdvancedSection, "字幕 超长台词滚动速度", 8f,
+                new ConfigDescription("超长台词每秒滚动的近似字符数（2~20）。数值越小，留给阅读的时间越长。",
+                    new AcceptableValueRange<float>(2f, 20f), new ConfigurationManagerAttributes { Indent = 1 }),
+                "SubtitleLongLineCharsPerSecond", refreshSubtitleStyle);
+            SubtitleLongLineEndHoldSec = Reg(
+                SubtitleAdvancedSection, "字幕 超长台词句尾停留", 1.0f,
+                new ConfigDescription("超长台词滚动到句尾后的额外停留秒数（0.3~3.0）。",
+                    new AcceptableValueRange<float>(0.3f, 3.0f), new ConfigurationManagerAttributes { Indent = 1 }),
+                "SubtitleLongLineEndHoldSec");
 
             // 描边
             SubtitleOutlineEnabled = Reg(
                 SubtitleAdvancedSection, "字幕 字体描边", true,
                 new ConfigDescription("启用描边。", null,
                     new ConfigurationManagerAttributes { }),
-                "SubtitleOutlineEnabled", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleOutlineEnabled", refreshSubtitleStyle);
 
             SubtitleOutlineColor = Reg(
                 SubtitleAdvancedSection, "字幕 字体描边颜色", new Color(0f, 0f, 0f, 0.95f),
                 new ConfigDescription("描边颜色。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "SubtitleOutlineColor", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleOutlineColor", refreshSubtitleStyle);
 
             SubtitleOutlineDistX = Reg(
                 SubtitleAdvancedSection, "字幕 字体描边位移（X轴）", 1.5f,
                 new ConfigDescription("描边水平偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleOutlineDistX", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleOutlineDistX", refreshSubtitleStyle);
 
             SubtitleOutlineDistY = Reg(
                 SubtitleAdvancedSection, "字幕 字体描边位移（Y轴）", 1.5f,
                 new ConfigDescription("描边垂直偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleOutlineDistY", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleOutlineDistY", refreshSubtitleStyle);
 
             // 阴影
             SubtitleShadowEnabled = Reg(
                 SubtitleAdvancedSection, "字幕 字体阴影", true,
                 new ConfigDescription("启用阴影。", null,
                     new ConfigurationManagerAttributes { }),
-                "SubtitleShadowEnabled", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleShadowEnabled", refreshSubtitleStyle);
 
             SubtitleShadowColor = Reg(
                 SubtitleAdvancedSection, "字幕 字体阴影颜色", new Color(0f, 0f, 0f, 0.6f),
                 new ConfigDescription("阴影颜色。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "SubtitleShadowColor", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleShadowColor", refreshSubtitleStyle);
 
             SubtitleShadowDistX = Reg(
                 SubtitleAdvancedSection, "字幕 字体阴影位移（X轴）", 2f,
                 new ConfigDescription("阴影水平偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleShadowDistX", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleShadowDistX", refreshSubtitleStyle);
 
             SubtitleShadowDistY = Reg(
                 SubtitleAdvancedSection, "字幕 字体阴影位移（Y轴）", -2f,
                 new ConfigDescription("阴影垂直偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleShadowDistY", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleShadowDistY", refreshSubtitleStyle);
 
             SubtitleShadowUseGraphicAlpha = Reg(
                 SubtitleAdvancedSection, "字幕 字体阴影叠乘文本透明度", true,
                 new ConfigDescription("是否叠乘文本透明度。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleShadowUseGraphicAlpha", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleShadowUseGraphicAlpha", refreshSubtitleStyle);
 
             // 背景
             SubtitleBgEnabled = Reg(
                 SubtitleAdvancedSection, "字幕 文本背景", true,
                 new ConfigDescription("开启条形气泡背景。", null,
                     new ConfigurationManagerAttributes { }),
-                "SubtitleBgEnabled", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgEnabled", refreshSubtitleStyle);
 
             SubtitleBgFit = Reg(
                 SubtitleAdvancedSection, "字幕 文本背景贴合", "text",
                 new ConfigDescription("贴合策略：text（贴文字）/ fullRow（固定宽度）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgFit", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgFit", refreshSubtitleStyle);
 
             SubtitleBgColor = Reg(
                 SubtitleAdvancedSection, "字幕 文本背景颜色", new Color(0f, 0f, 0f, 0.35f),
                 new ConfigDescription("背景色。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "SubtitleBgColor", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgColor", refreshSubtitleStyle);
 
             SubtitleBgPaddingX = Reg(
                 SubtitleAdvancedSection, "字幕 文本背景内边距 X", 12f,
                 new ConfigDescription("背景内边距 X（像素）", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgPaddingX", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgPaddingX", refreshSubtitleStyle);
 
             SubtitleBgPaddingY = Reg(
                 SubtitleAdvancedSection, "字幕 文本背景内边距 Y", 6f,
                 new ConfigDescription("背景内边距 Y（像素）", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgPaddingY", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgPaddingY", refreshSubtitleStyle);
 
             SubtitleBgMarginY = Reg(
                 SubtitleAdvancedSection, "字幕 文本背景外边距 Y", 6f,
                 new ConfigDescription("背景外边距 Y（像素）", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgMarginY", s_SubtitleFoldTargets, refreshSubtitleLayout);
+                "SubtitleBgMarginY", refreshSubtitleLayout);
 
             SubtitleBgSprite = Reg(
                 SubtitleAdvancedSection, "字幕 文本背景九宫格名", "",
                 new ConfigDescription("九宫格资源名（可选）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgSprite", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgSprite", refreshSubtitleStyle);
 
             // 背景阴影
             SubtitleBgShadowEnabled = Reg(
                 SubtitleAdvancedSection, "字幕 背景阴影", false,
                 new ConfigDescription("背景投影开关。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgShadowEnabled", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgShadowEnabled", refreshSubtitleStyle);
 
             SubtitleBgShadowColor = Reg(
                 SubtitleAdvancedSection, "字幕 背景阴影颜色", new Color(0f, 0f, 0f, 0.45f),
                 new ConfigDescription("背景投影颜色。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgShadowColor", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgShadowColor", refreshSubtitleStyle);
 
             SubtitleBgShadowDistX = Reg(
                 SubtitleAdvancedSection, "字幕 背景阴影水平偏移 X", 2f,
                 new ConfigDescription("背景阴影：水平偏移（px）", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgShadowDistX", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgShadowDistX", refreshSubtitleStyle);
 
             // 注意：cfg 键与 DistX 相同是原有行为（两字段实际共享同一 entry），保持原样不“修复”
             SubtitleBgShadowDistY = Reg(
                 SubtitleAdvancedSection, "字幕 背景阴影水平偏移 X", -2f,
                 new ConfigDescription("背景阴影：水平偏移（px）", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgShadowDistY", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgShadowDistY", refreshSubtitleStyle);
 
             SubtitleBgShadowUseGraphicAlpha = Reg(
                 SubtitleAdvancedSection, "字幕 背景阴影叠乘文字透明度", true,
                 new ConfigDescription("背景阴影是否叠乘文字透明度", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "SubtitleBgShadowUseGraphicAlpha", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleBgShadowUseGraphicAlpha", refreshSubtitleStyle);
 
             // 布局
             SubtitleLayoutAnchor = Reg(
                 SubtitleAdvancedSection, "字幕 布局锚点", TextAnchorOption.LowerCenter,
                 new ConfigDescription("锚点（TextAnchor）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleLayoutAnchor", s_SubtitleFoldTargets, refreshSubtitleLayout);
+                "SubtitleLayoutAnchor", refreshSubtitleLayout);
 
             SubtitleLayoutOffsetX = Reg(
                 SubtitleAdvancedSection, "字幕 布局锚点位移（X轴）", 0f,
                 new ConfigDescription("相对锚点水平偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleLayoutOffsetX", s_SubtitleFoldTargets, refreshSubtitleLayout);
+                "SubtitleLayoutOffsetX", refreshSubtitleLayout);
 
             SubtitleLayoutOffsetY = Reg(
                 SubtitleAdvancedSection, "字幕 布局锚点位移（Y轴）", 0f,
                 new ConfigDescription("相对锚点垂直偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleLayoutOffsetY", s_SubtitleFoldTargets, refreshSubtitleLayout);
+                "SubtitleLayoutOffsetY", refreshSubtitleLayout);
 
             SubtitleLayoutSafeArea = Reg(
                 SubtitleAdvancedSection, "字幕 布局安全区", true,
                 new ConfigDescription("是否考虑安全区。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleLayoutSafeArea", s_SubtitleFoldTargets, refreshSubtitleLayout);
+                "SubtitleLayoutSafeArea", refreshSubtitleLayout);
 
             SubtitleLayoutMaxWidthPercent = Reg(
                 SubtitleAdvancedSection, "字幕 布局最大宽度占比", 0.90f,
                 new ConfigDescription("文本测量最大宽度占屏比例（0~1）。",
                     new AcceptableValueRange<float>(0.5f, 1.0f),
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleLayoutMaxWidthPercent", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleLayoutMaxWidthPercent", refreshSubtitleStyle);
 
             SubtitleLayoutLineSpacing = Reg(
                 SubtitleAdvancedSection, "字幕 布局行距", 4.0f,
                 new ConfigDescription("额外行距（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleLayoutLineSpacing", s_SubtitleFoldTargets, refreshSubtitleLayout);
+                "SubtitleLayoutLineSpacing", refreshSubtitleLayout);
 
             SubtitleLayoutOverrideAlign = Reg(
                 SubtitleAdvancedSection, "字幕 布局覆盖文本对齐", TextAnchorOption.None,
                 new ConfigDescription("可选：强制 Text 对齐（None 表示不改）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleLayoutOverrideAlign", s_SubtitleFoldTargets, refreshSubtitleStyle);
+                "SubtitleLayoutOverrideAlign", refreshSubtitleStyle);
 
             SubtitleLayoutStackOffsetPercent = Reg(
                 SubtitleAdvancedSection, "字幕 布局底部堆叠上移", 0.12f,
                 new ConfigDescription("字幕堆叠面板距底部相对高度（0~0.5）。",
                     new AcceptableValueRange<float>(0f, 0.5f),
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "SubtitleLayoutStackOffsetPercent", s_SubtitleFoldTargets, refreshSubtitleLayout);
+                "SubtitleLayoutStackOffsetPercent", refreshSubtitleLayout);
 
             DanmakuShowRoleTag = Reg(
                 DanmakuGeneralSection,
@@ -952,10 +1098,10 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                     }),
-                "DanmakuShowRoleTag", s_DanmakuFoldTargets);
+                "DanmakuShowRoleTag");
 
-            DanmakuShowPmcName = Reg(DanmakuGeneralSection, "弹幕 显示PMC名字", false, new ConfigDescription("是否显示PMC游戏内的ID", null, new ConfigurationManagerAttributes { }), "DanmakuShowPmcName", s_DanmakuFoldTargets);
-            DanmakuShowScavName = Reg(DanmakuGeneralSection, "弹幕 显示Scav名字", false, new ConfigDescription("是否显示Scav游戏内的ID\n不推荐，因为Scav游戏名字太长可能会导致台词观感很差。", null, new ConfigurationManagerAttributes { }), "DanmakuShowScavName", s_DanmakuFoldTargets);
+            DanmakuShowPmcName = Reg(DanmakuGeneralSection, "弹幕 显示PMC名字", false, new ConfigDescription("是否显示PMC游戏内的ID", null, new ConfigurationManagerAttributes { }), "DanmakuShowPmcName");
+            DanmakuShowScavName = Reg(DanmakuGeneralSection, "弹幕 显示Scav名字", false, new ConfigDescription("是否显示Scav游戏内的ID\n不推荐，因为Scav游戏名字太长可能会导致台词观感很差。", null, new ConfigurationManagerAttributes { }), "DanmakuShowScavName");
 
             DanmakuPlayerSelfPronoun = Reg(
                 DanmakuGeneralSection,
@@ -965,7 +1111,7 @@ namespace Subtitle.Config
                     "当玩家自己说话时弹幕显示风格：\n- 略称：始终显示“你”。\n- 玩家名：显示该玩家昵称。\n- 声线名：显示声线标签（如 Michael）。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "DanmakuPlayerSelfPronoun", s_DanmakuFoldTargets);
+                "DanmakuPlayerSelfPronoun");
 
             DanmakuTeammateSelfPronoun = Reg(
                 DanmakuGeneralSection,
@@ -975,7 +1121,7 @@ namespace Subtitle.Config
                     "当友军（队友）说话时弹幕显示风格：\n- 略称：始终显示“队友”。\n- 玩家名：显示该玩家昵称。\n- 声线名：显示声线标签（如 Michael）。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "DanmakuTeammateSelfPronoun", s_DanmakuFoldTargets);
+                "DanmakuTeammateSelfPronoun");
 
             DanmakuMaxDistanceMeters = Reg(
                 DanmakuGeneralSection,
@@ -987,7 +1133,7 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                     }),
-                "DanmakuMaxDistanceMeters", s_DanmakuFoldTargets);
+                "DanmakuMaxDistanceMeters");
 
             DanmakuShowDistance = Reg(
                 DanmakuGeneralSection,
@@ -999,7 +1145,7 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                     }),
-                "DanmakuShowDistance", s_DanmakuFoldTargets);
+                "DanmakuShowDistance");
 
             EnableMapBroadcastDanmaku = Reg(
                 DanmakuGeneralSection,
@@ -1012,7 +1158,7 @@ namespace Subtitle.Config
                     {
 
                     }),
-                "EnableMapBroadcastDanmaku", s_DanmakuFoldTargets);
+                "EnableMapBroadcastDanmaku");
 
             DanmakuZombieEnabled = Reg(
                 DanmakuGeneralSection,
@@ -1024,7 +1170,7 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                     }),
-                "DanmakuZombieEnabled", s_DanmakuFoldTargets);
+                "DanmakuZombieEnabled");
 
             DanmakuZombieCooldownSec = Reg(
                 DanmakuGeneralSection,
@@ -1037,7 +1183,7 @@ namespace Subtitle.Config
                     {
                         Indent = 1
                     }),
-                "DanmakuZombieCooldownSec", s_DanmakuFoldTargets);
+                "DanmakuZombieCooldownSec");
 
             // —— Danmaku 字体 ——
             DanmakuFontBundleName = Reg(
@@ -1047,91 +1193,90 @@ namespace Subtitle.Config
                     null,
                     new ConfigurationManagerAttributes
                     {
-                        CustomDrawer = DrawFontBundlePicker,
                         HideDefaultButton = true
                     }),
-                "DanmakuFontBundleName", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuFontBundleName", refreshDanmakuStyle);
             DanmakuFontFamilyCsv = Reg(
                 DanmakuAdvancedSection, "弹幕 字体类型",
                 "SimHei;Microsoft YaHei;Microsoft YaHei UI;DengXian;Noto Sans CJK SC",
                 new ConfigDescription("字体候选，逗号或分号分隔；支持 game:FontName 走游戏内置字体。\n游戏将优先从左往右依次检测支持的字体类型，最后退回Arial.ttf",
                     null, new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "DanmakuFontFamilyCsv", s_DanmakuFoldTargets, refreshDanmakuStyle, csv: true);
+                "DanmakuFontFamilyCsv", refreshDanmakuStyle, csv: true);
 
             DanmakuFontSize = Reg(
                 DanmakuAdvancedSection, "弹幕 字体尺寸",
                 24,
                 new ConfigDescription("弹幕字体尺寸大小（px）。", new AcceptableValueRange<int>(12, 64),
                  new ConfigurationManagerAttributes { }),
-                "DanmakuFontSize", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuFontSize", refreshDanmakuStyle);
 
             DanmakuFontBold = Reg(
                 DanmakuAdvancedSection, "弹幕 字体加粗", false,
                 new ConfigDescription("弹幕字体加粗。", null,
                     new ConfigurationManagerAttributes { }),
-                "DanmakuFontBold", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuFontBold", refreshDanmakuStyle);
 
             DanmakuFontItalic = Reg(
                 DanmakuAdvancedSection, "弹幕 字体斜体", false,
                 new ConfigDescription("弹幕字体斜体。", null,
                     new ConfigurationManagerAttributes { }),
-                "DanmakuFontItalic", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuFontItalic", refreshDanmakuStyle);
 
             // —— Danmaku 描边 ——
             DanmakuOutlineEnabled = Reg(
                 DanmakuAdvancedSection, "弹幕 字体描边", true,
                 new ConfigDescription("启用弹幕描边。", null,
                     new ConfigurationManagerAttributes { }),
-                "DanmakuOutlineEnabled", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuOutlineEnabled", refreshDanmakuStyle);
 
             DanmakuOutlineColor = Reg(
                 DanmakuAdvancedSection, "弹幕 字体描边颜色", new Color(0f, 0f, 0f, 0.88f), // #000000E0 ≈ A=0.88
                 new ConfigDescription("弹幕描边颜色。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "DanmakuOutlineColor", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuOutlineColor", refreshDanmakuStyle);
 
             DanmakuOutlineDistX = Reg(
                 DanmakuAdvancedSection, "弹幕 字体描边水平位移（X轴）", 1.2f,
                 new ConfigDescription("描边水平偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "DanmakuOutlineDistX", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuOutlineDistX", refreshDanmakuStyle);
 
             DanmakuOutlineDistY = Reg(
                 DanmakuAdvancedSection, "弹幕 字体描边水平位移（Y轴）", 1.2f,
                 new ConfigDescription("描边垂直偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "DanmakuOutlineDistY", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuOutlineDistY", refreshDanmakuStyle);
 
             // —— Danmaku 阴影 ——
             DanmakuShadowEnabled = Reg(
                 DanmakuAdvancedSection, "弹幕 字体阴影", true,
                 new ConfigDescription("启用弹幕阴影。", null,
                     new ConfigurationManagerAttributes { }),
-                "DanmakuShadowEnabled", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuShadowEnabled", refreshDanmakuStyle);
 
             DanmakuShadowColor = Reg(
                 DanmakuAdvancedSection, "弹幕 字体阴影颜色", new Color(0f, 0f, 0f, 0.55f),
                 new ConfigDescription("弹幕阴影颜色。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "DanmakuShadowColor", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuShadowColor", refreshDanmakuStyle);
 
             DanmakuShadowDistX = Reg(
                 DanmakuAdvancedSection, "弹幕 字体阴影水平位移（X轴）", 2f,
                 new ConfigDescription("阴影水平偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "DanmakuShadowDistX", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuShadowDistX", refreshDanmakuStyle);
 
             DanmakuShadowDistY = Reg(
                 DanmakuAdvancedSection, "弹幕 字体阴影水平位移（Y轴）", -2f,
                 new ConfigDescription("阴影垂直偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "DanmakuShadowDistY", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuShadowDistY", refreshDanmakuStyle);
 
             DanmakuShadowUseGraphicAlpha = Reg(
                 DanmakuAdvancedSection, "弹幕 字体阴影叠乘文本透明度", true,
                 new ConfigDescription("是否叠乘文本透明度。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "DanmakuShadowUseGraphicAlpha", s_DanmakuFoldTargets, refreshDanmakuStyle);
+                "DanmakuShadowUseGraphicAlpha", refreshDanmakuStyle);
 
             // —— Danmaku 车道/速度/区间 ——
             DanmakuLanes = Reg(
@@ -1145,7 +1290,27 @@ namespace Subtitle.Config
                     {
                         IsAdvanced = true
                     }),
-                "DanmakuLanes", s_DanmakuFoldTargets, refreshDanmaku);
+                "DanmakuLanes", refreshDanmaku);
+
+            DanmakuDensityMultiplier = Reg(
+                DanmakuAdvancedSection,
+                "弹幕 密度倍率",
+                1.0f,
+                new ConfigDescription(
+                    "统一调整弹幕密度（0.25~3.0）。数值越大，输出间隔和同车道空隙越小；车道数量与占屏区域仍作为硬上限。",
+                    new AcceptableValueRange<float>(0.25f, 3.0f),
+                    new ConfigurationManagerAttributes { }),
+                "DanmakuDensityMultiplier", refreshDanmaku);
+
+            DanmakuOpacity = Reg(
+                DanmakuAdvancedSection,
+                "弹幕 不透明度",
+                1.0f,
+                new ConfigDescription(
+                    "整条弹幕的不透明度（0.1~1.0），同时作用于正文、富文本角色标签、描边和阴影。",
+                    new AcceptableValueRange<float>(0.1f, 1.0f),
+                    new ConfigurationManagerAttributes { }),
+                "DanmakuOpacity", refreshDanmaku);
 
             DanmakuSpeed = Reg(
                 DanmakuAdvancedSection,
@@ -1158,7 +1323,67 @@ namespace Subtitle.Config
                     {
                         IsAdvanced = true
                     }),
-                "DanmakuSpeed", s_DanmakuFoldTargets, refreshDanmaku);
+                "DanmakuSpeed", refreshDanmaku);
+
+            DanmakuLengthSpeedEnabled = Reg(
+                DanmakuAdvancedSection,
+                "弹幕 按台词长度加速",
+                false,
+                new ConfigDescription(
+                    "开启后，超过 20 个可见字符的弹幕会随字数增加而提高移动速度，减少超长弹幕长时间占用屏幕。",
+                    null,
+                    new ConfigurationManagerAttributes { }),
+                "DanmakuLengthSpeedEnabled", refreshDanmaku);
+
+            DanmakuLengthSpeedMultiplier = Reg(
+                DanmakuAdvancedSection,
+                "弹幕 长度加速倍率",
+                0.5f,
+                new ConfigDescription(
+                    "长度加速强度（0~2）。默认 0.5 时，40 个可见字符约为基础速度的 1.5 倍；最终速度最高限制为基础速度的 4 倍。",
+                    new AcceptableValueRange<float>(0f, 2f),
+                    new ConfigurationManagerAttributes { Indent = 1 }),
+                "DanmakuLengthSpeedMultiplier", refreshDanmaku);
+
+            DanmakuLengthSpeedStartChars = Reg(
+                DanmakuAdvancedSection,
+                "弹幕 长度加速起始字数",
+                20,
+                new ConfigDescription(
+                    "可见字符数超过该值后开始按长度加速。",
+                    new AcceptableValueRange<int>(0, 200),
+                    new ConfigurationManagerAttributes { Indent = 1 }),
+                "DanmakuLengthSpeedStartChars", refreshDanmaku);
+
+            DanmakuLengthSpeedStepChars = Reg(
+                DanmakuAdvancedSection,
+                "弹幕 每级加速字数",
+                20,
+                new ConfigDescription(
+                    "超过起始字数后，每增加这些字符应用一次长度加速倍率。",
+                    new AcceptableValueRange<int>(1, 100),
+                    new ConfigurationManagerAttributes { Indent = 1 }),
+                "DanmakuLengthSpeedStepChars", refreshDanmaku);
+
+            DanmakuLengthSpeedMaxMultiplier = Reg(
+                DanmakuAdvancedSection,
+                "弹幕 长度加速上限倍率",
+                4f,
+                new ConfigDescription(
+                    "按长度加速后的最终速度上限，相对于基础弹幕速度。",
+                    new AcceptableValueRange<float>(1f, 10f),
+                    new ConfigurationManagerAttributes { Indent = 1 }),
+                "DanmakuLengthSpeedMaxMultiplier", refreshDanmaku);
+
+            DanmakuLaneVerticalSpacingPx = Reg(
+                DanmakuAdvancedSection,
+                "弹幕 车道垂直间距（px）",
+                8f,
+                new ConfigDescription(
+                    "每条弹幕文字高度之外额外保留的上下车道间距。",
+                    new AcceptableValueRange<float>(0f, 50f),
+                    new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "DanmakuLaneVerticalSpacingPx", refreshDanmaku);
 
             DanmakuMinGapPx = Reg(
                 DanmakuAdvancedSection,
@@ -1171,7 +1396,7 @@ namespace Subtitle.Config
                     {
                         IsAdvanced = true
                     }),
-                "DanmakuMinGapPx", s_DanmakuFoldTargets, refreshDanmaku);
+                "DanmakuMinGapPx", refreshDanmaku);
 
             DanmakuSpawnDelaySec = Reg(
                 DanmakuAdvancedSection,
@@ -1185,7 +1410,7 @@ namespace Subtitle.Config
                         DispName = "新弹幕 输出间隔（秒）",
                         IsAdvanced = true
                     }),
-                "DanmakuSpawnDelaySec", s_DanmakuFoldTargets, refreshDanmaku);
+                "DanmakuSpawnDelaySec", refreshDanmaku);
 
             DanmakuTopOffsetPercent = Reg(
                 DanmakuAdvancedSection,
@@ -1198,7 +1423,7 @@ namespace Subtitle.Config
                     {
                         IsAdvanced = true
                     }),
-                "DanmakuTopOffsetPercent", s_DanmakuFoldTargets, refreshDanmaku);
+                "DanmakuTopOffsetPercent", refreshDanmaku);
 
             DanmakuAreaMaxPercent = Reg(
                 DanmakuAdvancedSection,
@@ -1211,7 +1436,7 @@ namespace Subtitle.Config
                     {
                         IsAdvanced = true
                     }),
-                "DanmakuAreaMaxPercent", s_DanmakuFoldTargets, refreshDanmaku);
+                "DanmakuAreaMaxPercent", refreshDanmaku);
 
             // —— 4) World3D —— //
             World3DShowRoleTag = Reg(
@@ -1222,21 +1447,21 @@ namespace Subtitle.Config
                     "是否在气泡中显示说话者（roletag）。关闭后仅显示台词文本（可选加距离）。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "World3DShowRoleTag", s_World3DFoldTargets);
+                "World3DShowRoleTag");
 
             World3DShowPmcName = Reg(
                 World3DGeneralSection,
                 "3D气泡 显示PMC名字",
                 false,
                 new ConfigDescription("是否显示PMC游戏内的ID", null, new ConfigurationManagerAttributes { }),
-                "World3DShowPmcName", s_World3DFoldTargets);
+                "World3DShowPmcName");
 
             World3DShowScavName = Reg(
                 World3DGeneralSection,
                 "3D气泡 显示Scav名字",
                 false,
                 new ConfigDescription("是否显示Scav游戏内的ID\n不推荐，因为Scav游戏名字太长可能会导致台词观感很差。", null, new ConfigurationManagerAttributes { }),
-                "World3DShowScavName", s_World3DFoldTargets);
+                "World3DShowScavName");
 
             World3DPlayerSelfPronoun = Reg(
                 World3DGeneralSection,
@@ -1246,7 +1471,7 @@ namespace Subtitle.Config
                     "当玩家自己说话时3D气泡显示风格：\n- 略称：始终显示“你”。\n- 玩家名：显示该玩家昵称。\n- 声线名：显示声线标签（如 Michael）。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "World3DPlayerSelfPronoun", s_World3DFoldTargets);
+                "World3DPlayerSelfPronoun");
 
             World3DTeammateSelfPronoun = Reg(
                 World3DGeneralSection,
@@ -1256,7 +1481,7 @@ namespace Subtitle.Config
                     "当友军（队友）说话时3D气泡显示风格：\n- 略称：始终显示“队友”。\n- 玩家名：显示该玩家昵称。\n- 声线名：显示声线标签（如 Michael）。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "World3DTeammateSelfPronoun", s_World3DFoldTargets);
+                "World3DTeammateSelfPronoun");
 
             World3DMaxDistanceMeters = Reg(
                 World3DGeneralSection,
@@ -1266,7 +1491,17 @@ namespace Subtitle.Config
                     "当语音来源距离玩家超过该距离时，不显示气泡。\n10~150 米，默认 30 米",
                     new AcceptableValueRange<float>(10f, 150f),
                     new ConfigurationManagerAttributes { }),
-                "World3DMaxDistanceMeters", s_World3DFoldTargets);
+                "World3DMaxDistanceMeters");
+
+            World3DMaxVisibleCharacters = Reg(
+                World3DGeneralSection,
+                "3D气泡 同时显示最大角色数",
+                0,
+                new ConfigDescription(
+                    "范围内同时显示气泡的最大角色数量（0~50，0 表示不限制）。达到上限时优先保留距离当前视角更近的角色。",
+                    new AcceptableValueRange<int>(0, 50),
+                    new ConfigurationManagerAttributes { }),
+                "World3DMaxVisibleCharacters", refreshWorld3DStyle);
 
             World3DShowDistance = Reg(
                 World3DGeneralSection,
@@ -1276,7 +1511,7 @@ namespace Subtitle.Config
                     "是否显示距离。开启后，会在语音后面添加一个类似“ ·10m”的字样",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "World3DShowDistance", s_World3DFoldTargets);
+                "World3DShowDistance");
 
             World3DDisplayDelaySec = Reg(
                 World3DGeneralSection,
@@ -1286,7 +1521,7 @@ namespace Subtitle.Config
                     "3D气泡显示后，额外延迟消失的秒数，避免短语音瞬间出现又消失。",
                     new AcceptableValueRange<float>(0f, 3f),
                     new ConfigurationManagerAttributes { }),
-                "World3DDisplayDelaySec", s_World3DFoldTargets);
+                "World3DDisplayDelaySec");
 
             World3DShowSelf = Reg(
                 World3DGeneralSection,
@@ -1296,7 +1531,7 @@ namespace Subtitle.Config
                     "是否显示玩家自己说话的气泡。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "World3DShowSelf", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DShowSelf", refreshWorld3DStyle);
 
             World3DZombieEnabled = Reg(
                 World3DGeneralSection,
@@ -1306,7 +1541,7 @@ namespace Subtitle.Config
                     "丧尸台词是否显示（不影响 丧尸Tagilla）。开启则正常显示丧尸台词，关闭则不显示所有普通丧尸的台词",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "World3DZombieEnabled", s_World3DFoldTargets);
+                "World3DZombieEnabled");
 
             World3DZombieCooldownSec = Reg(
                 World3DGeneralSection,
@@ -1316,7 +1551,7 @@ namespace Subtitle.Config
                     "丧尸类台词的最小间隔（秒）。第一条丧尸台词出现后，在此设置时间区间内其它丧尸台词会被忽略。\n0 表示不限制。推荐5-10以上，否则会导致大量的台词刷屏。",
                     new AcceptableValueRange<int>(0, 60),
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "World3DZombieCooldownSec", s_World3DFoldTargets);
+                "World3DZombieCooldownSec");
 
             World3DVerticalOffsetY = Reg(
                 World3DGeneralSection,
@@ -1326,7 +1561,7 @@ namespace Subtitle.Config
                     "气泡整体向上/向下的偏移量（米）。正值向上，负值向下。",
                     new AcceptableValueRange<float>(-1.0f, 1.0f),
                     new ConfigurationManagerAttributes { }),
-                "World3DVerticalOffsetY", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DVerticalOffsetY", refreshWorld3DStyle);
 
             World3DFacePlayer = Reg(
                 World3DGeneralSection,
@@ -1336,7 +1571,7 @@ namespace Subtitle.Config
                     "是否让气泡始终朝向玩家视角。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "World3DFacePlayer", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DFacePlayer", refreshWorld3DStyle);
 
             World3DBGEnabled = Reg(
                 World3DGeneralSection,
@@ -1346,7 +1581,7 @@ namespace Subtitle.Config
                     "是否显示气泡背景。",
                     null,
                     new ConfigurationManagerAttributes { }),
-                "World3DBGEnabled", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DBGEnabled", refreshWorld3DStyle);
 
             World3DBGColor = Reg(
                 World3DGeneralSection,
@@ -1356,7 +1591,7 @@ namespace Subtitle.Config
                     "气泡背景颜色（含透明度）。",
                     null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "World3DBGColor", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DBGColor", refreshWorld3DStyle);
 
             // —— World3D 字体 ——
             World3DFontBundleName = Reg(
@@ -1366,248 +1601,305 @@ namespace Subtitle.Config
                     null,
                     new ConfigurationManagerAttributes
                     {
-                        CustomDrawer = DrawFontBundlePicker,
                         HideDefaultButton = true
                     }),
-                "World3DFontBundleName", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DFontBundleName", refreshWorld3DStyle);
             World3DFontFamilyCsv = Reg(
                 World3DAdvancedSection, "3D气泡 字体类型",
                 "SimHei;Microsoft YaHei;Microsoft YaHei UI;DengXian;Noto Sans CJK SC",
                 new ConfigDescription("字体候选，分号;隔开(需要大写分号)\n支持 game:FontName 走游戏内置字体。",
                     null, new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "World3DFontFamilyCsv", s_World3DFoldTargets, refreshWorld3DStyle, csv: true);
+                "World3DFontFamilyCsv", refreshWorld3DStyle, csv: true);
 
             World3DFontSize = Reg(
                 World3DAdvancedSection, "3D气泡 字体尺寸（px）", 26,
                 new ConfigDescription("字体尺寸大小（px）", new AcceptableValueRange<int>(12, 64),
                     new ConfigurationManagerAttributes { }),
-                "World3DFontSize", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DFontSize", refreshWorld3DStyle);
+
+            World3DPreferSdfText = Reg(
+                World3DAdvancedSection, "3D气泡 优先使用SDF字体", true,
+                new ConfigDescription("优先使用字体资源包内的 TextMeshPro SDF 字体提高远距离清晰度；找不到兼容 SDF 字体时自动回退旧 Text 渲染。",
+                    null, new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "World3DPreferSdfText", refreshWorld3DStyle);
 
             World3DFontBold = Reg(
                 World3DAdvancedSection, "3D气泡 字体加粗", false,
                 new ConfigDescription("3D气泡字体加粗。", null, new ConfigurationManagerAttributes { }),
-                "World3DFontBold", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DFontBold", refreshWorld3DStyle);
 
             World3DFontItalic = Reg(
                 World3DAdvancedSection, "3D气泡 字体斜体", false,
                 new ConfigDescription("3D气泡字体斜体。", null, new ConfigurationManagerAttributes { }),
-                "World3DFontItalic", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DFontItalic", refreshWorld3DStyle);
 
             World3DAlignment = Reg(
                 World3DAdvancedSection, "3D气泡 文本对齐", TextAnchorOption.MiddleCenter,
                 new ConfigDescription("文本对齐（TextAnchor）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "World3DAlignment", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DAlignment", refreshWorld3DStyle);
 
             World3DWrap = Reg(
                 World3DAdvancedSection, "3D气泡 自动换行", true,
                 new ConfigDescription("是否开启自动换行，若开启则按照下方换行限制进行，禁用则不换行", null,
                     new ConfigurationManagerAttributes { }),
-                "World3DWrap", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DWrap", refreshWorld3DStyle);
 
             World3DWrapLength = Reg(
                 World3DAdvancedSection, "3D气泡 自动换行长度阈值", 0,
                 new ConfigDescription("超过 N 个可见字符后强制换行（0 关闭）。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "World3DWrapLength", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DWrapLength", refreshWorld3DStyle);
 
             // —— World3D 描边 ——
             World3DOutlineEnabled = Reg(
                 World3DAdvancedSection, "3D气泡 字体描边", true,
                 new ConfigDescription("启用描边。", null,
                     new ConfigurationManagerAttributes { }),
-                "World3DOutlineEnabled", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DOutlineEnabled", refreshWorld3DStyle);
 
             World3DOutlineColor = Reg(
                 World3DAdvancedSection, "3D气泡 字体描边颜色", new Color(0f, 0f, 0f, 0.95f),
                 new ConfigDescription("描边颜色。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "World3DOutlineColor", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DOutlineColor", refreshWorld3DStyle);
 
             World3DOutlineDistX = Reg(
                 World3DAdvancedSection, "3D气泡 字体描边位移（X轴）", 1.5f,
                 new ConfigDescription("描边水平偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "World3DOutlineDistX", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DOutlineDistX", refreshWorld3DStyle);
 
             World3DOutlineDistY = Reg(
                 World3DAdvancedSection, "3D气泡 字体描边位移（Y轴）", 1.5f,
                 new ConfigDescription("描边垂直偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "World3DOutlineDistY", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DOutlineDistY", refreshWorld3DStyle);
 
             // —— World3D 阴影 ——
             World3DShadowEnabled = Reg(
                 World3DAdvancedSection, "3D气泡 字体阴影", true,
                 new ConfigDescription("启用阴影。", null,
                     new ConfigurationManagerAttributes { }),
-                "World3DShadowEnabled", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DShadowEnabled", refreshWorld3DStyle);
 
             World3DShadowColor = Reg(
                 World3DAdvancedSection, "3D气泡 字体阴影颜色", new Color(0f, 0f, 0f, 0.6f),
                 new ConfigDescription("阴影颜色。", null,
                     new ConfigurationManagerAttributes { Indent = 1 }),
-                "World3DShadowColor", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DShadowColor", refreshWorld3DStyle);
 
             World3DShadowDistX = Reg(
                 World3DAdvancedSection, "3D气泡 字体阴影位移（X轴）", 2f,
                 new ConfigDescription("阴影水平偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "World3DShadowDistX", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DShadowDistX", refreshWorld3DStyle);
 
             World3DShadowDistY = Reg(
                 World3DAdvancedSection, "3D气泡 字体阴影位移（Y轴）", -2f,
                 new ConfigDescription("阴影垂直偏移（px）。", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "World3DShadowDistY", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DShadowDistY", refreshWorld3DStyle);
 
             World3DShadowUseGraphicAlpha = Reg(
                 World3DAdvancedSection, "3D气泡 字体阴影叠乘文本透明度", true,
                 new ConfigDescription("阴影是否叠乘文字透明度", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "World3DShadowUseGraphicAlpha", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DShadowUseGraphicAlpha", refreshWorld3DStyle);
 
             // —— World3D 缩放/朝向/堆叠/淡入淡出 ——
+            World3DDistanceScaleEnabled = Reg(
+                World3DAdvancedSection, "3D气泡 启用距离尺寸补偿", false,
+                new ConfigDescription("根据观察距离调整世界缩放：近处缩小、远处放大，使气泡在屏幕上的视觉尺寸更稳定。",
+                    null, new ConfigurationManagerAttributes { }),
+                "World3DDistanceScaleEnabled", refreshWorld3DStyle);
+
+            World3DDistanceScaleReferenceMeters = Reg(
+                World3DAdvancedSection, "3D气泡 距离补偿基准（米）", 15f,
+                new ConfigDescription("在该距离使用原始世界缩放；比它更近时缩小，更远时放大。",
+                    new AcceptableValueRange<float>(2f, 100f), new ConfigurationManagerAttributes { Indent = 1 }),
+                "World3DDistanceScaleReferenceMeters", refreshWorld3DStyle);
+
+            World3DDistanceScaleMinMultiplier = Reg(
+                World3DAdvancedSection, "3D气泡 距离补偿最小倍率", 0.6f,
+                new ConfigDescription("近距离缩小时允许的最小倍率（0.1~1.0）。",
+                    new AcceptableValueRange<float>(0.1f, 1.0f), new ConfigurationManagerAttributes { Indent = 1 }),
+                "World3DDistanceScaleMinMultiplier", refreshWorld3DStyle);
+
+            World3DDistanceScaleMaxMultiplier = Reg(
+                World3DAdvancedSection, "3D气泡 距离补偿最大倍率", 2.5f,
+                new ConfigDescription("远距离放大时允许的最大倍率（1.0~8.0）。",
+                    new AcceptableValueRange<float>(1.0f, 8.0f), new ConfigurationManagerAttributes { Indent = 1 }),
+                "World3DDistanceScaleMaxMultiplier", refreshWorld3DStyle);
+
             World3DWorldScale = Reg(
                 World3DAdvancedSection, "3D气泡 世界缩放", 0.01f,
                 new ConfigDescription("世界空间缩放系数；值越大越清晰也越大。默认 0.01。", new AcceptableValueRange<float>(0.002f, 0.05f),
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "World3DWorldScale", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DWorldScale", refreshWorld3DStyle);
 
             World3DDynamicPixelsPerUnit = Reg(
                 World3DAdvancedSection, "3D气泡 动态像素密度", 20f,
                 new ConfigDescription("CanvasScaler.dynamicPixelsPerUnit；越大越清晰但更耗性能。", new AcceptableValueRange<float>(5f, 120f),
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "World3DDynamicPixelsPerUnit", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DDynamicPixelsPerUnit", refreshWorld3DStyle);
 
             World3DFaceUpdateIntervalSec = Reg(
                 World3DAdvancedSection, "3D气泡 朝向更新间隔（秒）", 0f,
                 new ConfigDescription("0 表示每帧朝向玩家；>0 则按间隔更新，减少抖动/模糊。", new AcceptableValueRange<float>(0f, 0.5f),
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
-                "World3DFaceUpdateIntervalSec", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DFaceUpdateIntervalSec", refreshWorld3DStyle);
 
             World3DStackMaxLines = Reg(
                 World3DAdvancedSection, "3D气泡 叠加最大行数", 3,
                 new ConfigDescription("同一角色连续说话时可叠加的最大行数。", new AcceptableValueRange<int>(1, 6),
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "World3DStackMaxLines", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DStackMaxLines", refreshWorld3DStyle);
 
             World3DStackOffsetY = Reg(
                 World3DAdvancedSection, "3D气泡 叠加上移间距", 0.18f,
                 new ConfigDescription("多行叠加时每行向上偏移的高度。", new AcceptableValueRange<float>(0.05f, 0.6f),
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "World3DStackOffsetY", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DStackOffsetY", refreshWorld3DStyle);
 
             World3DFadeInSec = Reg(
                 World3DAdvancedSection, "3D气泡 淡入时长（秒）", 0.15f,
                 new ConfigDescription("3D气泡淡入耗时。", new AcceptableValueRange<float>(0f, 1.0f),
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "World3DFadeInSec", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DFadeInSec", refreshWorld3DStyle);
 
             World3DFadeOutSec = Reg(
                 World3DAdvancedSection, "3D气泡 淡出时长（秒）", 0.25f,
                 new ConfigDescription("3D气泡淡出耗时。", new AcceptableValueRange<float>(0f, 1.5f),
                     new ConfigurationManagerAttributes { IsAdvanced = true }),
-                "World3DFadeOutSec", s_World3DFoldTargets, refreshWorld3DStyle);
+                "World3DFadeOutSec", refreshWorld3DStyle);
 
-            // 仅 Bind：测试按钮不进 折叠/预设快照/刷新 注册表
-            entries.Add(TestDanmakuButton = Config.Bind(
-                GeneralSection,
-                "▶ 随机测试弹幕（3条）",
-                "", // 值无意义，仅用于占位
-                new ConfigDescription(
-                    "点击右侧按钮随机发 3 条测试弹幕。",
-                    null,
-                    new ConfigurationManagerAttributes
-                    {
-                        CustomDrawer = DrawTestDanmakuButton,
-                        HideDefaultButton = true
-                    })));
+            World3DMaxWidthPx = Reg(
+                World3DAdvancedSection, "3D气泡 最大文本宽度（px）", 420f,
+                new ConfigDescription("气泡文本区域的最大画布宽度；启用换行时会在该宽度内排版。",
+                    new AcceptableValueRange<float>(120f, 1000f), new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "World3DMaxWidthPx", refreshWorld3DStyle);
+
+            World3DPaddingX = Reg(
+                World3DAdvancedSection, "3D气泡 水平内边距（px）", 14f,
+                new ConfigDescription("文字左右两侧与气泡背景边缘的距离。",
+                    new AcceptableValueRange<float>(0f, 80f), new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "World3DPaddingX", refreshWorld3DStyle);
+
+            World3DPaddingY = Reg(
+                World3DAdvancedSection, "3D气泡 垂直内边距（px）", 8f,
+                new ConfigDescription("文字上下两侧与气泡背景边缘的距离。",
+                    new AcceptableValueRange<float>(0f, 50f), new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "World3DPaddingY", refreshWorld3DStyle);
+
+            World3DMaxDurationSec = Reg(
+                World3DAdvancedSection, "3D气泡 最长显示时长（秒）", 20f,
+                new ConfigDescription("限制单条3D气泡的最长生命周期，避免异常语音时长长期占用角色气泡。",
+                    new AcceptableValueRange<float>(2f, 60f), new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "World3DMaxDurationSec", refreshWorld3DStyle);
+
+            World3DSmoothingEnabled = Reg(
+                World3DAdvancedSection, "3D气泡 启用跟随平滑", false,
+                new ConfigDescription("平滑气泡跟随和面向相机的变化，降低骨骼抖动；关闭时保持原有即时跟随。",
+                    null, new ConfigurationManagerAttributes { IsAdvanced = true }),
+                "World3DSmoothingEnabled", refreshWorld3DStyle);
+
+            World3DPositionSmoothSpeed = Reg(
+                World3DAdvancedSection, "3D气泡 位置跟随速度", 16f,
+                new ConfigDescription("启用跟随平滑后的位置响应速度；数值越大越紧跟角色。",
+                    new AcceptableValueRange<float>(1f, 40f), new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
+                "World3DPositionSmoothSpeed", refreshWorld3DStyle);
+
+            World3DRotationSmoothSpeed = Reg(
+                World3DAdvancedSection, "3D气泡 朝向跟随速度", 12f,
+                new ConfigDescription("启用跟随平滑后的相机朝向响应速度；数值越大转向越快。",
+                    new AcceptableValueRange<float>(1f, 40f), new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
+                "World3DRotationSmoothSpeed", refreshWorld3DStyle);
 
             // ——  Color —— //
-            SubRole_Player = Reg(SubRoleColorSection, "玩家 角色颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Player", s_SubtitleFoldTargets);
-            SubRole_Teammate = Reg(SubRoleColorSection, "队友 角色颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Teammate", s_SubtitleFoldTargets);
-            SubRole_PmcBear = Reg(SubRoleColorSection, "Bear 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_PmcBear", s_SubtitleFoldTargets);
-            SubRole_PmcUsec = Reg(SubRoleColorSection, "Usec 角色颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_PmcUsec", s_SubtitleFoldTargets);
-            SubRole_Scav = Reg(SubRoleColorSection, "Scav 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Scav", s_SubtitleFoldTargets);
-            SubRole_Raider = Reg(SubRoleColorSection, "Raider 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Raider", s_SubtitleFoldTargets);
-            SubRole_Rogue = Reg(SubRoleColorSection, "Rogue 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Rogue", s_SubtitleFoldTargets);
-            SubRole_Cultist = Reg(SubRoleColorSection, "邪教徒 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Cultist", s_SubtitleFoldTargets);
-            SubRole_BossFollower = Reg(SubRoleColorSection, "Boss小弟 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_BossFollower", s_SubtitleFoldTargets);
-            SubRole_Zombie = Reg(SubRoleColorSection, "丧尸 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Zombie", s_SubtitleFoldTargets);
-            SubRole_Goons = Reg(SubRoleColorSection, "三狗 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Goons", s_SubtitleFoldTargets);
-            SubRole_Bosses = Reg(SubRoleColorSection, "Boss 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Bosses", s_SubtitleFoldTargets);
-            SubRole_LabAnnouncer = Reg(SubRoleColorSection, "实验室广播 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_LabAnnouncer", s_SubtitleFoldTargets);
+            SubRole_Player = Reg(SubRoleColorSection, "玩家 角色颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Player");
+            SubRole_Teammate = Reg(SubRoleColorSection, "队友 角色颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Teammate");
+            SubRole_PmcBear = Reg(SubRoleColorSection, "Bear 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_PmcBear");
+            SubRole_PmcUsec = Reg(SubRoleColorSection, "Usec 角色颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_PmcUsec");
+            SubRole_Scav = Reg(SubRoleColorSection, "Scav 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Scav");
+            SubRole_Raider = Reg(SubRoleColorSection, "Raider 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Raider");
+            SubRole_Rogue = Reg(SubRoleColorSection, "Rogue 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Rogue");
+            SubRole_Cultist = Reg(SubRoleColorSection, "邪教徒 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Cultist");
+            SubRole_BossFollower = Reg(SubRoleColorSection, "Boss小弟 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_BossFollower");
+            SubRole_Zombie = Reg(SubRoleColorSection, "丧尸 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Zombie");
+            SubRole_Goons = Reg(SubRoleColorSection, "三狗 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Goons");
+            SubRole_Bosses = Reg(SubRoleColorSection, "Boss 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_Bosses");
+            SubRole_LabAnnouncer = Reg(SubRoleColorSection, "实验室广播 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "SubRole_LabAnnouncer");
 
-            SubText_Player = Reg(SubRoleTextColorSection, "玩家 文本颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Player", s_SubtitleFoldTargets);
-            SubText_Teammate = Reg(SubRoleTextColorSection, "队友 文本颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Teammate", s_SubtitleFoldTargets);
-            SubText_PmcBear = Reg(SubRoleTextColorSection, "Bear 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_PmcBear", s_SubtitleFoldTargets);
-            SubText_PmcUsec = Reg(SubRoleTextColorSection, "Usec 文本颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_PmcUsec", s_SubtitleFoldTargets);
-            SubText_Scav = Reg(SubRoleTextColorSection, "Scav 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Scav", s_SubtitleFoldTargets);
-            SubText_Raider = Reg(SubRoleTextColorSection, "Raider 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Raider", s_SubtitleFoldTargets);
-            SubText_Rogue = Reg(SubRoleTextColorSection, "Rogue 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Rogue", s_SubtitleFoldTargets);
-            SubText_Cultist = Reg(SubRoleTextColorSection, "邪教徒 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Cultist", s_SubtitleFoldTargets);
-            SubText_BossFollower = Reg(SubRoleTextColorSection, "Boss小弟 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_BossFollower", s_SubtitleFoldTargets);
-            SubText_Zombie = Reg(SubRoleTextColorSection, "丧尸 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Zombie", s_SubtitleFoldTargets);
-            SubText_Goons = Reg(SubRoleTextColorSection, "三狗 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Goons", s_SubtitleFoldTargets);
-            SubText_Bosses = Reg(SubRoleTextColorSection, "Boss 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Bosses", s_SubtitleFoldTargets);
-            SubText_LabAnnouncer = Reg(SubRoleTextColorSection, "实验室广播 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_LabAnnouncer", s_SubtitleFoldTargets);
+            SubText_Player = Reg(SubRoleTextColorSection, "玩家 文本颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Player");
+            SubText_Teammate = Reg(SubRoleTextColorSection, "队友 文本颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Teammate");
+            SubText_PmcBear = Reg(SubRoleTextColorSection, "Bear 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_PmcBear");
+            SubText_PmcUsec = Reg(SubRoleTextColorSection, "Usec 文本颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_PmcUsec");
+            SubText_Scav = Reg(SubRoleTextColorSection, "Scav 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Scav");
+            SubText_Raider = Reg(SubRoleTextColorSection, "Raider 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Raider");
+            SubText_Rogue = Reg(SubRoleTextColorSection, "Rogue 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Rogue");
+            SubText_Cultist = Reg(SubRoleTextColorSection, "邪教徒 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Cultist");
+            SubText_BossFollower = Reg(SubRoleTextColorSection, "Boss小弟 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_BossFollower");
+            SubText_Zombie = Reg(SubRoleTextColorSection, "丧尸 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Zombie");
+            SubText_Goons = Reg(SubRoleTextColorSection, "三狗 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Goons");
+            SubText_Bosses = Reg(SubRoleTextColorSection, "Boss 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_Bosses");
+            SubText_LabAnnouncer = Reg(SubRoleTextColorSection, "实验室广播 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("字幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "SubText_LabAnnouncer");
 
-            DmRole_Player = Reg(DmRoleColorSection, "玩家 角色颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Player", s_DanmakuFoldTargets);
-            DmRole_Teammate = Reg(DmRoleColorSection, "队友 角色颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Teammate", s_DanmakuFoldTargets);
-            DmRole_PmcBear = Reg(DmRoleColorSection, "Bear 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_PmcBear", s_DanmakuFoldTargets);
-            DmRole_PmcUsec = Reg(DmRoleColorSection, "Usec 角色颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_PmcUsec", s_DanmakuFoldTargets);
-            DmRole_Scav = Reg(DmRoleColorSection, "Scav 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Scav", s_DanmakuFoldTargets);
-            DmRole_Raider = Reg(DmRoleColorSection, "Raider 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Raider", s_DanmakuFoldTargets);
-            DmRole_Rogue = Reg(DmRoleColorSection, "Rogue 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Rogue", s_DanmakuFoldTargets);
-            DmRole_Cultist = Reg(DmRoleColorSection, "邪教徒 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Cultist", s_DanmakuFoldTargets);
-            DmRole_BossFollower = Reg(DmRoleColorSection, "Boss小弟 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_BossFollower", s_DanmakuFoldTargets);
-            DmRole_Zombie = Reg(DmRoleColorSection, "丧尸 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Zombie", s_DanmakuFoldTargets);
-            DmRole_Goons = Reg(DmRoleColorSection, "三狗 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Goons", s_DanmakuFoldTargets);
-            DmRole_Bosses = Reg(DmRoleColorSection, "Boss 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Bosses", s_DanmakuFoldTargets);
-            DmRole_LabAnnouncer = Reg(DmRoleColorSection, "实验室广播 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_LabAnnouncer", s_DanmakuFoldTargets);
+            DmRole_Player = Reg(DmRoleColorSection, "玩家 角色颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Player");
+            DmRole_Teammate = Reg(DmRoleColorSection, "队友 角色颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Teammate");
+            DmRole_PmcBear = Reg(DmRoleColorSection, "Bear 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_PmcBear");
+            DmRole_PmcUsec = Reg(DmRoleColorSection, "Usec 角色颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_PmcUsec");
+            DmRole_Scav = Reg(DmRoleColorSection, "Scav 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Scav");
+            DmRole_Raider = Reg(DmRoleColorSection, "Raider 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Raider");
+            DmRole_Rogue = Reg(DmRoleColorSection, "Rogue 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Rogue");
+            DmRole_Cultist = Reg(DmRoleColorSection, "邪教徒 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Cultist");
+            DmRole_BossFollower = Reg(DmRoleColorSection, "Boss小弟 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_BossFollower");
+            DmRole_Zombie = Reg(DmRoleColorSection, "丧尸 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Zombie");
+            DmRole_Goons = Reg(DmRoleColorSection, "三狗 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Goons");
+            DmRole_Bosses = Reg(DmRoleColorSection, "Boss 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_Bosses");
+            DmRole_LabAnnouncer = Reg(DmRoleColorSection, "实验室广播 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "DmRole_LabAnnouncer");
 
-            DmText_Player = Reg(DmRoleTextColorSection, "玩家 文本颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Player", s_DanmakuFoldTargets);
-            DmText_Teammate = Reg(DmRoleTextColorSection, "队友 文本颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Teammate", s_DanmakuFoldTargets);
-            DmText_PmcBear = Reg(DmRoleTextColorSection, "Bear 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_PmcBear", s_DanmakuFoldTargets);
-            DmText_PmcUsec = Reg(DmRoleTextColorSection, "Usec 文本颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_PmcUsec", s_DanmakuFoldTargets);
-            DmText_Scav = Reg(DmRoleTextColorSection, "Scav 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Scav", s_DanmakuFoldTargets);
-            DmText_Raider = Reg(DmRoleTextColorSection, "Raider 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Raider", s_DanmakuFoldTargets);
-            DmText_Rogue = Reg(DmRoleTextColorSection, "Rogue 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Rogue", s_DanmakuFoldTargets);
-            DmText_Cultist = Reg(DmRoleTextColorSection, "邪教徒 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Cultist", s_DanmakuFoldTargets);
-            DmText_BossFollower = Reg(DmRoleTextColorSection, "Boss小弟 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_BossFollower", s_DanmakuFoldTargets);
-            DmText_Zombie = Reg(DmRoleTextColorSection, "丧尸 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Zombie", s_DanmakuFoldTargets);
-            DmText_Goons = Reg(DmRoleTextColorSection, "三狗 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Goons", s_DanmakuFoldTargets);
-            DmText_Bosses = Reg(DmRoleTextColorSection, "Boss 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Bosses", s_DanmakuFoldTargets);
-            DmText_LabAnnouncer = Reg(DmRoleTextColorSection, "实验室广播 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_LabAnnouncer", s_DanmakuFoldTargets);
+            DmText_Player = Reg(DmRoleTextColorSection, "玩家 文本颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Player");
+            DmText_Teammate = Reg(DmRoleTextColorSection, "队友 文本颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Teammate");
+            DmText_PmcBear = Reg(DmRoleTextColorSection, "Bear 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_PmcBear");
+            DmText_PmcUsec = Reg(DmRoleTextColorSection, "Usec 文本颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_PmcUsec");
+            DmText_Scav = Reg(DmRoleTextColorSection, "Scav 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Scav");
+            DmText_Raider = Reg(DmRoleTextColorSection, "Raider 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Raider");
+            DmText_Rogue = Reg(DmRoleTextColorSection, "Rogue 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Rogue");
+            DmText_Cultist = Reg(DmRoleTextColorSection, "邪教徒 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Cultist");
+            DmText_BossFollower = Reg(DmRoleTextColorSection, "Boss小弟 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_BossFollower");
+            DmText_Zombie = Reg(DmRoleTextColorSection, "丧尸 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Zombie");
+            DmText_Goons = Reg(DmRoleTextColorSection, "三狗 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Goons");
+            DmText_Bosses = Reg(DmRoleTextColorSection, "Boss 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_Bosses");
+            DmText_LabAnnouncer = Reg(DmRoleTextColorSection, "实验室广播 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("弹幕-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "DmText_LabAnnouncer");
 
-            W3dRole_Player = Reg(W3dRoleColorSection, "玩家 角色颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Player", s_World3DFoldTargets);
-            W3dRole_Teammate = Reg(W3dRoleColorSection, "队友 角色颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Teammate", s_World3DFoldTargets);
-            W3dRole_PmcBear = Reg(W3dRoleColorSection, "Bear 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_PmcBear", s_World3DFoldTargets);
-            W3dRole_PmcUsec = Reg(W3dRoleColorSection, "Usec 角色颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_PmcUsec", s_World3DFoldTargets);
-            W3dRole_Scav = Reg(W3dRoleColorSection, "Scav 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Scav", s_World3DFoldTargets);
-            W3dRole_Raider = Reg(W3dRoleColorSection, "Raider 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Raider", s_World3DFoldTargets);
-            W3dRole_Rogue = Reg(W3dRoleColorSection, "Rogue 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Rogue", s_World3DFoldTargets);
-            W3dRole_Cultist = Reg(W3dRoleColorSection, "邪教徒 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Cultist", s_World3DFoldTargets);
-            W3dRole_BossFollower = Reg(W3dRoleColorSection, "Boss小弟 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_BossFollower", s_World3DFoldTargets);
-            W3dRole_Zombie = Reg(W3dRoleColorSection, "丧尸 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Zombie", s_World3DFoldTargets);
-            W3dRole_Goons = Reg(W3dRoleColorSection, "三狗 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Goons", s_World3DFoldTargets);
-            W3dRole_Bosses = Reg(W3dRoleColorSection, "Boss 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Bosses", s_World3DFoldTargets);
-            W3dRole_LabAnnouncer = Reg(W3dRoleColorSection, "实验室广播 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_LabAnnouncer", s_World3DFoldTargets);
+            W3dRole_Player = Reg(W3dRoleColorSection, "玩家 角色颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Player");
+            W3dRole_Teammate = Reg(W3dRoleColorSection, "队友 角色颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Teammate");
+            W3dRole_PmcBear = Reg(W3dRoleColorSection, "Bear 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_PmcBear");
+            W3dRole_PmcUsec = Reg(W3dRoleColorSection, "Usec 角色颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_PmcUsec");
+            W3dRole_Scav = Reg(W3dRoleColorSection, "Scav 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Scav");
+            W3dRole_Raider = Reg(W3dRoleColorSection, "Raider 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Raider");
+            W3dRole_Rogue = Reg(W3dRoleColorSection, "Rogue 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Rogue");
+            W3dRole_Cultist = Reg(W3dRoleColorSection, "邪教徒 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Cultist");
+            W3dRole_BossFollower = Reg(W3dRoleColorSection, "Boss小弟 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_BossFollower");
+            W3dRole_Zombie = Reg(W3dRoleColorSection, "丧尸 角色颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Zombie");
+            W3dRole_Goons = Reg(W3dRoleColorSection, "三狗 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Goons");
+            W3dRole_Bosses = Reg(W3dRoleColorSection, "Boss 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_Bosses");
+            W3dRole_LabAnnouncer = Reg(W3dRoleColorSection, "实验室广播 角色颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的颜色", null, new ConfigurationManagerAttributes { }), "W3dRole_LabAnnouncer");
 
-            W3dText_Player = Reg(W3dRoleTextColorSection, "玩家 文本颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Player", s_World3DFoldTargets);
-            W3dText_Teammate = Reg(W3dRoleTextColorSection, "队友 文本颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Teammate", s_World3DFoldTargets);
-            W3dText_PmcBear = Reg(W3dRoleTextColorSection, "Bear 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_PmcBear", s_World3DFoldTargets);
-            W3dText_PmcUsec = Reg(W3dRoleTextColorSection, "Usec 文本颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_PmcUsec", s_World3DFoldTargets);
-            W3dText_Scav = Reg(W3dRoleTextColorSection, "Scav 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Scav", s_World3DFoldTargets);
-            W3dText_Raider = Reg(W3dRoleTextColorSection, "Raider 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Raider", s_World3DFoldTargets);
-            W3dText_Rogue = Reg(W3dRoleTextColorSection, "Rogue 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Rogue", s_World3DFoldTargets);
-            W3dText_Cultist = Reg(W3dRoleTextColorSection, "邪教徒 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Cultist", s_World3DFoldTargets);
-            W3dText_BossFollower = Reg(W3dRoleTextColorSection, "Boss小弟 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_BossFollower", s_World3DFoldTargets);
-            W3dText_Zombie = Reg(W3dRoleTextColorSection, "丧尸 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Zombie", s_World3DFoldTargets);
-            W3dText_Goons = Reg(W3dRoleTextColorSection, "三狗 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Goons", s_World3DFoldTargets);
-            W3dText_Bosses = Reg(W3dRoleTextColorSection, "Boss 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Bosses", s_World3DFoldTargets);
-            W3dText_LabAnnouncer = Reg(W3dRoleTextColorSection, "实验室广播 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_LabAnnouncer", s_World3DFoldTargets);
+            W3dText_Player = Reg(W3dRoleTextColorSection, "玩家 文本颜色", new Color(1f, 1f, 1f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Player");
+            W3dText_Teammate = Reg(W3dRoleTextColorSection, "队友 文本颜色", new Color(0.15f, 0.35f, 0.95f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Teammate");
+            W3dText_PmcBear = Reg(W3dRoleTextColorSection, "Bear 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_PmcBear");
+            W3dText_PmcUsec = Reg(W3dRoleTextColorSection, "Usec 文本颜色", new Color(1f, 1f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_PmcUsec");
+            W3dText_Scav = Reg(W3dRoleTextColorSection, "Scav 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Scav");
+            W3dText_Raider = Reg(W3dRoleTextColorSection, "Raider 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Raider");
+            W3dText_Rogue = Reg(W3dRoleTextColorSection, "Rogue 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Rogue");
+            W3dText_Cultist = Reg(W3dRoleTextColorSection, "邪教徒 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Cultist");
+            W3dText_BossFollower = Reg(W3dRoleTextColorSection, "Boss小弟 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_BossFollower");
+            W3dText_Zombie = Reg(W3dRoleTextColorSection, "丧尸 文本颜色", new Color(1f, 0.45f, 0.007f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Zombie");
+            W3dText_Goons = Reg(W3dRoleTextColorSection, "三狗 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Goons");
+            W3dText_Bosses = Reg(W3dRoleTextColorSection, "Boss 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_Bosses");
+            W3dText_LabAnnouncer = Reg(W3dRoleTextColorSection, "实验室广播 文本颜色", new Color(1f, 0f, 0f, 1f), new ConfigDescription("3D气泡-说话角色的 台词文本 颜色", null, new ConfigurationManagerAttributes { }), "W3dText_LabAnnouncer");
 
 
             // —— 99) Debug —— //
@@ -1703,26 +1995,20 @@ namespace Subtitle.Config
                         Description = "图形化设置界面的整体不透明度（0.2~1.0）。调低后可透过窗口看到测试字幕/弹幕。",
             IsAdvanced = true
                     }),
-                null, null, delegate { SettingsUI.SettingsWindow.ApplyOpacity(); });
+                null, delegate { SettingsUI.SettingsWindow.ApplyOpacity(); });
 
             // —— 最后：把 entries 赋回，并统一设置 Order —— //
-            // （折叠组 / 预设快照 / 变更刷新 已在上面的 Reg 统一注册中顺带完成）
+            // （预设快照 / 变更刷新 已在上面的 Reg 统一注册中顺带完成）
             ConfigEntries = entries ?? new List<ConfigEntryBase>();
             EnsureConfigurationManagerAttributes(ConfigEntries);
             EnsureConfigurationManagerAttributes(DanmakuFontSize);
             RecalcOrder();
             ApplySlimConfigurationManagerVisibility();
 
-            // 纯动作条目登记：按钮（值仅占位）与已停用的折叠开关不参与“重置本板块/全部重置”。
-            // 注意：TextPresetName/三个字体资源包名是值条目（默认值有效），仍可重置。
+            // 图形化设置入口是纯动作条目，不参与“重置本板块/全部重置”。
+            // TextPresetName/三个字体资源包名是值条目（默认值有效），仍可重置。
             s_NonResettable.Clear();
             if (SettingsWindowButton != null) s_NonResettable.Add(SettingsWindowButton);
-            if (PhraseFilterPanelButton != null) s_NonResettable.Add(PhraseFilterPanelButton);
-            if (_TestSubtitleButton != null) s_NonResettable.Add(_TestSubtitleButton);
-            if (TestDanmakuButton != null) s_NonResettable.Add(TestDanmakuButton);
-            if (ShowSubtitleOptions != null) s_NonResettable.Add(ShowSubtitleOptions);
-            if (ShowDanmakuOptions != null) s_NonResettable.Add(ShowDanmakuOptions);
-            if (ShowWorld3DOptions != null) s_NonResettable.Add(ShowWorld3DOptions);
 
             // 加载界面语言文件（ locales/<语言>/UI.jsonc ）；缺失/损坏时所有显示回落到上面的中文原文
             I18n.Init(UiLanguage.Value);

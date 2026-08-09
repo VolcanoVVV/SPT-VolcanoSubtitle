@@ -158,7 +158,7 @@ namespace SubtitleSystem
 
             // 1) 字体载入：file -> family[] -> Arial
             Font loaded = SubtitleFontLoader.ResolveFont(font);
-            if (loaded != null)
+            if (loaded != null && text.font != loaded)
                 text.font = loaded;
 
             // 2) 基础样式
@@ -283,6 +283,14 @@ public sealed class BackgroundSpec
         private static string _fontBundleDir; // FontReplace 的 Font 目录
         private static Dictionary<string, Font> _gameFontCache;
         private static Dictionary<string, Font> _bundleFontCache;
+        private static Dictionary<string, TMP_FontAsset> _gameTmpFontCache;
+        private static Dictionary<string, TMP_FontAsset> _bundleTmpFontCache;
+        private static Dictionary<string, Font> _osFontCache;
+        private static HashSet<string> _osFontMissCache;
+        private static HashSet<string> _installedOSFontNames;
+        private static HashSet<string> _bundleFontMissCache;
+        private static HashSet<string> _bundleTmpFontMissCache;
+        private const int DynamicFontBaseSize = 32;
 
         public static void SetFontsDir(string dir)
         {
@@ -299,6 +307,21 @@ public sealed class BackgroundSpec
         public static void InvalidateBundleFontCache()
         {
             if (_bundleFontCache != null) _bundleFontCache.Clear();
+            if (_bundleTmpFontCache != null) _bundleTmpFontCache.Clear();
+            if (_bundleFontMissCache != null) _bundleFontMissCache.Clear();
+            if (_bundleTmpFontMissCache != null) _bundleTmpFontMissCache.Clear();
+        }
+
+        // 仅返回真实的 SDF 字体资产；无法解析时由调用方回退到旧 Text 渲染。
+        public static TMP_FontAsset ResolveTMPFont(FontSpec spec)
+        {
+            if (spec == null) return null;
+            List<string> bundleNames = CollectBundleFontCandidates(spec);
+            List<string> gameNames = CollectGameFontCandidates(spec);
+
+            TMP_FontAsset font = TryLoadBundleTMPFont(bundleNames);
+            if (font == null) font = TryLoadGameTMPFont(gameNames);
+            return font;
         }
 
         public static Font ResolveFont(FontSpec spec)
@@ -372,9 +395,11 @@ public sealed class BackgroundSpec
                 for (int i = 0; i < spec.family.Count; i++)
                 {
                     var fam = spec.family[i];
-                    if (!string.IsNullOrEmpty(fam) && !fam.StartsWith("game:", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(fam) &&
+                        !fam.StartsWith("game:", StringComparison.OrdinalIgnoreCase) &&
+                        !fam.StartsWith("bundle:", StringComparison.OrdinalIgnoreCase))
                     {
-                        list.Add(fam);
+                        list.Add(fam.Trim());
                     }
                 }
             }
@@ -407,6 +432,8 @@ public sealed class BackgroundSpec
 
             if (_bundleFontCache == null)
                 _bundleFontCache = new Dictionary<string, Font>(StringComparer.OrdinalIgnoreCase);
+            if (_bundleFontMissCache == null)
+                _bundleFontMissCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < names.Count; i++)
             {
@@ -415,6 +442,7 @@ public sealed class BackgroundSpec
 
                 Font cached;
                 if (_bundleFontCache.TryGetValue(key, out cached)) return cached;
+                if (_bundleFontMissCache.Contains(key)) continue;
 
                 string path = Path.Combine(_fontBundleDir, key);
                 if (!File.Exists(path))
@@ -425,12 +453,21 @@ public sealed class BackgroundSpec
                         path = files[0];
                 }
 
-                if (!File.Exists(path)) continue;
+                if (!File.Exists(path))
+                {
+                    _bundleFontMissCache.Add(key);
+                    continue;
+                }
 
+                AssetBundle ab = null;
                 try
                 {
-                    var ab = AssetBundle.LoadFromFile(path);
-                    if (ab == null) continue;
+                    ab = AssetBundle.LoadFromFile(path);
+                    if (ab == null)
+                    {
+                        _bundleFontMissCache.Add(key);
+                        continue;
+                    }
 
                     Font font = null;
                     var fonts = ab.LoadAllAssets<Font>();
@@ -456,21 +493,133 @@ public sealed class BackgroundSpec
                             font = null;
                     }
 
-                    ab.Unload(false);
-
                     if (font != null)
                     {
                         _bundleFontCache[key] = font;
                         return font;
                     }
+                    _bundleFontMissCache.Add(key);
                 }
                 catch (Exception e)
                 {
+                    _bundleFontMissCache.Add(key);
                     Debug.LogWarning("[SubtitleStyle] Load FontReplace bundle failed: " + e.Message);
+                }
+                finally
+                {
+                    if (ab != null)
+                    {
+                        try { ab.Unload(false); }
+                        catch { }
+                    }
                 }
             }
 
             return null;
+        }
+
+        private static TMP_FontAsset TryLoadBundleTMPFont(List<string> names)
+        {
+            if (names == null || names.Count == 0) return null;
+            if (string.IsNullOrEmpty(_fontBundleDir) || !Directory.Exists(_fontBundleDir)) return null;
+
+            if (_bundleTmpFontCache == null)
+                _bundleTmpFontCache = new Dictionary<string, TMP_FontAsset>(StringComparer.OrdinalIgnoreCase);
+            if (_bundleTmpFontMissCache == null)
+                _bundleTmpFontMissCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < names.Count; i++)
+            {
+                string key = names[i];
+                if (string.IsNullOrEmpty(key)) continue;
+
+                TMP_FontAsset cached;
+                if (_bundleTmpFontCache.TryGetValue(key, out cached)) return cached;
+                if (_bundleTmpFontMissCache.Contains(key)) continue;
+
+                string path = Path.Combine(_fontBundleDir, key);
+                if (!File.Exists(path))
+                {
+                    string[] files = Directory.GetFiles(_fontBundleDir, key + ".*", SearchOption.TopDirectoryOnly);
+                    if (files.Length > 0) path = files[0];
+                }
+                if (!File.Exists(path))
+                {
+                    _bundleTmpFontMissCache.Add(key);
+                    continue;
+                }
+
+                AssetBundle bundle = null;
+                try
+                {
+                    bundle = AssetBundle.LoadFromFile(path);
+                    if (bundle == null)
+                    {
+                        _bundleTmpFontMissCache.Add(key);
+                        continue;
+                    }
+
+                    string assetName = Path.GetFileNameWithoutExtension(path);
+                    TMP_FontAsset font = !string.IsNullOrEmpty(assetName)
+                        ? bundle.LoadAsset<TMP_FontAsset>(assetName)
+                        : null;
+                    if (font == null)
+                    {
+                        TMP_FontAsset[] fonts = bundle.LoadAllAssets<TMP_FontAsset>();
+                        if (fonts != null && fonts.Length > 0) font = fonts[0];
+                    }
+                    if (font != null)
+                    {
+                        _bundleTmpFontCache[key] = font;
+                        return font;
+                    }
+                    _bundleTmpFontMissCache.Add(key);
+                }
+                catch (Exception e)
+                {
+                    _bundleTmpFontMissCache.Add(key);
+                    Debug.LogWarning("[SubtitleStyle] Load TMP font bundle failed: " + e.Message);
+                }
+                finally
+                {
+                    if (bundle != null)
+                    {
+                        try { bundle.Unload(false); }
+                        catch { }
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static TMP_FontAsset TryLoadGameTMPFont(List<string> names)
+        {
+            if (names == null || names.Count == 0) return null;
+            EnsureGameTMPFontCache();
+            for (int i = 0; i < names.Count; i++)
+            {
+                string key = names[i];
+                if (string.IsNullOrEmpty(key)) continue;
+                TMP_FontAsset font;
+                if (_gameTmpFontCache.TryGetValue(key, out font)) return font;
+            }
+            return null;
+        }
+
+        private static void EnsureGameTMPFontCache()
+        {
+            if (_gameTmpFontCache != null) return;
+            _gameTmpFontCache = new Dictionary<string, TMP_FontAsset>(StringComparer.OrdinalIgnoreCase);
+
+            TMP_FontAsset[] all = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
+            if (all == null) return;
+            for (int i = 0; i < all.Length; i++)
+            {
+                TMP_FontAsset font = all[i];
+                if (font == null || string.IsNullOrEmpty(font.name)) continue;
+                if (!_gameTmpFontCache.ContainsKey(font.name))
+                    _gameTmpFontCache.Add(font.name, font);
+            }
         }
 
         // 构建一次游戏字体缓存（Resources 里已加载的 Font 资源）
@@ -506,17 +655,94 @@ public sealed class BackgroundSpec
         private static Font TryLoadOSFont(List<string> families, int size)
         {
             if (families == null || families.Count == 0) return null;
+            string requestKey = BuildOSFontCacheKey(families);
+            if (string.IsNullOrEmpty(requestKey)) return null;
+
+            if (_osFontCache == null)
+                _osFontCache = new Dictionary<string, Font>(StringComparer.OrdinalIgnoreCase);
+            if (_osFontMissCache == null)
+                _osFontMissCache = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (_osFontMissCache.Contains(requestKey)) return null;
+
+            string selectedFamily = FindInstalledOSFontFamily(families);
+            if (string.IsNullOrEmpty(selectedFamily))
+            {
+                _osFontMissCache.Add(requestKey);
+                return null;
+            }
+
+            Font cached;
+            if (_osFontCache.TryGetValue(selectedFamily, out cached))
+            {
+                if (cached != null) return cached;
+                _osFontCache.Remove(selectedFamily);
+            }
+
             try
             {
-                // 多候选，存在即返回
-                Font f = Font.CreateDynamicFontFromOSFont(families.ToArray(), size);
-                return f;
+                // 动态 Font 可按 Text.fontSize 请求不同字号，固定基础字号可让三个渠道共享同一原生字体资源。
+                Font font = Font.CreateDynamicFontFromOSFont(selectedFamily, DynamicFontBaseSize);
+                if (font != null)
+                {
+                    _osFontCache[selectedFamily] = font;
+                    Debug.Log("[SubtitleStyle] Cached dynamic OS font: " + selectedFamily);
+                    return font;
+                }
+                _osFontMissCache.Add(requestKey);
             }
             catch (Exception e)
             {
+                _osFontMissCache.Add(requestKey);
                 Debug.LogWarning("[SubtitleStyle] Load OS font failed: " + e.Message);
-                return null;
             }
+            return null;
+        }
+
+        private static string FindInstalledOSFontFamily(List<string> families)
+        {
+            if (_installedOSFontNames == null)
+            {
+                _installedOSFontNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    string[] installed = Font.GetOSInstalledFontNames();
+                    if (installed != null)
+                    {
+                        for (int i = 0; i < installed.Length; i++)
+                        {
+                            string family = installed[i];
+                            if (!string.IsNullOrEmpty(family)) _installedOSFontNames.Add(family.Trim());
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("[SubtitleStyle] Read installed OS fonts failed: " + e.Message);
+                }
+            }
+
+            for (int i = 0; i < families.Count; i++)
+            {
+                string family = families[i];
+                if (string.IsNullOrEmpty(family)) continue;
+                family = family.Trim();
+                if (_installedOSFontNames.Contains(family)) return family;
+            }
+            return null;
+        }
+
+        private static string BuildOSFontCacheKey(List<string> families)
+        {
+            if (families == null || families.Count == 0) return string.Empty;
+            var normalized = new List<string>(families.Count);
+            for (int i = 0; i < families.Count; i++)
+            {
+                string family = families[i];
+                if (string.IsNullOrEmpty(family)) continue;
+                family = family.Trim();
+                if (family.Length > 0) normalized.Add(family.ToLowerInvariant());
+            }
+            return string.Join("\u001f", normalized.ToArray());
         }
 
         private static Font TryBuiltinArial()

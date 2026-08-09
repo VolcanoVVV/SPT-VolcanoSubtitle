@@ -34,8 +34,10 @@ namespace Subtitle.Config
         // 已解析的声线文件路径缓存：voiceKey -> 磁盘路径（仅缓存“存在”的结果，缺失时下次仍重新探测）
         private static readonly Dictionary<string, string> s_voicePathCache =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        // locales 目录解析结果缓存（目录消失时自动失效重解析）
+        // locales 根目录与当前语言目录缓存
+        private static string s_cachedLocalesRootDir;
         private static string s_cachedLocalesDir;
+        private static string s_cachedLocaleLanguage;
         // voices 子目录解析结果缓存（随 locales 目录失效而失效）
         private static string s_cachedVoicesDir;
         private static string s_cachedVoicesDirBase;
@@ -75,8 +77,14 @@ namespace Subtitle.Config
             try
             {
                 string path = GetPresetPath(name);
+                bool loadedLegacyPath = false;
                 if (!File.Exists(path))
-                    return false;
+                {
+                    string legacyPath = GetLegacyPresetPath(name);
+                    if (!File.Exists(legacyPath)) return false;
+                    path = legacyPath;
+                    loadedLegacyPath = true;
+                }
 
                 string json = File.ReadAllText(path, Encoding.UTF8);
                 json = JsoncUtils.StripJsonComments(json);
@@ -107,6 +115,11 @@ namespace Subtitle.Config
                 }
 
                 s_currentName = NormalizePresetName(name);
+                if (loadedLegacyPath)
+                {
+                    SavePreset(name, GetOrCreateCurrent(DefaultChannel));
+                    Debug.Log("[PhraseFilter] 已迁移过滤状态到全语言共享路径：" + GetPresetPath(name));
+                }
                 return true;
             }
             catch (Exception e)
@@ -122,6 +135,9 @@ namespace Subtitle.Config
             {
                 if (preset == null) return false;
                 string path = GetPresetPath(name);
+                string dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
 
                 JObject root = new JObject();
                 JObject channelsObj = new JObject();
@@ -346,22 +362,25 @@ namespace Subtitle.Config
             List<string> list = new List<string>();
             try
             {
-                string dir = GetVoicesDir();
-                if (!Directory.Exists(dir)) return list;
-
-                string[] files = Directory.GetFiles(dir, "*.json*", SearchOption.TopDirectoryOnly);
-                for (int i = 0; i < files.Length; i++)
+                List<string> dirs = GetVoiceSearchDirs();
+                for (int d = 0; d < dirs.Count; d++)
                 {
-                    string path = files[i];
-                    string ext = Path.GetExtension(path);
-                    if (!string.Equals(ext, ".json", StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(ext, ".jsonc", StringComparison.OrdinalIgnoreCase))
-                        continue;
+                    string dir = dirs[d];
+                    if (!Directory.Exists(dir)) continue;
+                    string[] files = Directory.GetFiles(dir, "*.json*", SearchOption.TopDirectoryOnly);
+                    for (int i = 0; i < files.Length; i++)
+                    {
+                        string path = files[i];
+                        string ext = Path.GetExtension(path);
+                        if (!string.Equals(ext, ".json", StringComparison.OrdinalIgnoreCase) &&
+                            !string.Equals(ext, ".jsonc", StringComparison.OrdinalIgnoreCase))
+                            continue;
 
-                    string name = Path.GetFileNameWithoutExtension(path);
-                    if (string.IsNullOrEmpty(name)) continue;
-                    if (!ListContainsIgnoreCase(list, name))
-                        list.Add(name);
+                        string name = Path.GetFileNameWithoutExtension(path);
+                        if (string.IsNullOrEmpty(name)) continue;
+                        if (!ListContainsIgnoreCase(list, name))
+                            list.Add(name);
+                    }
                 }
             }
             catch { }
@@ -506,7 +525,7 @@ namespace Subtitle.Config
             string path;
             if (!s_voicePathCache.TryGetValue(voiceKey, out path) || string.IsNullOrEmpty(path))
             {
-                path = GetVoicePath(voiceKey);
+                path = ResolveVoiceFile(voiceKey);
                 if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
                 s_voicePathCache[voiceKey] = path;
             }
@@ -609,7 +628,7 @@ namespace Subtitle.Config
             return result;
         }
 
-        private static string GetVoicePath(string voiceKey)
+        internal static string ResolveVoiceFile(string voiceKey)
         {
             if (string.IsNullOrEmpty(voiceKey)) return null;
             string name = voiceKey.Trim();
@@ -632,25 +651,22 @@ namespace Subtitle.Config
             }
             catch { }
 
-            string dir = GetVoicesDir();
-            if (!Directory.Exists(dir))
-                return Path.Combine(dir, name + ".jsonc");
-
-            string[] files = Directory.GetFiles(dir, name + ".*", SearchOption.TopDirectoryOnly);
-            for (int i = 0; i < files.Length; i++)
+            List<string> dirs = GetVoiceSearchDirs();
+            for (int d = 0; d < dirs.Count; d++)
             {
-                string ext = Path.GetExtension(files[i]);
-                if (string.Equals(ext, ".jsonc", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(ext, ".json", StringComparison.OrdinalIgnoreCase))
-                    return files[i];
+                string dir = dirs[d];
+                if (!Directory.Exists(dir)) continue;
+                string[] files = Directory.GetFiles(dir, name + ".*", SearchOption.TopDirectoryOnly);
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string ext = Path.GetExtension(files[i]);
+                    if (string.Equals(ext, ".jsonc", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(ext, ".json", StringComparison.OrdinalIgnoreCase))
+                        return files[i];
+                }
             }
 
-            string direct = Path.Combine(dir, name + ".jsonc");
-            if (File.Exists(direct)) return direct;
-            direct = Path.Combine(dir, name + ".json");
-            if (File.Exists(direct)) return direct;
-
-            return null;
+            return Path.Combine(GetVoicesDir(), name + ".jsonc");
         }
 
         private static string GetVoicesDir()
@@ -668,15 +684,74 @@ namespace Subtitle.Config
             return resolved;
         }
 
+        private static string GetVoicesDirForLocale(string localeDir)
+        {
+            string lower = Path.Combine(localeDir, "voices");
+            string upper = Path.Combine(localeDir, "Voices");
+            return Directory.Exists(lower) ? lower : (Directory.Exists(upper) ? upper : lower);
+        }
+
+        private static List<string> GetVoiceSearchDirs()
+        {
+            List<string> result = new List<string>();
+            string current = GetVoicesDir();
+            result.Add(current);
+            string fallback = GetVoicesDirForLocale(DefaultLocalesDir);
+            if (!string.Equals(current, fallback, StringComparison.OrdinalIgnoreCase))
+                result.Add(fallback);
+            return result;
+        }
+
+        internal static List<string> GetVoiceFiles()
+        {
+            List<string> result = new List<string>();
+            HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            List<string> dirs = GetVoiceSearchDirs();
+            for (int d = 0; d < dirs.Count; d++)
+            {
+                string dir = dirs[d];
+                if (!Directory.Exists(dir)) continue;
+                string[] files = Directory.GetFiles(dir, "*.json*", SearchOption.TopDirectoryOnly);
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string ext = Path.GetExtension(files[i]);
+                    if (!string.Equals(ext, ".json", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(ext, ".jsonc", StringComparison.OrdinalIgnoreCase)) continue;
+                    string name = Path.GetFileNameWithoutExtension(files[i]);
+                    if (names.Add(name)) result.Add(files[i]);
+                }
+            }
+            return result;
+        }
+
         // 对外暴露解析好的目录（全项目唯一来源，供 Settings/PhraseSubtitle 复用）
         internal static string LocalesDir
         {
             get { return GetLocalesDir(); }
         }
 
+        internal static string LocaleRootDir
+        {
+            get { return GetLocalesRootDir(); }
+        }
+
+        internal static string DefaultLocalesDir
+        {
+            get { return Path.Combine(GetLocalesRootDir(), I18n.DefaultLanguage); }
+        }
+
         internal static string VoicesDir
         {
             get { return GetVoicesDir(); }
+        }
+
+        internal static string ResolveLocaleFile(string relativePath)
+        {
+            string current = Path.Combine(GetLocalesDir(), relativePath);
+            if (File.Exists(current)) return current;
+            string fallback = Path.Combine(DefaultLocalesDir, relativePath);
+            if (File.Exists(fallback)) return fallback;
+            return current;
         }
 
         private static PhraseFilterPreset ParsePreset(JObject root)
@@ -934,35 +1009,63 @@ namespace Subtitle.Config
 
         private static string GetLocalesDir()
         {
-            // 缓存命中且目录仍存在时直接返回，避免每次调用都做一轮 Directory.Exists 探测
-            if (!string.IsNullOrEmpty(s_cachedLocalesDir) && Directory.Exists(s_cachedLocalesDir))
+            string language = GetCurrentLanguage();
+            if (!string.IsNullOrEmpty(s_cachedLocalesDir) &&
+                string.Equals(s_cachedLocaleLanguage, language, StringComparison.OrdinalIgnoreCase) &&
+                Directory.Exists(s_cachedLocalesDir))
                 return s_cachedLocalesDir;
 
-            s_cachedLocalesDir = ResolveLocalesDir();
+            string root = GetLocalesRootDir();
+            string requested = Path.Combine(root, language);
+            string fallback = Path.Combine(root, I18n.DefaultLanguage);
+            s_cachedLocalesDir = Directory.Exists(requested) ? requested : fallback;
+            s_cachedLocaleLanguage = language;
+            s_cachedVoicesDir = null;
+            s_cachedVoicesDirBase = null;
             return s_cachedLocalesDir;
         }
 
-        private static string ResolveLocalesDir()
+        private static string GetCurrentLanguage()
+        {
+            try
+            {
+                if (Settings.UiLanguage != null && !string.IsNullOrWhiteSpace(Settings.UiLanguage.Value))
+                    return Settings.UiLanguage.Value.Trim();
+            }
+            catch { }
+            return I18n.DefaultLanguage;
+        }
+
+        private static string GetLocalesRootDir()
+        {
+            if (!string.IsNullOrEmpty(s_cachedLocalesRootDir) && Directory.Exists(s_cachedLocalesRootDir))
+                return s_cachedLocalesRootDir;
+
+            s_cachedLocalesRootDir = ResolveLocalesRootDir();
+            return s_cachedLocalesRootDir;
+        }
+
+        private static string ResolveLocalesRootDir()
         {
             List<string> candidates = new List<string>();
             string pluginPath = BepInEx.Paths.PluginPath;
             if (!string.IsNullOrEmpty(pluginPath))
             {
-                candidates.Add(Path.Combine(pluginPath, "subtitle", "locales", "ch"));
+                candidates.Add(Path.Combine(pluginPath, "subtitle", "locales"));
 
                 string trimmed = pluginPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                 string tail = Path.GetFileName(trimmed);
                 if (string.Equals(tail, "subtitle", StringComparison.OrdinalIgnoreCase))
-                    candidates.Add(Path.Combine(pluginPath, "locales", "ch"));
+                    candidates.Add(Path.Combine(pluginPath, "locales"));
             }
 
             string bepinexRoot = BepInEx.Paths.BepInExRootPath;
             if (!string.IsNullOrEmpty(bepinexRoot))
-                candidates.Add(Path.Combine(bepinexRoot, "plugins", "subtitle", "locales", "ch"));
+                candidates.Add(Path.Combine(bepinexRoot, "plugins", "subtitle", "locales"));
 
             string gameRoot = BepInEx.Paths.GameRootPath;
             if (!string.IsNullOrEmpty(gameRoot))
-                candidates.Add(Path.Combine(gameRoot, "BepInEx", "plugins", "subtitle", "locales", "ch"));
+                candidates.Add(Path.Combine(gameRoot, "BepInEx", "plugins", "subtitle", "locales"));
 
             string asmPath = typeof(PhraseFilterManager).Assembly.Location;
             if (!string.IsNullOrEmpty(asmPath))
@@ -970,29 +1073,42 @@ namespace Subtitle.Config
                 string asmDir = Path.GetDirectoryName(asmPath);
                 if (!string.IsNullOrEmpty(asmDir))
                 {
-                    candidates.Add(Path.Combine(asmDir, "locales", "ch"));
+                    candidates.Add(Path.Combine(asmDir, "locales"));
                     DirectoryInfo parent = Directory.GetParent(asmDir);
                     if (parent != null)
-                        candidates.Add(Path.Combine(parent.FullName, "subtitle", "locales", "ch"));
+                        candidates.Add(Path.Combine(parent.FullName, "subtitle", "locales"));
                 }
             }
 
-            candidates.Add(Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales", "ch"));
+            candidates.Add(Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales"));
 
             string existing = null;
             for (int i = 0; i < candidates.Count; i++)
             {
-                string dir = candidates[i];
-                if (!Directory.Exists(dir)) continue;
-                if (existing == null) existing = dir;
+                string root = candidates[i];
+                if (!Directory.Exists(root)) continue;
+                if (existing == null) existing = root;
 
+                string dir = Path.Combine(root, I18n.DefaultLanguage);
                 string voicesLower = Path.Combine(dir, "voices");
                 string voicesUpper = Path.Combine(dir, "Voices");
                 if (Directory.Exists(voicesLower) || Directory.Exists(voicesUpper))
-                    return dir;
+                    return root;
             }
 
-            return existing ?? (candidates.Count > 0 ? candidates[0] : Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales", "ch"));
+            return existing ?? (candidates.Count > 0 ? candidates[0] : Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales"));
+        }
+
+        internal static void InvalidateLocaleCaches()
+        {
+            s_cachedLocalesDir = null;
+            s_cachedLocaleLanguage = null;
+            s_cachedVoicesDir = null;
+            s_cachedVoicesDirBase = null;
+            s_cachedVoiceNames.Clear();
+            s_cachedVoiceMap.Clear();
+            s_voiceJsonCache.Clear();
+            s_voicePathCache.Clear();
         }
 
         private static string GetPresetPath(string name)
@@ -1008,12 +1124,21 @@ namespace Subtitle.Config
                 catch { }
             }
 
-            string dir = GetLocalesDir();
+            string dir = Path.GetDirectoryName(GetLocalesRootDir());
             string normalized = NormalizePresetName(name);
             string fileName = string.Equals(normalized, DefaultPresetName, StringComparison.OrdinalIgnoreCase)
                 ? PresetFileName
                 : normalized + PresetFileExtension;
             return Path.Combine(dir, fileName);
+        }
+
+        private static string GetLegacyPresetPath(string name)
+        {
+            string normalized = NormalizePresetName(name);
+            string fileName = string.Equals(normalized, DefaultPresetName, StringComparison.OrdinalIgnoreCase)
+                ? PresetFileName
+                : normalized + PresetFileExtension;
+            return Path.Combine(DefaultLocalesDir, fileName);
         }
 
         private static string NormalizePresetName(string name)

@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,27 +16,8 @@ namespace Subtitle.Config
 {
     internal partial class Settings
     {
-        private static string s_PresetUiHint;
-        private static float s_PresetUiHintUntil;
-        private static GUIStyle s_HintStyleGreen;
-
-        // —— 展开/收缩：折叠目标列表仍由 Reg 填充（fold 机制已停用，列表保留但不参与可见性控制） —— //
-        private static readonly List<ConfigEntryBase> s_SubtitleFoldTargets = new List<ConfigEntryBase>();
-        private static readonly List<ConfigEntryBase> s_DanmakuFoldTargets = new List<ConfigEntryBase>();
-        private static readonly List<ConfigEntryBase> s_World3DFoldTargets = new List<ConfigEntryBase>();
-
-        // ★ 新增：固定占位 & 保存 UI 的状态
-        private const float PRESET_HINT_MIN_HEIGHT = 22f;
-        private static bool s_SavePresetMode = false;
-        private static string s_SavePresetInput = "";
-
-        private const float FONT_BUNDLE_HINT_MIN_HEIGHT = 18f;
         private static List<string> s_FontBundleNames = new List<string>();
-        private static int s_SelectedFontBundleIndex = 0;
         private static bool s_FontBundleListLoaded = false;
-        private static string s_FontBundleUiHint;
-        private static float s_FontBundleUiHintUntil;
-        private static GUIStyle s_FontBundleHintStyle;
         private static readonly Dictionary<ConfigEntryBase, int> s_FontBundleSelection =
             new Dictionary<ConfigEntryBase, int>();
         private static readonly Dictionary<ConfigEntryBase, string> s_FontBundleSelectionValue =
@@ -216,12 +198,6 @@ namespace Subtitle.Config
                     catch { }
                 });
             }
-        }
-
-        private static void ShowPresetUiHint(string msg, float seconds = 2f)
-        {
-            s_PresetUiHint = msg ?? "";
-            s_PresetUiHintUntil = Time.realtimeSinceStartup + Mathf.Max(0.5f, seconds);
         }
 
         private static void PushClientToast(string text)
@@ -414,8 +390,6 @@ namespace Subtitle.Config
 
         // ===================== F12 精简：只保留两个入口 =====================
         // 设置项已全部收进图形化设置界面，ConfigurationManager(F12) 只显示「图形化设置界面」按钮和热键。
-        // 原 展开/收缩（fold）机制已停用：Show*Options 三个开关仍保持绑定（兼容旧 cfg），
-        // 但不再挂 SettingChanged 监听、不再改任何条目的 Browsable。
         private static void ApplySlimConfigurationManagerVisibility()
         {
             if (ConfigEntries == null) return;
@@ -434,12 +408,6 @@ namespace Subtitle.Config
 
             // Browsable 变更需要 CM 重建设置列表才生效（沿用原折叠机制的刷新路径）
             TryRefreshConfigurationManager();
-        }
-
-        private static void AddFoldTarget(List<ConfigEntryBase> list, ConfigEntryBase entry)
-        {
-            if (list == null || entry == null) return;
-            if (!list.Contains(entry)) list.Add(entry);
         }
 
         private static ConfigurationManagerAttributes GetCmAttributes(ConfigEntryBase entry)
@@ -621,8 +589,7 @@ namespace Subtitle.Config
         }
 
         // ===================== 图形化设置界面（UGUI）复用入口 =====================
-        // 原 F12 IMGUI 自绘控件（CustomDrawer）依赖的 扫描/选择/应用/测试发送 逻辑提为 internal，
-        // SettingsUI 的特殊行与旧 IMGUI 抽屉共用同一套实现，行为保持一致。
+        // 图形化设置界面复用的扫描、选择、应用与测试发送入口。
 
         // —— 预设选择器 ——
         internal static List<string> GetPresetNames()
@@ -636,7 +603,7 @@ namespace Subtitle.Config
             return s_SelectedPresetIndex;
         }
 
-        // 循环语义与 DrawCyclerRow 一致：越界自动回绕
+        // 选择越界时自动回绕
         internal static void SetSelectedPresetIndex(int index)
         {
             int count = s_PresetNames != null ? s_PresetNames.Count : 0;
@@ -661,7 +628,6 @@ namespace Subtitle.Config
         {
             ScanPresets(true);
             s_Log.LogInfo("[Settings] Preset list refreshed. Count=" + s_PresetNames.Count);
-            ShowPresetUiHint($"已刷新预设：{s_PresetNames.Count} 个");
             PushClientToast($"已刷新预设：{s_PresetNames.Count} 个");
             return s_PresetNames.Count;
         }
@@ -674,7 +640,6 @@ namespace Subtitle.Config
             if (idx < 0 || idx >= s_PresetNames.Count) idx = 0;
             var pick = s_PresetNames[idx];
             ApplyPresetByName(pick);
-            ShowPresetUiHint($"已应用预设：{pick}");
             PushClientToast($"已应用预设：{pick}");
             return pick;
         }
@@ -682,7 +647,7 @@ namespace Subtitle.Config
         // —— 字体包选择器（三个渠道共用一份扫描结果，选择索引按 entry 分别记忆） ——
         internal static List<string> GetFontBundleNames(ConfigEntry<string> e)
         {
-            if (!s_FontBundleListLoaded) ScanFontBundles(true, e != null ? e.Value : null);
+            if (!s_FontBundleListLoaded) ScanFontBundles();
             return s_FontBundleNames;
         }
 
@@ -698,12 +663,11 @@ namespace Subtitle.Config
 
         internal static int RefreshFontBundles(ConfigEntry<string> e)
         {
-            ScanFontBundles(true, e != null ? e.Value : null);
+            ScanFontBundles();
             // 定向失效资源包字体缓存并重刷本渠道样式：
             // 局内替换同名字体文件后点「刷新」即可立即生效，无需重开战局
             SubtitleSystem.SubtitleFontLoader.InvalidateBundleFontCache();
             TryRefreshByFontBundleEntry(e);
-            ShowFontBundleUiHint("已刷新字体资源包： " + s_FontBundleNames.Count + " 个");
             return s_FontBundleNames != null ? s_FontBundleNames.Count : 0;
         }
 
@@ -716,7 +680,6 @@ namespace Subtitle.Config
             var pick = s_FontBundleNames[idx];
             e.Value = pick;
             UpdateFontBundleSelection(e, idx, e.Value);
-            ShowFontBundleUiHint("已应用： " + FormatFontBundleLabel(pick));
             TryRefreshByFontBundleEntry(e);
             return FormatFontBundleLabel(pick);
         }
@@ -729,10 +692,8 @@ namespace Subtitle.Config
             string savedPath = SaveCurrentSettingsToPresetFile(rawName);
             if (string.IsNullOrEmpty(savedPath))
             {
-                ShowPresetUiHint("保存失败，请查看日志");
                 return null;
             }
-            ShowPresetUiHint("已成功保存预设文件");
             PushClientToast($"已成功保存预设文件，位于 {savedPath}");
             ScanPresets(true);
             return savedPath;
@@ -795,169 +756,6 @@ namespace Subtitle.Config
             }
         }
 
-        // ===================== 自绘 UI =====================
-        // 两个 Picker 共用的 “◀ 名称 ▶” 循环选择行，返回（可能被按钮修改后的）选择索引
-        private static int DrawCyclerRow(List<string> names, int index, string prevText, string nextText, string emptyText, Func<string, string> labelFormatter)
-        {
-            int count = names != null ? names.Count : 0;
-
-            if (GUILayout.Button(prevText, GUILayout.Width(28)))
-            {
-                if (count > 0)
-                    index = (index - 1 + count) % count;
-            }
-
-            string label = (count > 0 && index >= 0 && index < count)
-                ? (labelFormatter != null ? labelFormatter(names[index]) : names[index])
-                : emptyText;
-            GUILayout.Label(label, GUILayout.ExpandWidth(true));
-
-            if (GUILayout.Button(nextText, GUILayout.Width(28)))
-            {
-                if (count > 0)
-                    index = (index + 1) % count;
-            }
-
-            return index;
-        }
-
-        // 两个 Picker 共用的绿色提示样式（懒创建）
-        private static void EnsureGreenHintStyle(ref GUIStyle style)
-        {
-            if (style != null) return;
-            style = new GUIStyle(GUI.skin.label)
-            {
-                fontStyle = FontStyle.Bold,
-                wordWrap = true,
-                alignment = TextAnchor.UpperLeft
-            };
-            style.normal.textColor = new Color(0.7f, 1f, 0.7f, 1f);
-        }
-
-        private static void DrawPresetPicker(ConfigEntryBase entry)
-        {
-            if (!s_PresetListLoaded) ScanPresets(true);
-
-            // ★ 新增：用竖向容器包住整块区域（父级只把它当作一个控件）
-            GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
-
-            // 原有的横排：选择器 + 刷新 + 应用
-            GUILayout.BeginHorizontal();
-
-            s_SelectedPresetIndex = DrawCyclerRow(s_PresetNames, s_SelectedPresetIndex, "◀", "▶", "(无预设)", null);
-
-            if (GUILayout.Button("刷新", GUILayout.Width(64)))
-            {
-                RefreshPresetList();
-            }
-
-            if (GUILayout.Button("应用", GUILayout.Width(64)))
-            {
-                ApplySelectedPreset();
-            }
-
-            GUILayout.EndHorizontal(); // —— 横排结束 ——
-
-            // —— 保存当前预设设置 —— 
-            GUILayout.Space(2);
-            GUILayout.BeginHorizontal();
-
-            if (!s_SavePresetMode)
-            {
-                if (GUILayout.Button("保存预设", GUILayout.Width(70)))
-                {
-                    // 初始建议名：当前选择或 default
-                    s_SavePresetInput = (s_PresetNames != null && s_PresetNames.Count > 0 && s_SelectedPresetIndex >= 0 && s_SelectedPresetIndex < s_PresetNames.Count)
-                        ? s_PresetNames[s_SelectedPresetIndex]
-                        : (TextPresetName != null ? (TextPresetName.Value ?? "default") : "default");
-                    s_SavePresetMode = true;
-                }
-            }
-            else
-            {
-                GUILayout.Label("预设名：", GUILayout.Width(52));
-                s_SavePresetInput = GUILayout.TextField(s_SavePresetInput ?? "", GUILayout.MinWidth(140));
-                if (GUILayout.Button("确定", GUILayout.Width(52)))
-                {
-                    // 保存/提示/重扫 已提取到 SavePresetAs（GUI 保存预设行共用同一实现）
-                    SavePresetAs(s_SavePresetInput);
-                    s_SavePresetMode = false;
-                }
-                if (GUILayout.Button("取消", GUILayout.Width(52)))
-                {
-                    s_SavePresetMode = false;
-                }
-            }
-
-            GUILayout.EndHorizontal();
-
-            // ★ 新增：提示文字独占新的一行（在竖向容器内就是下一行）
-            // —— 提示行：永久占位，不抖动 —— 
-            EnsureGreenHintStyle(ref s_HintStyleGreen);
-
-            GUILayout.Space(4);
-            string hintMsg = (s_PresetUiHintUntil > 0 && Time.realtimeSinceStartup < s_PresetUiHintUntil)
-                ? ("✓ " + s_PresetUiHint)
-                : " "; // 空白占位
-            GUILayout.Label(hintMsg, s_HintStyleGreen, GUILayout.ExpandWidth(true), GUILayout.MinHeight(PRESET_HINT_MIN_HEIGHT));
-
-            GUILayout.EndVertical();   // —— 竖向容器结束 —— 
-        }
-
-        private static void DrawFontBundlePicker(ConfigEntryBase entry)
-        {
-            var e = entry as ConfigEntry<string>;
-            if (e == null) return;
-
-            if (!s_FontBundleListLoaded) ScanFontBundles(true, e.Value);
-
-            int currentIndex = EnsureFontBundleSelection(entry, e.Value);
-
-            GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
-            GUILayout.BeginHorizontal();
-
-            currentIndex = DrawCyclerRow(s_FontBundleNames, currentIndex, "<", ">", "(无字体)", FormatFontBundleLabel);
-            UpdateFontBundleSelection(entry, currentIndex, e.Value);
-
-            if (GUILayout.Button("刷新", GUILayout.Width(64)))
-            {
-                RefreshFontBundles(e);
-                currentIndex = EnsureFontBundleSelection(entry, e.Value);
-            }
-
-            if (GUILayout.Button("应用", GUILayout.Width(64)))
-            {
-                ApplyFontBundleSelection(e);
-            }
-
-            GUILayout.EndHorizontal();
-
-            EnsureGreenHintStyle(ref s_FontBundleHintStyle);
-
-            GUILayout.Space(4);
-            string dir = GetFontBundleDir();
-            bool dirOk = !string.IsNullOrEmpty(dir) && Directory.Exists(dir);
-            string hintMsg = (s_FontBundleUiHintUntil > 0 && Time.realtimeSinceStartup < s_FontBundleUiHintUntil)
-                ? (s_FontBundleUiHint)
-                : (dirOk ? " " : ("未检测到字体目录： " + ShortPathFromBepInEx(dir)));
-            GUILayout.Label(hintMsg, s_FontBundleHintStyle, GUILayout.ExpandWidth(true), GUILayout.MinHeight(FONT_BUNDLE_HINT_MIN_HEIGHT));
-
-            GUILayout.EndVertical();
-        }
-
-        private static void DrawFoldToggleButton(ConfigEntryBase entry)
-        {
-            var e = entry as ConfigEntry<bool>;
-            if (e == null) return;
-
-            string title = entry.Definition != null ? entry.Definition.Key : "展开/收缩";
-            string label = title + " " + (e.Value ? "收起" : "展开");
-            if (GUILayout.Button(label, GUILayout.Height(24)))
-            {
-                e.Value = !e.Value;
-            }
-        }
-
         private static int EnsureFontBundleSelection(ConfigEntryBase entry, string currentValue)
         {
             if (entry == null) return GetFontBundleIndex(currentValue);
@@ -984,7 +782,6 @@ namespace Subtitle.Config
             }
             s_FontBundleSelection[entry] = idx;
             s_FontBundleSelectionValue[entry] = currentValue ?? "";
-            s_SelectedFontBundleIndex = idx;
         }
 
         private static void TryRefreshByFontBundleEntry(ConfigEntry<string> e)
@@ -998,12 +795,6 @@ namespace Subtitle.Config
         internal static string FormatFontBundleLabel(string name)
         {
             return string.IsNullOrEmpty(name) ? "(不覆盖)" : name;
-        }
-
-        private static void ShowFontBundleUiHint(string msg, float seconds = 2f)
-        {
-            s_FontBundleUiHint = msg ?? "";
-            s_FontBundleUiHintUntil = Time.realtimeSinceStartup + Mathf.Max(0.5f, seconds);
         }
 
         private static int GetFontBundleIndex(string name)
@@ -1027,7 +818,7 @@ namespace Subtitle.Config
             catch { return null; }
         }
 
-        private static void ScanFontBundles(bool resetSelectionToCurrent, string current)
+        private static void ScanFontBundles()
         {
             try
             {
@@ -1054,16 +845,11 @@ namespace Subtitle.Config
 
                 s_FontBundleNames = list;
                 s_FontBundleListLoaded = true;
-                if (resetSelectionToCurrent)
-                {
-                    s_SelectedFontBundleIndex = GetFontBundleIndex(current);
-                }
             }
             catch (Exception e)
             {
                 s_Log.LogWarning("[Settings] ScanFontBundles failed: " + e);
                 s_FontBundleNames = new List<string> { "" };
-                s_SelectedFontBundleIndex = 0;
                 s_FontBundleListLoaded = true;
             }
         }
@@ -1081,17 +867,6 @@ namespace Subtitle.Config
                 return System.IO.Path.GetFileName(p);
             }
             catch { return absPath; }
-        }
-
-        private static void DrawTestSubtitleButton(ConfigEntryBase entry)
-        {
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("▶ 随机测试字幕", GUILayout.Height(24), GUILayout.Width(260)))
-            {
-                SendRandomTestSubtitle();
-            }
-            GUILayout.EndHorizontal();
         }
 
         // 两个“随机测试”按钮共用的 组句+发送 逻辑（fallbackWarning 为 null 时不打日志）
@@ -1145,17 +920,6 @@ namespace Subtitle.Config
             return true;
         }
 
-        private static void DrawPhraseFilterPanelButton(ConfigEntryBase entry)
-        {
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("打开台词控制面板", GUILayout.Height(24), GUILayout.Width(260)))
-            {
-                try { PhraseFilterPanel.ToggleVisible(); } catch { }
-            }
-            GUILayout.EndHorizontal();
-        }
-
         private static void DrawSettingsWindowButton(ConfigEntryBase entry)
         {
             GUILayout.BeginHorizontal();
@@ -1166,18 +930,6 @@ namespace Subtitle.Config
             }
             GUILayout.EndHorizontal();
         }
-
-        private static void DrawTestDanmakuButton(ConfigEntryBase entry)
-        {
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("▶ 随机测试弹幕（3条）", GUILayout.Height(24), GUILayout.Width(260)))
-            {
-                SendRandomTestDanmaku();
-            }
-            GUILayout.EndHorizontal();
-        }
-
 
         // —— 硬编码的 AI 类型别名列表（全部小写；支持 * 前缀通配）——
         private static readonly string[] kRogueAliasesLC = { "exusec" };
@@ -1409,7 +1161,7 @@ namespace Subtitle.Config
             {
                 var spec = BuildSubtitleFontSpec();
                 var f = SubtitleSystem.SubtitleFontLoader.ResolveFont(spec);
-                if (f != null) text.font = f;
+                if (f != null && text.font != f) text.font = f;
 
                 if (SubtitleFontSize != null && SubtitleFontSize.Value > 0)
                     text.fontSize = SubtitleFontSize.Value;
@@ -1546,7 +1298,7 @@ namespace Subtitle.Config
 
             try
             {
-                var file = Path.Combine(GetLocalesDir(), "RoleType.jsonc");
+                var file = PhraseFilterManager.ResolveLocaleFile("RoleType.jsonc");
                 if (!File.Exists(file)) return;
 
                 var json = JsoncUtils.StripJsonComments(File.ReadAllText(file, Encoding.UTF8));
@@ -1557,8 +1309,16 @@ namespace Subtitle.Config
                     var val = (p.Value?.ToString() ?? "").Trim();
                     if (string.IsNullOrEmpty(key)) continue;
 
-                    s_UserRoleMapExact[key] = val;
-                    s_UserRoleMapPrefix.Add(new KeyValuePair<string, string>(key.ToLowerInvariant(), val));
+                    if (key.EndsWith("*", StringComparison.Ordinal))
+                    {
+                        string prefix = key.Substring(0, key.Length - 1).Trim();
+                        if (!string.IsNullOrEmpty(prefix))
+                            s_UserRoleMapPrefix.Add(new KeyValuePair<string, string>(prefix.ToLowerInvariant(), val));
+                    }
+                    else
+                    {
+                        s_UserRoleMapExact[key] = val;
+                    }
                 }
                 s_UserRoleMapPrefix.Sort((a, b) => b.Key.Length.CompareTo(a.Key.Length));
             }
@@ -1602,6 +1362,25 @@ namespace Subtitle.Config
             }
             catch { }
             return string.IsNullOrEmpty(fallback) ? key : fallback;
+        }
+
+        private static void InvalidateRoleLabelCache()
+        {
+            s_RoleTypeLoaded = false;
+            s_UserRoleMapExact = null;
+            s_UserRoleMapPrefix = null;
+            s_AllAiTypeKeysCache = null;
+        }
+
+        private static void ReloadLocalizedResources(string language)
+        {
+            PhraseFilterManager.InvalidateLocaleCaches();
+            InvalidateRoleLabelCache();
+            SubtitleSystem.PhraseSubtitle.InvalidateCache();
+            Subtitle.Utils.StreamerFilter.InvalidateCache();
+            I18n.Reload(language);
+            Subtitle.LabRadioPatch.ReloadLocaleResources();
+            SettingsUI.SettingsWindow.RebuildAll();
         }
 
         private static string GetRandomAiTypeForTest(string voiceKey)
@@ -1654,7 +1433,7 @@ namespace Subtitle.Config
             {
                 var spec = BuildDanmakuFontSpec();
                 var f = SubtitleSystem.SubtitleFontLoader.ResolveFont(spec);
-                if (f != null) text.font = f;
+                if (f != null && text.font != f) text.font = f;
 
                 if (DanmakuFontSize != null && DanmakuFontSize.Value > 0)
                     text.fontSize = DanmakuFontSize.Value;
@@ -1682,7 +1461,7 @@ namespace Subtitle.Config
             {
                 var spec = BuildWorld3DFontSpec();
                 var f = SubtitleSystem.SubtitleFontLoader.ResolveFont(spec);
-                if (f != null) text.font = f;
+                if (f != null && text.font != f) text.font = f;
 
                 if (World3DFontSize != null && World3DFontSize.Value > 0)
                     text.fontSize = World3DFontSize.Value;
@@ -1714,6 +1493,102 @@ namespace Subtitle.Config
 
             ApplyOutlineOverride(text, World3DOutlineEnabled, World3DOutlineColor, World3DOutlineDistX, World3DOutlineDistY, 1.5f);
             ApplyShadowOverride(text, World3DShadowEnabled, World3DShadowColor, World3DShadowDistX, World3DShadowDistY, World3DShadowUseGraphicAlpha);
+        }
+
+        public static bool ApplyWorld3DTMPOverrides(TextMeshProUGUI text)
+        {
+            if (text == null) return false;
+            TMP_FontAsset font = null;
+            try
+            {
+                font = SubtitleSystem.SubtitleFontLoader.ResolveTMPFont(BuildWorld3DFontSpec());
+                if (font == null) return false;
+                if (text.font != font) text.font = font;
+
+                if (World3DFontSize != null && World3DFontSize.Value > 0)
+                    text.fontSize = World3DFontSize.Value;
+
+                FontStyles style = FontStyles.Normal;
+                if (World3DFontBold != null && World3DFontBold.Value) style |= FontStyles.Bold;
+                if (World3DFontItalic != null && World3DFontItalic.Value) style |= FontStyles.Italic;
+                text.fontStyle = style;
+                text.enableWordWrapping = World3DWrap != null && World3DWrap.Value;
+                text.overflowMode = TextOverflowModes.Overflow;
+                text.richText = true;
+                text.raycastTarget = false;
+
+                if (World3DAlignment != null)
+                {
+                    TextAnchor anchor;
+                    if (TryGetTextAnchor(World3DAlignment.Value, out anchor))
+                        text.alignment = ToTMPAlignment(anchor);
+                }
+
+                bool outlineEnabled = World3DOutlineEnabled != null && World3DOutlineEnabled.Value;
+                float outlineX = World3DOutlineDistX != null ? Mathf.Abs(World3DOutlineDistX.Value) : 1.5f;
+                float outlineY = World3DOutlineDistY != null ? Mathf.Abs(World3DOutlineDistY.Value) : 1.5f;
+                text.outlineWidth = outlineEnabled
+                    ? Mathf.Clamp(Mathf.Max(outlineX, outlineY) * 2f / Mathf.Max(1f, text.fontSize), 0f, 1f)
+                    : 0f;
+                if (outlineEnabled && World3DOutlineColor != null)
+                    text.outlineColor = World3DOutlineColor.Value;
+
+                ApplyWorld3DTMPShadow(text);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Subtitle.Plugin.Log?.LogWarning("[World3D] TMP SDF style apply failed: " + e.Message);
+                return false;
+            }
+        }
+
+        private static TextAlignmentOptions ToTMPAlignment(TextAnchor anchor)
+        {
+            switch (anchor)
+            {
+                case TextAnchor.UpperLeft: return TextAlignmentOptions.TopLeft;
+                case TextAnchor.UpperCenter: return TextAlignmentOptions.Top;
+                case TextAnchor.UpperRight: return TextAlignmentOptions.TopRight;
+                case TextAnchor.MiddleLeft: return TextAlignmentOptions.Left;
+                case TextAnchor.MiddleRight: return TextAlignmentOptions.Right;
+                case TextAnchor.LowerLeft: return TextAlignmentOptions.BottomLeft;
+                case TextAnchor.LowerCenter: return TextAlignmentOptions.Bottom;
+                case TextAnchor.LowerRight: return TextAlignmentOptions.BottomRight;
+                default: return TextAlignmentOptions.Center;
+            }
+        }
+
+        private static void ApplyWorld3DTMPShadow(TextMeshProUGUI text)
+        {
+            Material material = text.fontMaterial;
+            if (material == null) return;
+
+            bool enabled = World3DShadowEnabled != null && World3DShadowEnabled.Value;
+            if (!enabled)
+            {
+                material.DisableKeyword("UNDERLAY_ON");
+                text.SetMaterialDirty();
+                return;
+            }
+
+            int colorId = Shader.PropertyToID("_UnderlayColor");
+            int offsetXId = Shader.PropertyToID("_UnderlayOffsetX");
+            int offsetYId = Shader.PropertyToID("_UnderlayOffsetY");
+            if (material.HasProperty(colorId) && World3DShadowColor != null)
+                material.SetColor(colorId, World3DShadowColor.Value);
+            if (material.HasProperty(offsetXId))
+            {
+                float offsetX = World3DShadowDistX != null ? World3DShadowDistX.Value : 2f;
+                material.SetFloat(offsetXId, Mathf.Clamp(offsetX / 4f, -1f, 1f));
+            }
+            if (material.HasProperty(offsetYId))
+            {
+                float offsetY = World3DShadowDistY != null ? World3DShadowDistY.Value : -2f;
+                material.SetFloat(offsetYId, Mathf.Clamp(offsetY / 4f, -1f, 1f));
+            }
+            material.EnableKeyword("UNDERLAY_ON");
+            text.SetMaterialDirty();
         }
 
         private static bool TryPickRandomAllowedLine(string channel, out string voiceKey, out string text)
@@ -1749,12 +1624,9 @@ namespace Subtitle.Config
             text = null;
             try
             {
-                var dir = PhraseFilterManager.VoicesDir;
-                if (!Directory.Exists(dir)) return false;
-
-                var files = Directory.GetFiles(dir, "*.jsonc", SearchOption.TopDirectoryOnly);
+                var files = PhraseFilterManager.GetVoiceFiles();
                 var picks = new List<string>();
-                for (int i = 0; i < files.Length; i++)
+                for (int i = 0; i < files.Count; i++)
                 {
                     var name = Path.GetFileName(files[i]);
                     if (string.Equals(name, "RoleType.jsonc", StringComparison.OrdinalIgnoreCase)) continue;
@@ -1892,6 +1764,60 @@ namespace Subtitle.Config
             PmcBear, PmcUsec,
             Scav, Raider, Rogue, Cultist,
             BossFollower, Zombie, Goons, Bosses
+        }
+
+        public static int GetSubtitleRolePriority(RoleKind kind)
+        {
+            try
+            {
+                if (SubtitleRolePriorityEnabled != null && !SubtitleRolePriorityEnabled.Value)
+                    return 50;
+
+                ConfigEntry<int> entry;
+                switch (kind)
+                {
+                    case RoleKind.Player:
+                        entry = SubtitlePriorityPlayer;
+                        break;
+                    case RoleKind.Teammate:
+                        entry = SubtitlePriorityTeammate;
+                        break;
+                    case RoleKind.PmcBear:
+                    case RoleKind.PmcUsec:
+                        entry = SubtitlePriorityPmc;
+                        break;
+                    case RoleKind.Scav:
+                        entry = SubtitlePriorityScav;
+                        break;
+                    case RoleKind.Raider:
+                    case RoleKind.Rogue:
+                        entry = SubtitlePriorityRaiderRogue;
+                        break;
+                    case RoleKind.Cultist:
+                        entry = SubtitlePriorityCultist;
+                        break;
+                    case RoleKind.BossFollower:
+                        entry = SubtitlePriorityBossFollower;
+                        break;
+                    case RoleKind.Zombie:
+                        entry = SubtitlePriorityZombie;
+                        break;
+                    case RoleKind.Goons:
+                        entry = SubtitlePriorityGoons;
+                        break;
+                    case RoleKind.Bosses:
+                        entry = SubtitlePriorityBosses;
+                        break;
+                    default:
+                        entry = SubtitlePriorityOther;
+                        break;
+                }
+                return entry != null ? Mathf.Clamp(entry.Value, 0, 100) : 50;
+            }
+            catch
+            {
+                return 50;
+            }
         }
 
         // —— 颜色查找表：[渠道][角色] -> ConfigEntry（首次使用时构建；键集合与原 switch 完全一致）——

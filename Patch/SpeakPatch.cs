@@ -10,10 +10,7 @@ using SubtitleSystem;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using System.Text;
-using System.Text.RegularExpressions;
 using UnityEngine;
 using static Subtitle.Config.Settings;
 
@@ -23,10 +20,6 @@ public static class SubtitlePatch
     // 调试日志源（输出均由 EnableDebugTools / DanmakuDebugVerbose 等开关控制）
     private static readonly ManualLogSource s_Log =
         BepInEx.Logging.Logger.CreateLogSource("Subtitle.Debug");
-    private static Dictionary<string, string> s_UserRoleMapExact;
-    private static List<KeyValuePair<string, string>> s_UserRoleMapPrefix; // key: prefix(lower), value: label
-    private static bool s_UserRoleMapLoaded;
-    private static string s_UserRoleMapPath;
     private static float s_LastZombieSubtitleTime = -999f;
     private static float s_LastZombieDanmakuTime = -999f;
     private static float s_LastZombieWorld3DTime = -999f;
@@ -51,80 +44,6 @@ public static class SubtitlePatch
         return 0.40f;
     }
 
-
-    // 获取 JSONC 路径
-    private static string GetRoleTypeJsoncPath()
-    {
-        if (!string.IsNullOrEmpty(s_UserRoleMapPath)) return s_UserRoleMapPath;
-        try
-        {
-            // BepInEx\plugins\subtitle\locales\ch\RoleType.jsonc
-            var path = Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales", "ch", "RoleType.jsonc");
-            s_UserRoleMapPath = path;
-            return path;
-        }
-        catch { return null; }
-    }
-
-    // 极简字典解析：匹配 "key": "value" 对（不支持嵌套/转义极端场景，但够用）
-    private static Dictionary<string, string> ParseJsoncToDict(string jsonc)
-    {
-        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if (string.IsNullOrEmpty(jsonc)) return dict;
-        string json = JsoncUtils.StripJsonComments(jsonc);
-        var rx = new Regex("\"([^\"]+)\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.Multiline);
-        var m = rx.Matches(json);
-        foreach (Match it in m)
-        {
-            var k = it.Groups[1].Value;
-            var v = it.Groups[2].Value;
-            if (!string.IsNullOrEmpty(k)) dict[k] = v ?? "";
-        }
-        return dict;
-    }
-
-    // 载入用户映射（只做一次；如需热更新可加时间戳判断）
-    private static void EnsureUserRoleMapLoaded()
-    {
-        if (s_UserRoleMapLoaded) return;
-        s_UserRoleMapLoaded = true;
-        s_UserRoleMapExact = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        s_UserRoleMapPrefix = new List<KeyValuePair<string, string>>();
-        try
-        {
-            var path = GetRoleTypeJsoncPath();
-            if (!string.IsNullOrEmpty(path) && File.Exists(path))
-            {
-                var text = File.ReadAllText(path, Encoding.UTF8);
-                var user = ParseJsoncToDict(text);
-                foreach (var kv in user)
-                {
-                    var key = (kv.Key ?? "").Trim();
-                    var val = kv.Value ?? "";
-                    if (key.Length == 0) continue;
-                    if (key[key.Length - 1] == '*')
-                    {
-                        var prefix = key.Substring(0, key.Length - 1).ToLowerInvariant();
-                        s_UserRoleMapPrefix.Add(new KeyValuePair<string, string>(prefix, val));
-                    }
-                    else
-                    {
-                        s_UserRoleMapExact[key] = val;
-                    }
-                }
-                // 可选：日志
-                try { s_Log.LogInfo("[Subtitle] RoleType.jsonc loaded: " + user.Count + " entries"); } catch { }
-            }
-            else
-            {
-                try { s_Log.LogInfo("[Subtitle] RoleType.jsonc not found, using defaults"); } catch { }
-            }
-        }
-        catch (Exception e)
-        {
-            try { s_Log.LogWarning("[Subtitle] load RoleType.jsonc failed: " + e); } catch { }
-        }
-    }
 
     private static string TryGetAccountId(IPlayer p)
     {
@@ -235,30 +154,7 @@ public static class SubtitlePatch
     private static string MapAITypeLabel(string aiTypeRaw)
     {
         if (string.IsNullOrEmpty(aiTypeRaw)) return "ai";
-
-        // 先加载用户映射
-        EnsureUserRoleMapLoaded();
-        // 1) 用户精确映射
-        string mapped;
-        if (s_UserRoleMapExact != null && s_UserRoleMapExact.TryGetValue(aiTypeRaw, out mapped) && !string.IsNullOrEmpty(mapped))
-            return mapped;
-
-        // 2) 用户前缀映射（写法： "followerGluhar*": "Gluhar follower" ）
-        if (s_UserRoleMapPrefix != null && s_UserRoleMapPrefix.Count > 0)
-        {
-            var lower = aiTypeRaw.ToLowerInvariant();
-            for (int i = 0; i < s_UserRoleMapPrefix.Count; i++)
-            {
-                var kv = s_UserRoleMapPrefix[i];
-                if (lower.StartsWith(kv.Key)) return string.IsNullOrEmpty(kv.Value) ? aiTypeRaw : kv.Value;
-            }
-        }
-
-        // 3) 内置默认映射
-        if (SubtitleEnum.DEFAULT_AI_TYPE_LABELS.TryGetValue(aiTypeRaw, out mapped))
-            return mapped;
-
-        return aiTypeRaw; // 找不到映射就用原始 aiType
+        return Settings.GetRoleLabel(aiTypeRaw, aiTypeRaw);
     }
 
     // voiceKey → 标签 的映射函数
@@ -430,7 +326,7 @@ public static class SubtitlePatch
         float clipLength;
         try { clipLength = clip.Length; } catch { clipLength = -1f; }
 
-        // 10) 统一输出管线（Play 路径：丧尸过滤 + 投递前去重）
+        // 10) 统一输出管线（Play 路径在投递前去重，丧尸规则由本机统一应用）
         EmitPhrase(__instance, speakerPlayer, voiceKey, netIdStr, trigger,
             textSub, textDm, textW3d,
             isLocalSpeaker, isFriendly, aiTypeRaw, nameForShow, mainPlayer,
@@ -438,8 +334,7 @@ public static class SubtitlePatch
     }
 
     // —— 统一输出管线：Play（本地）与 PlayDirect（远端复刻）两条路径共用 ——
-    // localPlayPath=true（Play）：启用丧尸过滤/冷却、投递前去重、距离过滤调试日志；
-    // localPlayPath=false（PlayDirect）：调用方已提前去重，且不做丧尸过滤 —— 保持两条路径原有差异
+    // 丧尸显示与冷却始终读取当前客户端配置；localPlayPath 仅区分去重时机与调试日志。
     private static void EmitPhrase(
         BaseSpeaker speakerInstance,
         IPlayer speakerPlayer,
@@ -567,43 +462,35 @@ public static class SubtitlePatch
             }
         }
 
-        // —— 丧尸（不含 infectedtagilla）过滤 & 冷却节流（仅 Play 路径原有此逻辑）——
-        if (localPlayPath)
+        // —— 丧尸（不含 infectedtagilla）过滤 & 冷却节流 ——
+        // Fika 只同步语音事件；每个客户端在这里独立应用自己的三频道设置。
+        var aiLC = (aiTypeRaw ?? "").ToLowerInvariant();
+        bool isZombieNonTagilla = (kind == Settings.RoleKind.Zombie) && (aiLC.IndexOf("tagilla") < 0);
+
+        if (isZombieNonTagilla)
         {
-            var aiLC = (aiTypeRaw ?? "").ToLowerInvariant();
-            bool isZombieNonTagilla = (kind == Settings.RoleKind.Zombie) && (aiLC.IndexOf("tagilla") < 0);
+            float nowUnscaled = Time.unscaledTime;
 
-            if (isZombieNonTagilla)
-            {
-                float nowUnscaled = Time.unscaledTime;
+            if (Settings.SubtitleZombieEnabled != null && !Settings.SubtitleZombieEnabled.Value)
+                allowSubtitle = false;
 
-                if (Settings.SubtitleZombieEnabled != null && !Settings.SubtitleZombieEnabled.Value)
-                {
-                    allowSubtitle = false;
-                    allowWorld3d = false;
-                }
+            int subCd = (Settings.SubtitleZombieCooldownSec != null) ? Settings.SubtitleZombieCooldownSec.Value : 0;
+            if (subCd > 0 && (nowUnscaled - s_LastZombieSubtitleTime) < subCd)
+                allowSubtitle = false;
 
-                int subCd = (Settings.SubtitleZombieCooldownSec != null) ? Settings.SubtitleZombieCooldownSec.Value : 0;
-                if (subCd > 0 && (nowUnscaled - s_LastZombieSubtitleTime) < subCd)
-                {
-                    allowSubtitle = false;
-                    allowWorld3d = false;
-                }
+            if (Settings.DanmakuZombieEnabled != null && !Settings.DanmakuZombieEnabled.Value)
+                allowDanmaku = false;
 
-                if (Settings.DanmakuZombieEnabled != null && !Settings.DanmakuZombieEnabled.Value)
-                    allowDanmaku = false;
+            int dmCd = (Settings.DanmakuZombieCooldownSec != null) ? Settings.DanmakuZombieCooldownSec.Value : 0;
+            if (dmCd > 0 && (nowUnscaled - s_LastZombieDanmakuTime) < dmCd)
+                allowDanmaku = false;
 
-                int dmCd = (Settings.DanmakuZombieCooldownSec != null) ? Settings.DanmakuZombieCooldownSec.Value : 0;
-                if (dmCd > 0 && (nowUnscaled - s_LastZombieDanmakuTime) < dmCd)
-                    allowDanmaku = false;
+            if (Settings.World3DZombieEnabled != null && !Settings.World3DZombieEnabled.Value)
+                allowWorld3d = false;
 
-                if (Settings.World3DZombieEnabled != null && !Settings.World3DZombieEnabled.Value)
-                    allowWorld3d = false;
-
-                int w3dCd = (Settings.World3DZombieCooldownSec != null) ? Settings.World3DZombieCooldownSec.Value : 0;
-                if (w3dCd > 0 && (nowUnscaled - s_LastZombieWorld3DTime) < w3dCd)
-                    allowWorld3d = false;
-            }
+            int w3dCd = (Settings.World3DZombieCooldownSec != null) ? Settings.World3DZombieCooldownSec.Value : 0;
+            if (w3dCd > 0 && (nowUnscaled - s_LastZombieWorld3DTime) < w3dCd)
+                allowWorld3d = false;
         }
 
         // —— 距离文本后缀（仅非本地、且对应通道仍允许时附加）——
@@ -634,8 +521,8 @@ public static class SubtitlePatch
 
             if (Settings.EnableSubtitle.Value && allowSubtitle)
             {
-                SubtitleManager.Instance.AddSubtitle(fullSub, colorSub, dur);
-                if (kind == Settings.RoleKind.Zombie) s_LastZombieSubtitleTime = Time.unscaledTime;
+                SubtitleManager.Instance.AddSubtitle(fullSub, colorSub, dur, kind);
+                if (isZombieNonTagilla) s_LastZombieSubtitleTime = Time.unscaledTime;
             }
 
             if (Settings.EnableDanmaku.Value && allowDanmaku)
@@ -648,12 +535,12 @@ public static class SubtitlePatch
                         : "[Danmaku] -> AddDanmaku | text=\"" + fullDm + "\"");
                 }
                 SubtitleManager.Instance.AddDanmaku(fullDm, colorDm);
-                if (kind == Settings.RoleKind.Zombie) s_LastZombieDanmakuTime = Time.unscaledTime;
+                if (isZombieNonTagilla) s_LastZombieDanmakuTime = Time.unscaledTime;
             }
             if (allowWorld3d && speakerPlayer != null)
             {
                 SubtitleManager.Instance.AddWorld3D(speakerPlayer, fullW3d, colorW3d, dur);
-                if (kind == Settings.RoleKind.Zombie) s_LastZombieWorld3DTime = Time.unscaledTime;
+                if (isZombieNonTagilla) s_LastZombieWorld3DTime = Time.unscaledTime;
             }
         }
         catch (Exception e)
@@ -1342,7 +1229,7 @@ public static class SubtitlePatch
                 float clipLength = -1f;
                 try { if (__instance != null && __instance.Clip != null) clipLength = __instance.Clip.Length; } catch { }
 
-                // 8) 统一输出管线（PlayDirect 路径：已提前去重、不做丧尸过滤）
+                // 8) 统一输出管线（PlayDirect 路径已提前去重，丧尸规则由本机统一应用）
                 EmitPhrase(__instance, speaker, voiceKey, netIdStr, trigger,
                     textSub, textDm, textW3d,
                     false, isFriendly, aiTypeRaw, nameForShow, mainPlayer,

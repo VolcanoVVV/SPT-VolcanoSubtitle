@@ -13,7 +13,7 @@ namespace Subtitle
     /// <summary>
     /// 实验室“广播语音”事件捕获（A方案：白名单拦截）
     /// - 针对 Announcer 队列播放器（QueuePlayer）播放到 announcer_* 系列 AudioClip 时拦截
-    /// - 依据 BepInEx\plugins\subtitle\locales\ch\LabBroadcast.jsonc 做文本映射（支持单剪辑与组合序列）
+    /// - 依据当前界面语言的 LabBroadcast.jsonc 做文本映射，缺失时回退 ch（支持单剪辑与组合序列）
     /// - 同时走字幕与弹幕（由 Setting 开关控制），颜色使用 BroadcastColor
     /// - 提供 Debug 日志：开关由 MapBroadcastDebug 控制
     /// </summary>
@@ -205,9 +205,14 @@ namespace Subtitle
         {
             get
             {
-                // BepInEx\plugins\subtitle\locales\ch\LabBroadcast.jsonc
-                return Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales", "ch", "LabBroadcast.jsonc");
+                return Subtitle.Config.PhraseFilterManager.ResolveLocaleFile("LabBroadcast.jsonc");
             }
+        }
+
+        internal static void ReloadLocaleResources()
+        {
+            if (!s_Initialized) return;
+            LoadMapping();
         }
 
         private static void LoadMapping()

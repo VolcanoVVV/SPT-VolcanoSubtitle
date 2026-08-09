@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using EFT;
 using HarmonyLib;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,14 +12,14 @@ namespace SubtitleSystem
     {
         private const float World3DScaleDefault = 0.01f;
         private const float World3DDynamicPixelsPerUnitDefault = 20f;
-        private const float World3DMaxWidth = 420f;
-        private const float World3DPaddingX = 14f;
-        private const float World3DPaddingY = 8f;
+        private const float World3DMaxWidthDefault = 420f;
+        private const float World3DPaddingXDefault = 14f;
+        private const float World3DPaddingYDefault = 8f;
         private const float World3DFadeInSecDefault = 0.15f;
         private const float World3DFadeOutSecDefault = 0.25f;
         private const int World3DStackMaxLinesDefault = 3;
         private const float World3DStackOffsetYDefault = 0.18f;
-        private const float World3DMaxDurationSec = 20f;
+        private const float World3DMaxDurationSecDefault = 20f;
         private const float World3DHeadOffset = 0.18f;
         private const float World3DBodyOffset = 1.6f;
 
@@ -36,6 +37,14 @@ namespace SubtitleSystem
             public float StackOffsetY;
             public bool FacePlayer;
             public float FaceUpdateInterval;
+            public float BaseScale;
+            public bool DistanceScaleEnabled;
+            public float DistanceScaleReference;
+            public float DistanceScaleMin;
+            public float DistanceScaleMax;
+            public bool SmoothingEnabled;
+            public float PositionSmoothSpeed;
+            public float RotationSmoothSpeed;
         }
         private World3DSettingsSnapshot _w3dSnap;
 
@@ -46,6 +55,14 @@ namespace SubtitleSystem
             _w3dSnap.StackOffsetY = GetWorld3DStackOffsetY();
             _w3dSnap.FacePlayer = ShouldFacePlayer();
             _w3dSnap.FaceUpdateInterval = GetWorld3DFaceUpdateInterval();
+            _w3dSnap.BaseScale = GetWorld3DScale();
+            _w3dSnap.DistanceScaleEnabled = ShouldScaleWorld3DByDistance();
+            _w3dSnap.DistanceScaleReference = GetWorld3DDistanceScaleReference();
+            _w3dSnap.DistanceScaleMin = GetWorld3DDistanceScaleMin();
+            _w3dSnap.DistanceScaleMax = GetWorld3DDistanceScaleMax();
+            _w3dSnap.SmoothingEnabled = ShouldSmoothWorld3D();
+            _w3dSnap.PositionSmoothSpeed = GetWorld3DPositionSmoothSpeed();
+            _w3dSnap.RotationSmoothSpeed = GetWorld3DRotationSmoothSpeed();
         }
 
         // 回收气泡到对象池
@@ -54,6 +71,79 @@ namespace SubtitleSystem
             if (bubble == null || !bubble.IsAlive) return;
             bubble.Deactivate();
             _world3dPool.Enqueue(bubble);
+        }
+
+        private bool ReserveWorld3DCharacterSlot(Transform incomingAnchor)
+        {
+            int maxCharacters = GetWorld3DMaxVisibleCharacters();
+            if (maxCharacters <= 0 || _world3dBubbles.Count < maxCharacters) return true;
+
+            var cam = GetWorld3DCamera();
+            int furthestKey;
+            World3DBubbleGroup furthestGroup;
+            float furthestDistance;
+            if (!TryFindFurthestWorld3DGroup(cam, out furthestKey, out furthestGroup, out furthestDistance))
+                return false;
+
+            if (cam != null && incomingAnchor != null)
+            {
+                float incomingDistance = (incomingAnchor.position - cam.transform.position).sqrMagnitude;
+                if (incomingDistance >= furthestDistance) return false;
+            }
+
+            RecycleWorld3DGroup(furthestKey, furthestGroup);
+            return true;
+        }
+
+        private void TrimWorld3DCharacterLimit()
+        {
+            int maxCharacters = GetWorld3DMaxVisibleCharacters();
+            if (maxCharacters <= 0) return;
+            var cam = GetWorld3DCamera();
+            while (_world3dBubbles.Count > maxCharacters)
+            {
+                int furthestKey;
+                World3DBubbleGroup furthestGroup;
+                float furthestDistance;
+                if (!TryFindFurthestWorld3DGroup(cam, out furthestKey, out furthestGroup, out furthestDistance)) break;
+                RecycleWorld3DGroup(furthestKey, furthestGroup);
+            }
+        }
+
+        private bool TryFindFurthestWorld3DGroup(Camera cam, out int key, out World3DBubbleGroup group, out float distance)
+        {
+            key = 0;
+            group = null;
+            distance = float.MinValue;
+            foreach (var kv in _world3dBubbles)
+            {
+                var current = kv.Value;
+                if (current == null || current.Anchor == null) continue;
+                float currentDistance = cam != null
+                    ? (current.Anchor.position - cam.transform.position).sqrMagnitude
+                    : current.Anchor.position.sqrMagnitude;
+                if (group == null || currentDistance > distance)
+                {
+                    key = kv.Key;
+                    group = current;
+                    distance = currentDistance;
+                }
+            }
+            return group != null;
+        }
+
+        private void RecycleWorld3DGroup(int key, World3DBubbleGroup group)
+        {
+            if (group != null)
+            {
+                for (int i = 0; i < group.Bubbles.Count; i++)
+                {
+                    var bubble = group.Bubbles[i];
+                    if (bubble != null) RecycleWorld3DBubble(bubble);
+                }
+                group.Bubbles.Clear();
+            }
+            _world3dBubbles.Remove(key);
         }
 
         public void AddWorld3D(IPlayer speaker, string text, Color color, float durationSec)
@@ -71,6 +161,7 @@ namespace SubtitleSystem
             World3DBubbleGroup group;
             if (!_world3dBubbles.TryGetValue(key, out group) || group == null || group.Anchor != anchor)
             {
+                if (!ReserveWorld3DCharacterSlot(anchor)) return;
                 group = new World3DBubbleGroup(anchor, baseYOffset);
                 _world3dBubbles[key] = group;
             }
@@ -151,6 +242,7 @@ namespace SubtitleSystem
         public void RefreshWorld3DStyles()
         {
             RefreshWorld3DSnapshot(); // 设置变更时同步刷新快照
+            TrimWorld3DCharacterLimit();
             if (_world3dBubbles.Count == 0) return;
             foreach (var kv in _world3dBubbles)
             {
@@ -235,7 +327,7 @@ namespace SubtitleSystem
             scaler.dynamicPixelsPerUnit = GetWorld3DDynamicPixelsPerUnit();
 
             var rootRt = root.GetComponent<RectTransform>();
-            rootRt.sizeDelta = new Vector2(World3DMaxWidth, 100f);
+            rootRt.sizeDelta = new Vector2(GetWorld3DMaxWidth(), 100f);
 
             var bubbleGo = new GameObject("Bubble", typeof(RectTransform), typeof(Image));
             bubbleGo.transform.SetParent(root.transform, false);
@@ -247,7 +339,7 @@ namespace SubtitleSystem
             var bg = bubbleGo.GetComponent<Image>();
             bg.raycastTarget = false;
 
-            var textGo = new GameObject("Text", typeof(RectTransform), typeof(Text));
+            var textGo = new GameObject("TextLegacy", typeof(RectTransform), typeof(Text));
             textGo.transform.SetParent(bubbleGo.transform, false);
             var textRt = textGo.GetComponent<RectTransform>();
             textRt.anchorMin = new Vector2(0.5f, 0.5f);
@@ -255,14 +347,26 @@ namespace SubtitleSystem
             textRt.pivot = new Vector2(0.5f, 0.5f);
 
             var text = textGo.GetComponent<Text>();
-            Subtitle.Config.Settings.ApplyWorld3DTextOverrides(text);
             text.verticalOverflow = VerticalWrapMode.Overflow;
             text.supportRichText = true;
             text.raycastTarget = false;
 
+            var tmpGo = new GameObject("TextSDF", typeof(RectTransform), typeof(TextMeshProUGUI));
+            tmpGo.transform.SetParent(bubbleGo.transform, false);
+            var tmpRt = tmpGo.GetComponent<RectTransform>();
+            tmpRt.anchorMin = new Vector2(0.5f, 0.5f);
+            tmpRt.anchorMax = new Vector2(0.5f, 0.5f);
+            tmpRt.pivot = new Vector2(0.5f, 0.5f);
+            var tmpText = tmpGo.GetComponent<TextMeshProUGUI>();
+            tmpText.overflowMode = TextOverflowModes.Overflow;
+            tmpText.richText = true;
+            tmpText.raycastTarget = false;
+            tmpGo.SetActive(false);
+
             var group = root.GetComponent<CanvasGroup>();
 
-            var bubble = new World3DBubble(root, rootRt, bubbleRt, bg, textRt, text, group, scaler, canvas, baseYOffset);
+            var bubble = new World3DBubble(root, rootRt, bubbleRt, bg, textRt, text,
+                tmpRt, tmpText, group, scaler, canvas, baseYOffset);
             bubble.ApplyStyle();
             bubble.ApplyOffset(0f, _w3dSnap.ExtraOffsetY);
             return bubble;
@@ -411,6 +515,149 @@ namespace SubtitleSystem
             return World3DScaleDefault;
         }
 
+        private static int GetWorld3DMaxVisibleCharacters()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DMaxVisibleCharacters != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DMaxVisibleCharacters.Value, 0, 50);
+            }
+            catch { }
+            return 0;
+        }
+
+        private static bool ShouldScaleWorld3DByDistance()
+        {
+            try
+            {
+                return Subtitle.Config.Settings.World3DDistanceScaleEnabled != null &&
+                    Subtitle.Config.Settings.World3DDistanceScaleEnabled.Value;
+            }
+            catch { }
+            return false;
+        }
+
+        private static float GetWorld3DDistanceScaleReference()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DDistanceScaleReferenceMeters != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DDistanceScaleReferenceMeters.Value, 2f, 100f);
+            }
+            catch { }
+            return 15f;
+        }
+
+        private static float GetWorld3DDistanceScaleMin()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DDistanceScaleMinMultiplier != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DDistanceScaleMinMultiplier.Value, 0.1f, 1f);
+            }
+            catch { }
+            return 0.6f;
+        }
+
+        private static float GetWorld3DDistanceScaleMax()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DDistanceScaleMaxMultiplier != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DDistanceScaleMaxMultiplier.Value, 1f, 8f);
+            }
+            catch { }
+            return 2.5f;
+        }
+
+        private static bool ShouldPreferWorld3DSdfText()
+        {
+            try
+            {
+                return Subtitle.Config.Settings.World3DPreferSdfText == null ||
+                    Subtitle.Config.Settings.World3DPreferSdfText.Value;
+            }
+            catch { }
+            return true;
+        }
+
+        private static float GetWorld3DMaxWidth()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DMaxWidthPx != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DMaxWidthPx.Value, 120f, 1000f);
+            }
+            catch { }
+            return World3DMaxWidthDefault;
+        }
+
+        private static float GetWorld3DPaddingX()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DPaddingX != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DPaddingX.Value, 0f, 80f);
+            }
+            catch { }
+            return World3DPaddingXDefault;
+        }
+
+        private static float GetWorld3DPaddingY()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DPaddingY != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DPaddingY.Value, 0f, 50f);
+            }
+            catch { }
+            return World3DPaddingYDefault;
+        }
+
+        private static float GetWorld3DMaxDurationSec()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DMaxDurationSec != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DMaxDurationSec.Value, 2f, 60f);
+            }
+            catch { }
+            return World3DMaxDurationSecDefault;
+        }
+
+        private static bool ShouldSmoothWorld3D()
+        {
+            try
+            {
+                return Subtitle.Config.Settings.World3DSmoothingEnabled != null &&
+                    Subtitle.Config.Settings.World3DSmoothingEnabled.Value;
+            }
+            catch { }
+            return false;
+        }
+
+        private static float GetWorld3DPositionSmoothSpeed()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DPositionSmoothSpeed != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DPositionSmoothSpeed.Value, 1f, 40f);
+            }
+            catch { }
+            return 16f;
+        }
+
+        private static float GetWorld3DRotationSmoothSpeed()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DRotationSmoothSpeed != null)
+                    return Mathf.Clamp(Subtitle.Config.Settings.World3DRotationSmoothSpeed.Value, 1f, 40f);
+            }
+            catch { }
+            return 12f;
+        }
+
         private static float GetWorld3DDynamicPixelsPerUnit()
         {
             try
@@ -534,6 +781,7 @@ namespace SubtitleSystem
 
         private sealed class World3DBubble
         {
+            private static int s_LastLoggedRendererMode = -1;
             public Transform Anchor { get; private set; }
             private readonly GameObject _root;
             private readonly RectTransform _rootRt;
@@ -541,6 +789,8 @@ namespace SubtitleSystem
             private readonly Image _bg;
             private readonly RectTransform _textRt;
             private readonly Text _text;
+            private readonly RectTransform _tmpTextRt;
+            private readonly TextMeshProUGUI _tmpText;
             private readonly CanvasGroup _group;
             private readonly CanvasScaler _scaler;
             private readonly Canvas _canvas; // 创建时缓存，避免每帧 GetComponent
@@ -551,14 +801,20 @@ namespace SubtitleSystem
             private float _fadeInEndTime;
             private float _fadeOutStartTime;
             private string _rawText;
+            private Color _textColor = Color.white;
+            private bool _useTMP;
             private float _nextFaceUpdateTime;
+            private Quaternion _targetRotation;
+            private bool _hasTargetRotation;
             private float _lastAlpha = -1f; // 上次写入的透明度，避免重复赋值弄脏 Canvas
+            private float _lastWorldScale = -1f;
 
             public bool Expired { get; private set; }
             public bool IsAlive { get { return _root != null; } } // Unity 假空检查
 
             public World3DBubble(GameObject root, RectTransform rootRt, RectTransform bubbleRt, Image bg,
-                RectTransform textRt, Text text, CanvasGroup group, CanvasScaler scaler, Canvas canvas, float baseYOffset)
+                RectTransform textRt, Text text, RectTransform tmpTextRt, TextMeshProUGUI tmpText,
+                CanvasGroup group, CanvasScaler scaler, Canvas canvas, float baseYOffset)
             {
                 _root = root;
                 _rootRt = rootRt;
@@ -566,12 +822,15 @@ namespace SubtitleSystem
                 _bg = bg;
                 _textRt = textRt;
                 _text = text;
+                _tmpTextRt = tmpTextRt;
+                _tmpText = tmpText;
                 _group = group;
                 _scaler = scaler;
                 _canvas = canvas;
                 _baseYOffset = baseYOffset;
                 Anchor = root != null ? root.transform.parent : null;
                 _nextFaceUpdateTime = 0f;
+                _targetRotation = root != null ? root.transform.rotation : Quaternion.identity;
             }
 
             // 池化复用：重新挂到新锚点
@@ -583,6 +842,9 @@ namespace SubtitleSystem
                 _root.transform.SetParent(anchor, true);
                 _root.transform.position = anchor.position + Vector3.up * (baseYOffset + extraOffsetY);
                 _root.transform.localRotation = Quaternion.identity;
+                _lastWorldScale = -1f;
+                _targetRotation = _root.transform.rotation;
+                _hasTargetRotation = false;
                 if (_canvas != null && cam != null && _canvas.worldCamera != cam)
                     _canvas.worldCamera = cam;
             }
@@ -598,8 +860,7 @@ namespace SubtitleSystem
                 if (_root == null) return;
 
                 _rawText = text;
-                _text.text = ApplyWorld3DWrap(_rawText);
-                _text.color = color;
+                _textColor = color;
 
                 // 每次显示都重应用样式（字体/字号/描边/阴影/背景/换行/分辨率）。
                 // 池化复用的气泡创建时才有样式设置，若不重应用会一直沿用回收前的旧样式
@@ -611,8 +872,8 @@ namespace SubtitleSystem
                 float dur = durationSec;
                 if (float.IsNaN(dur) || float.IsInfinity(dur) || dur <= 0f)
                     dur = 2.5f;
-                else if (dur > World3DMaxDurationSec)
-                    dur = World3DMaxDurationSec;
+                else if (dur > GetWorld3DMaxDurationSec())
+                    dur = GetWorld3DMaxDurationSec();
                 _endTime = now + dur;
                 _fadeInSec = GetWorld3DFadeInSec();
                 _fadeOutSec = GetWorld3DFadeOutSec();
@@ -628,10 +889,28 @@ namespace SubtitleSystem
 
             public void ApplyStyle()
             {
-                if (_text == null) return;
-                Subtitle.Config.Settings.ApplyWorld3DTextOverrides(_text);
-                if (_rawText != null)
-                    _text.text = ApplyWorld3DWrap(_rawText);
+                if (_text == null || _tmpText == null) return;
+                _useTMP = ShouldPreferWorld3DSdfText() &&
+                    Subtitle.Config.Settings.ApplyWorld3DTMPOverrides(_tmpText);
+                // TMP 已成功时不解析旧 Text 字体，避免为隐藏的回退组件创建动态系统字体。
+                if (!_useTMP)
+                    Subtitle.Config.Settings.ApplyWorld3DTextOverrides(_text);
+                int rendererMode = _useTMP ? 1 : 0;
+                if (rendererMode != s_LastLoggedRendererMode)
+                {
+                    s_LastLoggedRendererMode = rendererMode;
+                    Subtitle.Plugin.Log?.LogInfo(_useTMP
+                        ? "[World3D] Text renderer switched to TMP SDF."
+                        : "[World3D] Text renderer switched to legacy UGUI Text fallback.");
+                }
+                _text.gameObject.SetActive(!_useTMP);
+                _tmpText.gameObject.SetActive(_useTMP);
+
+                string displayText = _rawText != null ? ApplyWorld3DWrap(_rawText) : string.Empty;
+                _text.text = displayText;
+                _text.color = _textColor;
+                _tmpText.text = displayText;
+                _tmpText.color = _textColor;
                 ApplyResolution();
                 ApplyBackground();
                 UpdateLayout();
@@ -649,7 +928,22 @@ namespace SubtitleSystem
             {
                 if (_root == null) { Expired = true; return; }
 
-                ApplyOffset(stackOffsetY, snap.ExtraOffsetY);
+                var anchor = Anchor != null ? Anchor : _root.transform.parent;
+                if (anchor != null)
+                {
+                    Vector3 targetPosition = anchor.position + Vector3.up *
+                        (_baseYOffset + snap.ExtraOffsetY + stackOffsetY);
+                    if (snap.SmoothingEnabled)
+                    {
+                        float positionT = 1f - Mathf.Exp(-snap.PositionSmoothSpeed * Time.unscaledDeltaTime);
+                        _root.transform.position = Vector3.Lerp(_root.transform.position, targetPosition, positionT);
+                    }
+                    else
+                    {
+                        _root.transform.position = targetPosition;
+                    }
+                }
+                ApplyDistanceScale(cam, snap);
 
                 if (float.IsNaN(_endTime) || float.IsInfinity(_endTime))
                 {
@@ -688,8 +982,24 @@ namespace SubtitleSystem
                     {
                         var dir = cam.transform.position - _root.transform.position;
                         if (dir.sqrMagnitude > 0.0001f)
-                            _root.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+                        {
+                            _targetRotation = Quaternion.LookRotation(dir, Vector3.up);
+                            _hasTargetRotation = true;
+                        }
                         _nextFaceUpdateTime = interval <= 0f ? now : now + interval;
+                    }
+
+                    if (_hasTargetRotation)
+                    {
+                        if (snap.SmoothingEnabled)
+                        {
+                            float rotationT = 1f - Mathf.Exp(-snap.RotationSmoothSpeed * Time.unscaledDeltaTime);
+                            _root.transform.rotation = Quaternion.Slerp(_root.transform.rotation, _targetRotation, rotationT);
+                        }
+                        else
+                        {
+                            _root.transform.rotation = _targetRotation;
+                        }
                     }
 
                     if (_canvas != null && _canvas.worldCamera != cam)
@@ -702,26 +1012,58 @@ namespace SubtitleSystem
                 if (_root == null) return;
                 float scale = GetWorld3DScale();
                 _root.transform.localScale = new Vector3(-scale, scale, scale);
+                _lastWorldScale = scale;
                 if (_scaler != null)
                     _scaler.dynamicPixelsPerUnit = GetWorld3DDynamicPixelsPerUnit();
             }
 
+            private void ApplyDistanceScale(Camera cam, World3DSettingsSnapshot snap)
+            {
+                if (_root == null) return;
+                float multiplier = 1f;
+                if (snap.DistanceScaleEnabled && cam != null)
+                {
+                    float distance = Vector3.Distance(cam.transform.position, _root.transform.position);
+                    float reference = Mathf.Max(0.01f, snap.DistanceScaleReference);
+                    multiplier = Mathf.Clamp(distance / reference, snap.DistanceScaleMin, snap.DistanceScaleMax);
+                }
+                float scale = Mathf.Max(0.0005f, snap.BaseScale * multiplier);
+                if (Mathf.Abs(scale - _lastWorldScale) < 0.00001f) return;
+                _root.transform.localScale = new Vector3(-scale, scale, scale);
+                _lastWorldScale = scale;
+            }
+
             private void UpdateLayout()
             {
-                float maxWidth = World3DMaxWidth;
-                _textRt.sizeDelta = new Vector2(maxWidth, 0f);
+                float maxWidth = GetWorld3DMaxWidth();
+                RectTransform activeTextRt = _useTMP ? _tmpTextRt : _textRt;
+                activeTextRt.sizeDelta = new Vector2(maxWidth, 0f);
 
-                LayoutRebuilder.ForceRebuildLayoutImmediate(_textRt);
-                float textWidth = Mathf.Min(_text.preferredWidth, maxWidth);
-                float textHeight = _text.preferredHeight;
+                LayoutRebuilder.ForceRebuildLayoutImmediate(activeTextRt);
+                float preferredWidth;
+                float preferredHeight;
+                if (_useTMP)
+                {
+                    _tmpText.ForceMeshUpdate();
+                    Vector2 preferred = _tmpText.GetPreferredValues(_tmpText.text, maxWidth, 0f);
+                    preferredWidth = preferred.x;
+                    preferredHeight = preferred.y;
+                }
+                else
+                {
+                    preferredWidth = _text.preferredWidth;
+                    preferredHeight = _text.preferredHeight;
+                }
+                float textWidth = Mathf.Min(preferredWidth, maxWidth);
+                float textHeight = preferredHeight;
 
                 textWidth = Mathf.Max(10f, textWidth);
                 textHeight = Mathf.Max(10f, textHeight);
 
-                _textRt.sizeDelta = new Vector2(textWidth, textHeight);
+                activeTextRt.sizeDelta = new Vector2(textWidth, textHeight);
 
-                float bubbleW = textWidth + World3DPaddingX * 2f;
-                float bubbleH = textHeight + World3DPaddingY * 2f;
+                float bubbleW = textWidth + GetWorld3DPaddingX() * 2f;
+                float bubbleH = textHeight + GetWorld3DPaddingY() * 2f;
 
                 _bubbleRt.sizeDelta = new Vector2(bubbleW, bubbleH);
                 _rootRt.sizeDelta = new Vector2(bubbleW, bubbleH);

@@ -14,7 +14,7 @@ namespace Subtitle.Utils
     /// 本类负责在 GUI 构建时把 Key → 当前语言的显示名/说明。
     ///
     /// 语言文件：&lt;locales 根目录&gt;/&lt;语言代码&gt;/UI.jsonc
-    /// （locales 根目录 = PhraseFilterManager.LocalesDir 的父目录；ch/en/ru 等语言目录平级）。
+    /// （locales 根目录由 PhraseFilterManager 统一解析；ch/en/ru 等语言目录平级）。
     ///
     /// UI.jsonc 结构（支持 // 与 块注释）：
     /// {
@@ -86,17 +86,14 @@ namespace Subtitle.Utils
 
         // ---------- 路径 ----------
 
-        // locales 根目录：PhraseFilterManager.LocalesDir（…/locales/ch）的父目录；未来的 en/ru 与 ch 平级
+        // locales 根目录由 PhraseFilterManager 统一解析，避免从当前语言目录反推时产生歧义
         internal static string LocaleRootDir
         {
             get
             {
                 try
                 {
-                    string chDir = Subtitle.Config.PhraseFilterManager.LocalesDir;
-                    if (string.IsNullOrEmpty(chDir)) return null;
-                    chDir = chDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                    return Path.GetDirectoryName(chDir);
+                    return Subtitle.Config.PhraseFilterManager.LocaleRootDir;
                 }
                 catch { return null; }
             }
@@ -106,7 +103,9 @@ namespace Subtitle.Utils
         {
             string root = LocaleRootDir;
             if (string.IsNullOrEmpty(root)) return null;
-            return Path.Combine(root, lang, "UI.jsonc");
+            string current = Path.Combine(root, lang, "UI.jsonc");
+            if (File.Exists(current)) return current;
+            return Path.Combine(root, DefaultLanguage, "UI.jsonc");
         }
 
         /// <summary>扫描 locales 根目录下的子目录作为可选语言；无论扫描结果如何都包含 ch 并置顶。</summary>

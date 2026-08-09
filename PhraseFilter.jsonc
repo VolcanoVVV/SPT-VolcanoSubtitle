@@ -1,0 +1,74 @@
+﻿{
+  "Channels": {
+    "Subtitle": {
+      "GlobalTriggers": {
+        "OnAgony": {
+          "Enabled": false
+        },
+        "OnBreath": {
+          "Enabled": false
+        },
+        "OnBeingHurt": {
+          "Enabled": false
+        },
+        "None": {
+          "Enabled": false
+        }
+      },
+      "Voices": {
+        "SectantWarrior": {
+          "Enabled": false,
+          "Triggers": {
+            "CheckHim": {
+              "Enabled": false
+            },
+            "OnFight": {
+              "Enabled": false
+            },
+            "KnifeKill": {
+              "Enabled": false
+            },
+            "OnBeingHurt": {
+              "Enabled": false
+            },
+            "OnDeath": {
+              "Enabled": false
+            }
+          }
+        }
+      }
+    },
+    "Danmaku": {
+      "GlobalTriggers": {
+        "OnAgony": {
+          "Enabled": false
+        },
+        "OnBreath": {
+          "Enabled": false
+        },
+        "OnBeingHurt": {
+          "Enabled": false
+        },
+        "None": {
+          "Enabled": false
+        }
+      }
+    },
+    "World3D": {
+      "GlobalTriggers": {
+        "OnAgony": {
+          "Enabled": false
+        },
+        "OnBreath": {
+          "Enabled": false
+        },
+        "OnBeingHurt": {
+          "Enabled": false
+        },
+        "None": {
+          "Enabled": false
+        }
+      }
+    }
+  }
+}

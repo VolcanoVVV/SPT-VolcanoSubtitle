@@ -9,18 +9,6 @@ namespace SubtitleSystem
 {
     public static class PhraseSubtitle
     {
-        // 目录：.../BepInEx/plugins/subtitle/locales/ch/
-        // 里面放：usec_1.jsonc、bear_1.jsonc、...、default.jsonc
-        // 目录解析统一走 PhraseFilterManager（含多级回退与缓存；正常安装布局下路径不变，懒求值避免静态初始化时序问题）
-        private static string BaseDir
-        {
-            get { return Subtitle.Config.PhraseFilterManager.LocalesDir; }
-        }
-        private static string VoiceDir
-        {
-            get { return Subtitle.Config.PhraseFilterManager.VoicesDir; }
-        }
-
         private const string DefaultVoice = "Default_Voice";
 
         // 缓存：voiceKey -> phrase(trigger) -> (netId | General) -> List<string>
@@ -31,6 +19,11 @@ namespace SubtitleSystem
         {
             // 预加载 default（可选）
             EnsureLoaded(DefaultVoice);
+        }
+
+        public static void InvalidateCache()
+        {
+            _cache.Clear();
         }
 
         /// <summary>
@@ -88,19 +81,12 @@ namespace SubtitleSystem
 
             try
             {
-                var dir = string.Equals(voiceKey, DefaultVoice, StringComparison.OrdinalIgnoreCase) ? BaseDir : VoiceDir;
-                var path = Path.Combine(dir, voiceKey + ".jsonc"); // 例：.../ch/voices/usec_1.jsonc
+                var path = string.Equals(voiceKey, DefaultVoice, StringComparison.OrdinalIgnoreCase)
+                    ? Subtitle.Config.PhraseFilterManager.ResolveLocaleFile(voiceKey + ".jsonc")
+                    : Subtitle.Config.PhraseFilterManager.ResolveVoiceFile(voiceKey);
                 if (!File.Exists(path))
                 {
-                    // 尝试用原大小写（少数人可能把文件名用大写）
-                    var originalCasePath = Path.Combine(dir, voiceKey);
-                    if (!originalCasePath.EndsWith(".jsonc", StringComparison.OrdinalIgnoreCase))
-                        originalCasePath += ".jsonc";
-                    if (!File.Exists(originalCasePath))
-                    {
-                        return false;
-                    }
-                    path = originalCasePath;
+                    return false;
                 }
 
                 var json = File.ReadAllText(path);

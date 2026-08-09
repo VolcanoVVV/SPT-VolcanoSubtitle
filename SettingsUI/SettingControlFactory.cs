@@ -38,15 +38,16 @@ namespace Subtitle.SettingsUI
         internal static bool ShouldSkip(ConfigEntryBase entry)
         {
             if (entry == null || entry.Definition == null) return true;
-            // 带自绘控件（CustomDrawer）的条目是 IMGUI 专用，其功能在 GUI 里已有等价特殊行，不再生成普通控件：
-            // TextPresetName（预设选择行替代）/ SettingsWindowButton（仅入口）/ 台词面板与两个测试按钮 /
-            // 三个 Show*Options 折叠开关（机制已停用）/ 三个 字体资源包选择器。
+            // 图形化设置入口仍是 F12 的 IMGUI 按钮，不在设置窗口内重复生成。
             // 注意："99. 测试" 调试区不再整体跳过，作为普通分类进 GUI（显示名见 SettingsWindow.FormatSectionName）。
             var attrs = GetCmAttributes(entry);
             if (attrs != null && attrs.CustomDrawer != null) return true;
-            // 界面语言由 BuildSpecialRows 的专用语言选择行渲染（实时扫描 locales 目录、显示本地语言名），
-            // 普通列表里不再生成泛型字符串控件
-            if (ReferenceEquals(entry, Settings.UiLanguage)) return true;
+            // 以下值由 BuildSpecialRows 的专用行渲染，普通列表里不再生成泛型字符串控件。
+            if (ReferenceEquals(entry, Settings.UiLanguage) ||
+                ReferenceEquals(entry, Settings.TextPresetName) ||
+                ReferenceEquals(entry, Settings.SubtitleFontBundleName) ||
+                ReferenceEquals(entry, Settings.DanmakuFontBundleName) ||
+                ReferenceEquals(entry, Settings.World3DFontBundleName)) return true;
             return false;
         }
 
