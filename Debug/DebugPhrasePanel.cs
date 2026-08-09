@@ -9,6 +9,14 @@ using Comfort.Common;
 using EFT;
 using BepInEx.Logging;
 using Subtitle.Config;
+<<<<<<< Updated upstream
+=======
+#if GAME_4_1
+using SpeakerClass = EFT.BaseSpeaker;
+#else
+using SpeakerClass = PhraseSpeakerClass;
+#endif
+>>>>>>> Stashed changes
 
 namespace Subtitle.DebugTools
 {
@@ -198,7 +206,7 @@ namespace Subtitle.DebugTools
             AddHeaderRow(_voiceContent, "当前场景说话者（Speaker）");
 
             int sc = 0;
-            BaseSpeaker first = null;
+            SpeakerClass first = null;
 
             foreach (var sp in GetAllSpeakers())
             {
@@ -290,7 +298,7 @@ namespace Subtitle.DebugTools
             return null;
         }
 
-        private static IPlayer GetSpeakerOwner(BaseSpeaker sp)
+        private static IPlayer GetSpeakerOwner(SpeakerClass sp)
         {
             if (sp == null) return null;
 
@@ -307,7 +315,7 @@ namespace Subtitle.DebugTools
             return TryUnwrapPlayer(sp);
         }
 
-        private static string GetSpeakerVoiceKey(BaseSpeaker sp)
+        private static string GetSpeakerVoiceKey(SpeakerClass sp)
         {
             return GetVoiceKey(GetSpeakerOwner(sp));
         }
@@ -331,7 +339,7 @@ namespace Subtitle.DebugTools
             return p.IsAI ? "AI" : "Player";
         }
 
-        private void RefreshClipsForSpeaker(BaseSpeaker speaker)
+        private void RefreshClipsForSpeaker(SpeakerClass speaker)
         {
             UiWidgets.ClearChildren(_clipContent);
             if (speaker == null)
@@ -726,7 +734,7 @@ row.onClick.AddListener(delegate {
         }
 
         // 从 PhraseSpeaker 上找 “EPhraseTrigger -> TagBank” 的映射     
-        private static System.Collections.IDictionary GetTriggerBankMap(BaseSpeaker spk)
+        private static System.Collections.IDictionary GetTriggerBankMap(SpeakerClass spk)
         {
             if (spk == null) return null;
             const System.Reflection.BindingFlags BF =
@@ -774,7 +782,7 @@ row.onClick.AddListener(delegate {
             return null;
         }
 
-        private static void CollectSpeakersFromObject(object obj, System.Collections.Generic.List<BaseSpeaker> dest)
+        private static void CollectSpeakersFromObject(object obj, System.Collections.Generic.List<SpeakerClass> dest)
         {
             if (obj == null) return;
 
@@ -805,7 +813,7 @@ row.onClick.AddListener(delegate {
                 if (v == null || v is string) continue;
 
                 // 直接就是一个 speaker
-                var single = v as BaseSpeaker;
+                var single = v as SpeakerClass;
                 if (single != null)
                 {
                     if (!dest.Contains(single)) dest.Add(single);
@@ -818,9 +826,9 @@ row.onClick.AddListener(delegate {
                 {
                     foreach (System.Collections.DictionaryEntry de in dict)
                     {
-                        var sp1 = de.Key as BaseSpeaker;
+                        var sp1 = de.Key as SpeakerClass;
                         if (sp1 != null && !dest.Contains(sp1)) dest.Add(sp1);
-                        var sp2 = de.Value as BaseSpeaker;
+                        var sp2 = de.Value as SpeakerClass;
                         if (sp2 != null && !dest.Contains(sp2)) dest.Add(sp2);
                     }
                     continue;
@@ -832,7 +840,7 @@ row.onClick.AddListener(delegate {
                 {
                     foreach (object it in en)
                     {
-                        var sp = it as BaseSpeaker;
+                        var sp = it as SpeakerClass;
                         if (sp != null && !dest.Contains(sp)) dest.Add(sp);
                     }
                 }
@@ -840,9 +848,9 @@ row.onClick.AddListener(delegate {
         }
 
         // 取所有在场 PhraseSpeaker（主角 + AI），仅通过反射在 GameWorld / SpeakerManager 上找
-        private static System.Collections.Generic.IEnumerable<BaseSpeaker> GetAllSpeakers()
+        private static System.Collections.Generic.IEnumerable<SpeakerClass> GetAllSpeakers()
         {
-            var result = new System.Collections.Generic.List<BaseSpeaker>();
+            var result = new System.Collections.Generic.List<SpeakerClass>();
             var gw = Comfort.Common.Singleton<GameWorld>.Instance;
             if (gw == null) return result;
 
@@ -864,7 +872,7 @@ row.onClick.AddListener(delegate {
                 {
                     foreach (object o in en)
                     {
-                        var sp = o as BaseSpeaker;
+                        var sp = o as SpeakerClass;
                         if (sp != null && !result.Contains(sp)) result.Add(sp);
                     }
                 }

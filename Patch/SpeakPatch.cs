@@ -13,6 +13,14 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using static Subtitle.Config.Settings;
+<<<<<<< Updated upstream
+=======
+#if GAME_4_1
+using SpeakerClass = EFT.BaseSpeaker;
+#else
+using SpeakerClass = PhraseSpeakerClass;
+#endif
+>>>>>>> Stashed changes
 
 [HarmonyPatch]
 public static class SubtitlePatch
@@ -233,10 +241,10 @@ public static class SubtitlePatch
     }
 
     // 实际说话层：只做 Postfix
-    [HarmonyPatch(typeof(BaseSpeaker), "Play")]
+    [HarmonyPatch(typeof(SpeakerClass), "Play")]
     [HarmonyPostfix]
     public static void PhraseSpeakerPlayPostfix(
-        BaseSpeaker __instance,
+        SpeakerClass __instance,
         EPhraseTrigger trigger,
         ETagStatus tags,
         bool demand,
@@ -336,7 +344,7 @@ public static class SubtitlePatch
     // —— 统一输出管线：Play（本地）与 PlayDirect（远端复刻）两条路径共用 ——
     // 丧尸显示与冷却始终读取当前客户端配置；localPlayPath 仅区分去重时机与调试日志。
     private static void EmitPhrase(
-        BaseSpeaker speakerInstance,
+        SpeakerClass speakerInstance,
         IPlayer speakerPlayer,
         string voiceKey,
         string netIdStr,
@@ -552,7 +560,7 @@ public static class SubtitlePatch
     }
 
     // ========== 通过 BaseSpeaker.Id 直连 GameWorld 的 ProfileId→Player 映射 ==========
-    private static IPlayer TryResolveByProfileMap(BaseSpeaker speaker)
+    private static IPlayer TryResolveByProfileMap(SpeakerClass speaker)
     {
         try
         {
@@ -631,7 +639,7 @@ public static class SubtitlePatch
     private static class SpeakerResolver
     {
         // A. 强解析：从 Speaker 的常见 Owner/Player 成员取 IPlayer
-        public static IPlayer TryResolveStrong(BaseSpeaker sp)
+        public static IPlayer TryResolveStrong(SpeakerClass sp)
         {
             if (sp == null) return null;
             try
@@ -671,7 +679,7 @@ public static class SubtitlePatch
         }
 
         // B. 兜底：枚举玩家列表，比较“玩家的 Speaker 与当前实例是否同一引用”，再比 Speaker.Id
-        public static IPlayer TryResolveFallback(BaseSpeaker sp)
+        public static IPlayer TryResolveFallback(SpeakerClass sp)
         {
             if (sp == null) return null;
             try
@@ -730,7 +738,7 @@ public static class SubtitlePatch
         }
 
         // C. 兜底2：通过 TrackTransform 的根对象去比对玩家的 transform.root（极端情况下使用）
-        private static IPlayer TryResolveByTrackRoot(BaseSpeaker sp)
+        private static IPlayer TryResolveByTrackRoot(SpeakerClass sp)
         {
             try
             {
@@ -820,7 +828,7 @@ public static class SubtitlePatch
         try
         {
             // 强类型：BaseSpeaker.Id 是公开属性
-            var bs = spkObj as BaseSpeaker;
+            var bs = spkObj as SpeakerClass;
             if (bs != null) return bs.Id;
 
             var tr = Traverse.Create(spkObj);
@@ -839,7 +847,7 @@ public static class SubtitlePatch
     }
 
     // —— 语音事件去重：long 复合键，避免每条语音分配字符串 key ——
-    private static bool SuppressDuplicate(BaseSpeaker speaker, string netIdStr, EPhraseTrigger trigger)
+    private static bool SuppressDuplicate(SpeakerClass speaker, string netIdStr, EPhraseTrigger trigger)
     {
         int spkId = SafeGetSpeakerIdFromObj(speaker);
         if (spkId == 0) return false;
@@ -905,7 +913,7 @@ public static class SubtitlePatch
 
     // —— 兼容 IPlayer 的角色标签 ——
     // aiTypeRaw / displayName / voiceKey / isFriend 由调用方每事件解析一次后传入复用
-    private static string GetRoleTagFromPlayer(IPlayer p, Settings.Channel ch, BaseSpeaker spk,
+    private static string GetRoleTagFromPlayer(IPlayer p, Settings.Channel ch, SpeakerClass spk,
         string aiTypeRaw, string displayName, string voiceKey, bool isFriend)
     {
         if (p == null) return "未知";
@@ -995,7 +1003,7 @@ public static class SubtitlePatch
         }
     }
 
-    private static string ResolveVoiceKeySmart(IPlayer ip, BaseSpeaker speaker)
+    private static string ResolveVoiceKeySmart(IPlayer ip, SpeakerClass speaker)
     {
         // 本地玩家与 AI/观察对象顺序一致：先试档案多路径，再退回说话器
         string key = TryVoiceKeyFromProfile(ip);
@@ -1046,7 +1054,7 @@ public static class SubtitlePatch
     }
 
     // 从 BaseSpeaker 里拿（不同版本字段名可能不同）
-    private static string TryVoiceKeyFromSpeaker(BaseSpeaker spk)
+    private static string TryVoiceKeyFromSpeaker(SpeakerClass spk)
     {
         if (spk == null) return null;
 
@@ -1174,10 +1182,10 @@ public static class SubtitlePatch
     // ========== 正式补丁：统一捕捉“远端复刻语音”的播放入口 ==========
     // Fika 在对端复刻时会调用游戏本体的 BaseSpeaker.PlayDirect(trigger, index)
     // 单机/本地玩家仍由 Play(...) 后缀负责；这里仅处理“非本地玩家”，避免重复
-    [HarmonyPatch(typeof(BaseSpeaker), "PlayDirect")]
+    [HarmonyPatch(typeof(SpeakerClass), "PlayDirect")]
     internal static class Subtitle_PlayDirectPatch
     {
-        static void Postfix(BaseSpeaker __instance, EPhraseTrigger trigger, int index)
+        static void Postfix(SpeakerClass __instance, EPhraseTrigger trigger, int index)
         {
             try
             {
