@@ -1,5 +1,6 @@
-﻿
+
 using Newtonsoft.Json.Linq;
+using Subtitle.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,6 +31,14 @@ namespace Subtitle.Config
             new Dictionary<string, Dictionary<string, List<string>>>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<string, JObject> s_voiceJsonCache =
             new Dictionary<string, JObject>(StringComparer.OrdinalIgnoreCase);
+        // 已解析的声线文件路径缓存：voiceKey -> 磁盘路径（仅缓存“存在”的结果，缺失时下次仍重新探测）
+        private static readonly Dictionary<string, string> s_voicePathCache =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // locales 目录解析结果缓存（目录消失时自动失效重解析）
+        private static string s_cachedLocalesDir;
+        // voices 子目录解析结果缓存（随 locales 目录失效而失效）
+        private static string s_cachedVoicesDir;
+        private static string s_cachedVoicesDirBase;
 
         internal static string CurrentPresetName
         {
@@ -61,35 +70,6 @@ namespace Subtitle.Config
             }
         }
 
-        internal static List<string> ListPresets()
-        {
-            List<string> list = new List<string>();
-            try
-            {
-                string dir = GetLocalesDir();
-                if (Directory.Exists(dir))
-                {
-                    string[] files = Directory.GetFiles(dir, "*" + PresetFileExtension, SearchOption.TopDirectoryOnly);
-                    for (int i = 0; i < files.Length; i++)
-                    {
-                        string path = files[i];
-                        if (!IsPhraseFilterPresetFile(path)) continue;
-                        string name = Path.GetFileNameWithoutExtension(path);
-                        if (string.IsNullOrEmpty(name)) continue;
-                        if (!ListContainsIgnoreCase(list, name))
-                            list.Add(name);
-                    }
-                }
-            }
-            catch { }
-
-            if (!ListContainsIgnoreCase(list, DefaultPresetName))
-                list.Insert(0, DefaultPresetName);
-
-            list.Sort(StringComparer.OrdinalIgnoreCase);
-            return list;
-        }
-
         internal static bool TryLoadPreset(string name)
         {
             try
@@ -99,7 +79,7 @@ namespace Subtitle.Config
                     return false;
 
                 string json = File.ReadAllText(path, Encoding.UTF8);
-                json = StripJsonComments(json);
+                json = JsoncUtils.StripJsonComments(json);
                 JObject root = JObject.Parse(json);
                 JObject channelsObj = root["Channels"] as JObject;
 
@@ -503,7 +483,7 @@ namespace Subtitle.Config
             try
             {
                 string json = File.ReadAllText(path, Encoding.UTF8);
-                json = StripJsonComments(json);
+                json = JsoncUtils.StripJsonComments(json);
                 return JObject.Parse(json);
             }
             catch
@@ -511,7 +491,7 @@ namespace Subtitle.Config
                 try
                 {
                     string json = File.ReadAllText(path, Encoding.Default);
-                    json = StripJsonComments(json);
+                    json = JsoncUtils.StripJsonComments(json);
                     return JObject.Parse(json);
                 }
                 catch { return null; }
@@ -520,12 +500,30 @@ namespace Subtitle.Config
 
         private static JObject GetVoiceRoot(string voiceKey)
         {
-            string path = GetVoicePath(voiceKey);
-            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+            if (string.IsNullOrEmpty(voiceKey)) return null;
+
+            // 先查路径缓存，命中则跳过一切磁盘探测
+            string path;
+            if (!s_voicePathCache.TryGetValue(voiceKey, out path) || string.IsNullOrEmpty(path))
+            {
+                path = GetVoicePath(voiceKey);
+                if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+                s_voicePathCache[voiceKey] = path;
+            }
+
+            return GetVoiceJsonByPath(path);
+        }
+
+        // 供外部（设置面板“随机测试”等）按路径复用同一份 JSON 缓存
+        internal static JObject GetVoiceJsonByPath(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
 
             JObject cached;
             if (s_voiceJsonCache.TryGetValue(path, out cached))
                 return cached;
+
+            if (!File.Exists(path)) return null;
 
             JObject root = LoadVoiceJson(path);
             if (root != null)
@@ -658,11 +656,27 @@ namespace Subtitle.Config
         private static string GetVoicesDir()
         {
             string baseDir = GetLocalesDir();
+            if (s_cachedVoicesDir != null &&
+                string.Equals(s_cachedVoicesDirBase, baseDir, StringComparison.OrdinalIgnoreCase))
+                return s_cachedVoicesDir;
+
             string lower = Path.Combine(baseDir, "voices");
-            if (Directory.Exists(lower)) return lower;
             string upper = Path.Combine(baseDir, "Voices");
-            if (Directory.Exists(upper)) return upper;
-            return lower;
+            string resolved = Directory.Exists(lower) ? lower : (Directory.Exists(upper) ? upper : lower);
+            s_cachedVoicesDir = resolved;
+            s_cachedVoicesDirBase = baseDir;
+            return resolved;
+        }
+
+        // 对外暴露解析好的目录（全项目唯一来源，供 Settings/PhraseSubtitle 复用）
+        internal static string LocalesDir
+        {
+            get { return GetLocalesDir(); }
+        }
+
+        internal static string VoicesDir
+        {
+            get { return GetVoicesDir(); }
         }
 
         private static PhraseFilterPreset ParsePreset(JObject root)
@@ -920,6 +934,16 @@ namespace Subtitle.Config
 
         private static string GetLocalesDir()
         {
+            // 缓存命中且目录仍存在时直接返回，避免每次调用都做一轮 Directory.Exists 探测
+            if (!string.IsNullOrEmpty(s_cachedLocalesDir) && Directory.Exists(s_cachedLocalesDir))
+                return s_cachedLocalesDir;
+
+            s_cachedLocalesDir = ResolveLocalesDir();
+            return s_cachedLocalesDir;
+        }
+
+        private static string ResolveLocalesDir()
+        {
             List<string> candidates = new List<string>();
             string pluginPath = BepInEx.Paths.PluginPath;
             if (!string.IsNullOrEmpty(pluginPath))
@@ -971,11 +995,6 @@ namespace Subtitle.Config
             return existing ?? (candidates.Count > 0 ? candidates[0] : Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales", "ch"));
         }
 
-        private static string GetPresetPath()
-        {
-            return GetPresetPath(DefaultPresetName);
-        }
-
         private static string GetPresetPath(string name)
         {
             if (!string.IsNullOrEmpty(name))
@@ -1009,28 +1028,6 @@ namespace Subtitle.Config
             return name;
         }
 
-        private static bool IsPhraseFilterPresetFile(string path)
-        {
-            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
-            try
-            {
-                string json = File.ReadAllText(path, Encoding.UTF8);
-                json = StripJsonComments(json);
-                JObject root = JObject.Parse(json);
-                if (root == null) return false;
-                if (root["Channels"] is JObject) return true;
-                if (root["GlobalTriggers"] is JObject) return true;
-                if (root["Voices"] is JObject) return true;
-                foreach (JProperty prop in root.Properties())
-                {
-                    if (string.Equals(prop.Name, "DefaultAllow", StringComparison.OrdinalIgnoreCase))
-                        return true;
-                }
-            }
-            catch { }
-            return false;
-        }
-
         private static void EnsureDefaultIgnoredTriggers(PhraseFilterPreset preset)
         {
             if (preset == null) return;
@@ -1058,42 +1055,6 @@ namespace Subtitle.Config
                     return true;
             }
             return false;
-        }
-
-        private static string StripJsonComments(string src)
-        {
-            if (string.IsNullOrEmpty(src)) return src;
-            StringBuilder sb = new StringBuilder(src.Length);
-            bool inStr = false;
-            for (int i = 0; i < src.Length; i++)
-            {
-                char c = src[i];
-                if (c == '"')
-                {
-                    bool escaped = (i > 0 && src[i - 1] == '\\');
-                    if (!escaped) inStr = !inStr;
-                    sb.Append(c);
-                }
-                else if (!inStr && c == '/' && i + 1 < src.Length)
-                {
-                    char n = src[i + 1];
-                    if (n == '/')
-                    {
-                        i += 2;
-                        while (i < src.Length && src[i] != '\n') i++;
-                        sb.Append('\n');
-                    }
-                    else if (n == '*')
-                    {
-                        i += 2;
-                        while (i + 1 < src.Length && !(src[i] == '*' && src[i + 1] == '/')) i++;
-                        i++;
-                    }
-                    else sb.Append(c);
-                }
-                else sb.Append(c);
-            }
-            return sb.ToString();
         }
 
         private static bool ListContainsIgnoreCase(List<string> list, string value)

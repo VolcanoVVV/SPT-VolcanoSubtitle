@@ -1,4 +1,4 @@
-﻿using EFT;
+using EFT;
 using HarmonyLib;
 using SPT.Reflection.Patching;
 using Subtitle.Utils;
@@ -36,6 +36,8 @@ namespace Subtitle.Patch
             Subtitle.Utils.SpeakerIndex.RemovePlayer(iPlayer);
             if (iPlayer.IsYourPlayer)
             {
+                // 本地玩家离场 = 对局结束，清掉友军判定的 GroupId 缓存
+                Subtitle.Utils.FriendlyUtils.InvalidateMainPlayerCache();
                 Plugin.Instance.DestroySubtitle();
                 Logger.LogDebug("Player unregistered. Subtitle system cleaned up.");
             }

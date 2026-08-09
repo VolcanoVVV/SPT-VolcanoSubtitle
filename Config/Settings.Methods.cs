@@ -1,4 +1,4 @@
-﻿// 文件：Subtitle/Config/Settings.Methods.cs
+// 文件：Subtitle/Config/Settings.Methods.cs
 using BepInEx.Configuration;
 using Newtonsoft.Json.Linq;
 using Subtitle.Utils;
@@ -19,12 +19,10 @@ namespace Subtitle.Config
         private static float s_PresetUiHintUntil;
         private static GUIStyle s_HintStyleGreen;
 
-        // —— 展开/收缩：由主开关控制可见性 —— //
+        // —— 展开/收缩：折叠目标列表仍由 Reg 填充（fold 机制已停用，列表保留但不参与可见性控制） —— //
         private static readonly List<ConfigEntryBase> s_SubtitleFoldTargets = new List<ConfigEntryBase>();
         private static readonly List<ConfigEntryBase> s_DanmakuFoldTargets = new List<ConfigEntryBase>();
         private static readonly List<ConfigEntryBase> s_World3DFoldTargets = new List<ConfigEntryBase>();
-        private static readonly Dictionary<ConfigEntryBase, bool?> s_FoldBrowsableBackup =
-            new Dictionary<ConfigEntryBase, bool?>();
 
         // ★ 新增：固定占位 & 保存 UI 的状态
         private const float PRESET_HINT_MIN_HEIGHT = 22f;
@@ -43,7 +41,21 @@ namespace Subtitle.Config
         private static readonly Dictionary<ConfigEntryBase, string> s_FontBundleSelectionValue =
             new Dictionary<ConfigEntryBase, string>();
 
-        // ① 共享的写入/读取动作表
+        // —— 批量应用预设时的刷新抑制：批量期间只记录受影响子系统，结束后每个子系统只刷新一次 ——
+        private static bool s_BatchApplying;
+        private static readonly List<Action> s_BatchPendingRefreshes = new List<Action>();
+
+        // —— ConfigurationManager 反射缓存：折叠开关每次都会触发刷新，避免每次都全程序集扫描 ——
+        private static Type s_CmType;
+        private static object s_CmInstance;
+        private static MethodInfo s_CmRefreshMethod;
+        private static object[] s_CmRefreshArgs;
+
+        // ConfigEntryBase.Description 的私有 BackingField（启动时上百次调用，只反射一次）
+        private static readonly FieldInfo s_ConfigEntryDescriptionField =
+            typeof(ConfigEntryBase).GetField("<Description>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        // ① 共享的写入/读取动作表（由 Setting.cs Init 里的 Reg 在 Bind 时统一注册填充）
         private static readonly List<Action<JObject>> s_SnapshotWriters = new List<Action<JObject>>();
         private static readonly List<Action<JObject>> s_SnapshotReaders = new List<Action<JObject>>();
 
@@ -93,24 +105,6 @@ namespace Subtitle.Config
             if (e == null) return;
             s_SnapshotWriters.Add(S => { S[key] = e.Value ?? ""; });
             s_SnapshotReaders.Add(S => { var t = PickKey(S, key); if (t != null) try { e.Value = t.Value<string>(); } catch { } });
-        }
-        private static void RegEnum<T>(string key, BepInEx.Configuration.ConfigEntry<T> e) where T : struct, IConvertible
-        {
-            if (e == null) return;
-            s_SnapshotWriters.Add(S => { S[key] = e.Value.ToString(); });
-            s_SnapshotReaders.Add(S =>
-            {
-                var t = PickKey(S, key);
-                if (t == null) return;
-                try
-                {
-                    var s = t.Value<string>();
-                    T v;
-                    if (Enum.TryParse<T>(s, true, out v))
-                        e.Value = v;
-                }
-                catch { }
-            });
         }
         private static void RegCsv(string key, BepInEx.Configuration.ConfigEntry<string> e)
         {
@@ -188,6 +182,40 @@ namespace Subtitle.Config
                 }
                 catch { }
             });
+        }
+
+        // ⑤ 统一快照注册入口：由 Setting.cs 的 Reg 在 Bind 时调用，按 T 的实际类型分发到上面的注册器
+        // enum 类型在这里内联处理（存枚举名，读取时忽略大小写 TryParse，行为与原 RegEnum 一致）
+        private static void RegSnapshot<T>(string key, BepInEx.Configuration.ConfigEntry<T> e, bool csv)
+        {
+            if (e == null || string.IsNullOrEmpty(key)) return;
+            var t = typeof(T);
+            if (t == typeof(bool)) { RegBool(key, (BepInEx.Configuration.ConfigEntry<bool>)(object)e); return; }
+            if (t == typeof(int)) { RegInt(key, (BepInEx.Configuration.ConfigEntry<int>)(object)e); return; }
+            if (t == typeof(float)) { RegFloat(key, (BepInEx.Configuration.ConfigEntry<float>)(object)e); return; }
+            if (t == typeof(string))
+            {
+                if (csv) RegCsv(key, (BepInEx.Configuration.ConfigEntry<string>)(object)e);
+                else RegStr(key, (BepInEx.Configuration.ConfigEntry<string>)(object)e);
+                return;
+            }
+            if (t == typeof(Color)) { RegColor(key, (BepInEx.Configuration.ConfigEntry<Color>)(object)e); return; }
+            if (t.IsEnum)
+            {
+                s_SnapshotWriters.Add(S => { S[key] = e.Value.ToString(); });
+                s_SnapshotReaders.Add(S =>
+                {
+                    var tok = PickKey(S, key);
+                    if (tok == null) return;
+                    try
+                    {
+                        var s = tok.Value<string>();
+                        // net471 没有忽略大小写的 Enum.TryParse(Type,…) 重载，用 Parse + try/catch 等价实现
+                        if (!string.IsNullOrEmpty(s)) e.Value = (T)Enum.Parse(t, s, true);
+                    }
+                    catch { }
+                });
+            }
         }
 
         private static void ShowPresetUiHint(string msg, float seconds = 2f)
@@ -320,19 +348,6 @@ namespace Subtitle.Config
             }
         }
 
-        private static string MapVoiceKeyLabelLocal(string vk)
-        {
-            if (string.IsNullOrEmpty(vk)) return "Voice";
-            string mapped;
-            EnsureUserRoleMapLoaded();
-            if (s_UserRoleMapExact != null && s_UserRoleMapExact.TryGetValue(vk, out mapped) && !string.IsNullOrEmpty(mapped))
-                return mapped;
-            if (SubtitleEnum.DEFAULT_VOICE_KEY_LABELS.TryGetValue(vk, out mapped) && !string.IsNullOrEmpty(mapped))
-                return mapped;
-            try { return vk.Replace('_', '-').ToUpperInvariant(); } catch { return "Voice"; }
-        }
-
-
         private static void ScanPresets(bool resetSelectionToCurrent)
         {
             try
@@ -397,302 +412,34 @@ namespace Subtitle.Config
             }
         }
 
-        // ===================== 展开/收缩（Browsable） =====================
-        private static void RegisterFoldBindings()
+        // ===================== F12 精简：只保留两个入口 =====================
+        // 设置项已全部收进图形化设置界面，ConfigurationManager(F12) 只显示「图形化设置界面」按钮和热键。
+        // 原 展开/收缩（fold）机制已停用：Show*Options 三个开关仍保持绑定（兼容旧 cfg），
+        // 但不再挂 SettingChanged 监听、不再改任何条目的 Browsable。
+        private static void ApplySlimConfigurationManagerVisibility()
         {
-            BuildFoldTargets();
+            if (ConfigEntries == null) return;
+            for (int i = 0; i < ConfigEntries.Count; i++)
+            {
+                var entry = ConfigEntries[i];
+                if (entry == null) continue;
 
-            ApplyFoldState(ShowSubtitleOptions == null || ShowSubtitleOptions.Value, s_SubtitleFoldTargets);
-            ApplyFoldState(ShowDanmakuOptions == null || ShowDanmakuOptions.Value, s_DanmakuFoldTargets);
-            ApplyFoldState(ShowWorld3DOptions == null || ShowWorld3DOptions.Value, s_World3DFoldTargets);
+                var attrs = GetCmAttributes(entry);
+                if (attrs == null) continue;
 
-            if (ShowSubtitleOptions != null)
-                ShowSubtitleOptions.SettingChanged += (s, e) => ApplyFoldState(ShowSubtitleOptions.Value, s_SubtitleFoldTargets);
-            if (ShowDanmakuOptions != null)
-                ShowDanmakuOptions.SettingChanged += (s, e) => ApplyFoldState(ShowDanmakuOptions.Value, s_DanmakuFoldTargets);
-            if (ShowWorld3DOptions != null)
-                ShowWorld3DOptions.SettingChanged += (s, e) => ApplyFoldState(ShowWorld3DOptions.Value, s_World3DFoldTargets);
-        }
+                bool keep = ReferenceEquals(entry, SettingsWindowButton) ||
+                            ReferenceEquals(entry, SettingsWindowHotkey);
+                attrs.Browsable = keep;
+            }
 
-        private static void BuildFoldTargets()
-        {
-            s_SubtitleFoldTargets.Clear();
-            s_DanmakuFoldTargets.Clear();
-            s_World3DFoldTargets.Clear();
-
-            // TODO: 在此添加需要被 EnableSubtitle 控制显示/隐藏的选项
-            // AddFoldTarget(s_SubtitleFoldTargets, SubtitleShowRoleTag);
-            // AddFoldTarget(s_SubtitleFoldTargets, SubtitleShowPmcName);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShowRoleTag);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShowPmcName);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShowScavName);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitlePlayerSelfPronoun);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleTeammateSelfPronoun);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleMaxDistanceMeters);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShowDistance);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleDisplayDelaySec);
-            AddFoldTarget(s_SubtitleFoldTargets, EnableMapBroadcastSubtitle);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleZombieEnabled);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleZombieCooldownSec);
-
-            // —— Subtitle - Advanced ——//
-            // 字体
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleFontBundleName);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleFontFamilyCsv);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleFontSize);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleFontBold);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleFontItalic);
-
-            // 文本对齐 & 换行
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleAlignment);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleWrap);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleWrapLength);
-
-            // 描边
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleOutlineEnabled);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleOutlineColor);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleOutlineDistX);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleOutlineDistY);
-
-            // 阴影
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShadowEnabled);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShadowColor);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShadowDistX);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShadowDistY);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleShadowUseGraphicAlpha);
-
-            // 布局（LayoutSpec）
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleLayoutAnchor);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleLayoutOffsetX);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleLayoutOffsetY);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleLayoutSafeArea);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleLayoutMaxWidthPercent);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleLayoutLineSpacing);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleLayoutOverrideAlign);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleLayoutStackOffsetPercent);
-
-            // 背景（BackgroundSpec）
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgEnabled);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgFit);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgColor);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgPaddingX);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgPaddingY);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgMarginY);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgSprite);
-
-            // 背景阴影
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgShadowEnabled);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgShadowColor);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgShadowDistX);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgShadowDistY);
-            AddFoldTarget(s_SubtitleFoldTargets, SubtitleBgShadowUseGraphicAlpha);
-
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Player);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Teammate);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_PmcBear);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_PmcUsec);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Scav);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Raider);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Rogue);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Cultist);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_BossFollower);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Zombie);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Goons);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_Bosses);
-            AddFoldTarget(s_SubtitleFoldTargets, SubRole_LabAnnouncer);
-
-            // ===== 颜色 · 正文颜色（字幕） =====
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Player);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Teammate);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_PmcBear);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_PmcUsec);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Scav);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Raider);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Rogue);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Cultist);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_BossFollower);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Zombie);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Goons);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_Bosses);
-            AddFoldTarget(s_SubtitleFoldTargets, SubText_LabAnnouncer);
-
-            // TODO: 在此添加需要被 EnableDanmaku 控制显示/隐藏的选项
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuLanes);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuSpeed);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuMinGapPx);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuSpawnDelaySec);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuFontSize);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuTopOffsetPercent);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuAreaMaxPercent);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShowRoleTag);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShowPmcName);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShowScavName);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuPlayerSelfPronoun);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuTeammateSelfPronoun);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuMaxDistanceMeters);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShowDistance);
-            AddFoldTarget(s_DanmakuFoldTargets, EnableMapBroadcastDanmaku);
-
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuZombieEnabled);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuZombieCooldownSec);
-
-            // —— Danmaku - Advanced —— //
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuFontBundleName);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuFontFamilyCsv);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuFontBold);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuFontItalic);
-
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuOutlineEnabled);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuOutlineColor);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuOutlineDistX);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuOutlineDistY);
-
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShadowEnabled);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShadowColor);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShadowDistX);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShadowDistY);
-            AddFoldTarget(s_DanmakuFoldTargets, DanmakuShadowUseGraphicAlpha);
-
-            // ===== 颜色 · 角色名颜色（弹幕） =====
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Player);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Teammate);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_PmcBear);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_PmcUsec);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Scav);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Raider);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Rogue);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Cultist);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_BossFollower);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Zombie);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Goons);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_Bosses);
-            AddFoldTarget(s_DanmakuFoldTargets, DmRole_LabAnnouncer);
-
-            // ===== 颜色 · 正文颜色（弹幕） =====
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Player);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Teammate);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_PmcBear);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_PmcUsec);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Scav);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Raider);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Rogue);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Cultist);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_BossFollower);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Zombie);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Goons);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_Bosses);
-            AddFoldTarget(s_DanmakuFoldTargets, DmText_LabAnnouncer);
-
-            // —— World3D —— //
-            AddFoldTarget(s_World3DFoldTargets, World3DShowRoleTag);
-            AddFoldTarget(s_World3DFoldTargets, World3DShowPmcName);
-            AddFoldTarget(s_World3DFoldTargets, World3DShowScavName);
-            AddFoldTarget(s_World3DFoldTargets, World3DPlayerSelfPronoun);
-            AddFoldTarget(s_World3DFoldTargets, World3DTeammateSelfPronoun);
-            AddFoldTarget(s_World3DFoldTargets, World3DMaxDistanceMeters);
-            AddFoldTarget(s_World3DFoldTargets, World3DShowDistance);
-            AddFoldTarget(s_World3DFoldTargets, World3DDisplayDelaySec);
-            AddFoldTarget(s_World3DFoldTargets, World3DVerticalOffsetY);
-            AddFoldTarget(s_World3DFoldTargets, World3DFacePlayer);
-            AddFoldTarget(s_World3DFoldTargets, World3DBGEnabled);
-            AddFoldTarget(s_World3DFoldTargets, World3DBGColor);
-            AddFoldTarget(s_World3DFoldTargets, World3DShowSelf);
-            AddFoldTarget(s_World3DFoldTargets, World3DZombieEnabled);
-            AddFoldTarget(s_World3DFoldTargets, World3DZombieCooldownSec);
-
-            // —— World3D - Advanced —— //
-            AddFoldTarget(s_World3DFoldTargets, World3DFontBundleName);
-            AddFoldTarget(s_World3DFoldTargets, World3DFontFamilyCsv);
-            AddFoldTarget(s_World3DFoldTargets, World3DFontSize);
-            AddFoldTarget(s_World3DFoldTargets, World3DFontBold);
-            AddFoldTarget(s_World3DFoldTargets, World3DFontItalic);
-            AddFoldTarget(s_World3DFoldTargets, World3DAlignment);
-            AddFoldTarget(s_World3DFoldTargets, World3DWrap);
-            AddFoldTarget(s_World3DFoldTargets, World3DWrapLength);
-            AddFoldTarget(s_World3DFoldTargets, World3DWorldScale);
-            AddFoldTarget(s_World3DFoldTargets, World3DDynamicPixelsPerUnit);
-            AddFoldTarget(s_World3DFoldTargets, World3DFaceUpdateIntervalSec);
-            AddFoldTarget(s_World3DFoldTargets, World3DStackMaxLines);
-            AddFoldTarget(s_World3DFoldTargets, World3DStackOffsetY);
-            AddFoldTarget(s_World3DFoldTargets, World3DFadeInSec);
-            AddFoldTarget(s_World3DFoldTargets, World3DFadeOutSec);
-            AddFoldTarget(s_World3DFoldTargets, World3DOutlineEnabled);
-            AddFoldTarget(s_World3DFoldTargets, World3DOutlineColor);
-            AddFoldTarget(s_World3DFoldTargets, World3DOutlineDistX);
-            AddFoldTarget(s_World3DFoldTargets, World3DOutlineDistY);
-            AddFoldTarget(s_World3DFoldTargets, World3DShadowEnabled);
-            AddFoldTarget(s_World3DFoldTargets, World3DShadowColor);
-            AddFoldTarget(s_World3DFoldTargets, World3DShadowDistX);
-            AddFoldTarget(s_World3DFoldTargets, World3DShadowDistY);
-            AddFoldTarget(s_World3DFoldTargets, World3DShadowUseGraphicAlpha);
-
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Player);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Teammate);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_PmcBear);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_PmcUsec);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Scav);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Raider);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Rogue);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Cultist);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_BossFollower);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Zombie);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Goons);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_Bosses);
-            AddFoldTarget(s_World3DFoldTargets, W3dRole_LabAnnouncer);
-
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Player);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Teammate);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_PmcBear);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_PmcUsec);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Scav);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Raider);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Rogue);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Cultist);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_BossFollower);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Zombie);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Goons);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_Bosses);
-            AddFoldTarget(s_World3DFoldTargets, W3dText_LabAnnouncer);
-
+            // Browsable 变更需要 CM 重建设置列表才生效（沿用原折叠机制的刷新路径）
+            TryRefreshConfigurationManager();
         }
 
         private static void AddFoldTarget(List<ConfigEntryBase> list, ConfigEntryBase entry)
         {
             if (list == null || entry == null) return;
             if (!list.Contains(entry)) list.Add(entry);
-        }
-
-        private static void ApplyFoldState(bool show, List<ConfigEntryBase> targets)
-        {
-            if (targets == null) return;
-            bool changed = false;
-            for (int i = 0; i < targets.Count; i++)
-            {
-                var entry = targets[i];
-                var attrs = GetCmAttributes(entry);
-                if (attrs == null) continue;
-
-                if (!s_FoldBrowsableBackup.TryGetValue(entry, out var original))
-                {
-                    original = attrs.Browsable;
-                    s_FoldBrowsableBackup[entry] = original;
-                }
-
-                if (show)
-                {
-                    bool next = original ?? true;
-                    if (attrs.Browsable != next) changed = true;
-                    attrs.Browsable = next;
-                }
-                else
-                {
-                    if (attrs.Browsable != false) changed = true;
-                    attrs.Browsable = false;
-                }
-            }
-
-            if (changed)
-                TryRefreshConfigurationManager();
         }
 
         private static ConfigurationManagerAttributes GetCmAttributes(ConfigEntryBase entry)
@@ -739,9 +486,9 @@ namespace Subtitle.Config
             var newDesc = new ConfigDescription(desc.Description, desc.AcceptableValues, list.ToArray());
             try
             {
-                var field = typeof(ConfigEntryBase).GetField("<Description>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
-                if (field != null)
-                    field.SetValue(entry, newDesc);
+                // 字段引用已提升为静态只读（启动时上百个条目只反射一次）
+                if (s_ConfigEntryDescriptionField != null)
+                    s_ConfigEntryDescriptionField.SetValue(entry, newDesc);
             }
             catch { }
         }
@@ -750,70 +497,99 @@ namespace Subtitle.Config
         {
             try
             {
-                Type cmType = FindConfigurationManagerType();
-                if (cmType == null) return;
-
-                object instance = null;
-                var instanceProp = cmType.GetProperty("Instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-                if (instanceProp != null)
-                    instance = instanceProp.GetValue(null, null);
-
-                if (instance == null)
+                // 快路径：已解析出 实例+方法，直接调用（调用失败/对象销毁时清缓存重解析）
+                if (s_CmRefreshMethod != null && s_CmInstance != null)
                 {
-                    var objs = UnityEngine.Object.FindObjectsOfType(cmType);
-                    if (objs != null && objs.Length > 0)
-                        instance = objs[0];
+                    var asUnityObj = s_CmInstance as UnityEngine.Object;
+                    bool destroyed = !ReferenceEquals(asUnityObj, null) && asUnityObj == null;
+                    if (!destroyed)
+                    {
+                        try
+                        {
+                            s_CmRefreshMethod.Invoke(s_CmInstance, s_CmRefreshArgs);
+                            return;
+                        }
+                        catch { }
+                    }
+                    InvalidateConfigurationManagerCache();
                 }
 
-                if (instance == null)
-                {
-                    var all = Resources.FindObjectsOfTypeAll(cmType);
-                    if (all != null && all.Length > 0)
-                        instance = all[0];
-                }
-
-                if (instance == null) return;
-
-                string[] methods = {
-                    "BuildSettingList",
-                    "RefreshSettingList",
-                    "UpdateSettingList",
-                    "SettingListChanged",
-                    "OnSettingsChanged",
-                    "OnSettingChanged",
-                    "Reload"
-                };
-                for (int i = 0; i < methods.Length; i++)
-                {
-                    if (InvokeConfigManagerMethod(cmType, instance, methods[i]))
-                        return;
-                }
+                ResolveConfigurationManagerRefresh();
             }
             catch { }
         }
 
-        private static bool InvokeConfigManagerMethod(Type cmType, object instance, string methodName)
+        private static void InvalidateConfigurationManagerCache()
         {
-            var method = cmType.GetMethod(methodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (method == null) return false;
-            var pars = method.GetParameters();
-            if (pars.Length == 0)
+            s_CmInstance = null;
+            s_CmRefreshMethod = null;
+            s_CmRefreshArgs = null;
+            // 注意：s_CmType 保留——类型不会消失，避免再次全程序集扫描
+        }
+
+        private static void ResolveConfigurationManagerRefresh()
+        {
+            Type cmType = FindConfigurationManagerType();
+            if (cmType == null) return;
+
+            object instance = null;
+            var instanceProp = cmType.GetProperty("Instance", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (instanceProp != null)
+                instance = instanceProp.GetValue(null, null);
+
+            if (instance == null)
             {
-                method.Invoke(instance, null);
-                return true;
+                var objs = UnityEngine.Object.FindObjectsOfType(cmType);
+                if (objs != null && objs.Length > 0)
+                    instance = objs[0];
             }
-            if (pars.Length == 1 && pars[0].ParameterType == typeof(bool))
+
+            if (instance == null)
             {
-                method.Invoke(instance, new object[] { true });
-                return true;
+                var all = Resources.FindObjectsOfTypeAll(cmType);
+                if (all != null && all.Length > 0)
+                    instance = all[0];
             }
-            return false;
+
+            if (instance == null) return;
+
+            string[] methods = {
+                "BuildSettingList",
+                "RefreshSettingList",
+                "UpdateSettingList",
+                "SettingListChanged",
+                "OnSettingsChanged",
+                "OnSettingChanged",
+                "Reload"
+            };
+            for (int i = 0; i < methods.Length; i++)
+            {
+                var method = cmType.GetMethod(methods[i], BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (method == null) continue;
+                var pars = method.GetParameters();
+                object[] args = null;
+                if (pars.Length == 0)
+                    args = null;
+                else if (pars.Length == 1 && pars[0].ParameterType == typeof(bool))
+                    args = new object[] { true };
+                else
+                    continue;
+
+                // 解析成功：缓存 实例+方法+参数，之后每次折叠开关都走快路径
+                s_CmInstance = instance;
+                s_CmRefreshMethod = method;
+                s_CmRefreshArgs = args;
+                method.Invoke(instance, args);
+                return;
+            }
         }
 
         private static Type FindConfigurationManagerType()
         {
+            if (s_CmType != null) return s_CmType;
+
             Type cmType = Type.GetType("ConfigurationManager.ConfigurationManager, ConfigurationManager");
-            if (cmType != null) return cmType;
+            if (cmType != null) { s_CmType = cmType; return cmType; }
 
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             for (int i = 0; i < assemblies.Length; i++)
@@ -822,7 +598,7 @@ namespace Subtitle.Config
                 {
                     var asm = assemblies[i];
                     cmType = asm.GetType("ConfigurationManager.ConfigurationManager");
-                    if (cmType != null) return cmType;
+                    if (cmType != null) { s_CmType = cmType; return cmType; }
 
                     var types = asm.GetTypes();
                     for (int t = 0; t < types.Length; t++)
@@ -833,7 +609,10 @@ namespace Subtitle.Config
                         if (type.GetMethod("BuildSettingList", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) != null ||
                             type.GetMethod("RefreshSettingList", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) != null ||
                             type.GetMethod("UpdateSettingList", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) != null)
+                        {
+                            s_CmType = type;
                             return type;
+                        }
                     }
                 }
                 catch { }
@@ -841,7 +620,220 @@ namespace Subtitle.Config
             return null;
         }
 
+        // ===================== 图形化设置界面（UGUI）复用入口 =====================
+        // 原 F12 IMGUI 自绘控件（CustomDrawer）依赖的 扫描/选择/应用/测试发送 逻辑提为 internal，
+        // SettingsUI 的特殊行与旧 IMGUI 抽屉共用同一套实现，行为保持一致。
+
+        // —— 预设选择器 ——
+        internal static List<string> GetPresetNames()
+        {
+            if (!s_PresetListLoaded) ScanPresets(true);
+            return s_PresetNames;
+        }
+
+        internal static int GetSelectedPresetIndex()
+        {
+            return s_SelectedPresetIndex;
+        }
+
+        // 循环语义与 DrawCyclerRow 一致：越界自动回绕
+        internal static void SetSelectedPresetIndex(int index)
+        {
+            int count = s_PresetNames != null ? s_PresetNames.Count : 0;
+            if (count > 0)
+            {
+                if (index < 0) index = count - 1;
+                if (index >= count) index = 0;
+            }
+            s_SelectedPresetIndex = index;
+        }
+
+        // 把选择索引回同步到 cfg 当前值（GUI 每次构建选择行时调用，保证显示反映 TextPresetName.Value）
+        internal static void SyncPresetSelectionToCurrent()
+        {
+            if (!s_PresetListLoaded) { ScanPresets(true); return; }
+            var cur = TextPresetName != null ? (TextPresetName.Value ?? "default") : "default";
+            int idx = s_PresetNames.FindIndex(n => string.Equals(n, cur, StringComparison.OrdinalIgnoreCase));
+            s_SelectedPresetIndex = idx >= 0 ? idx : 0;
+        }
+
+        internal static int RefreshPresetList()
+        {
+            ScanPresets(true);
+            s_Log.LogInfo("[Settings] Preset list refreshed. Count=" + s_PresetNames.Count);
+            ShowPresetUiHint($"已刷新预设：{s_PresetNames.Count} 个");
+            PushClientToast($"已刷新预设：{s_PresetNames.Count} 个");
+            return s_PresetNames.Count;
+        }
+
+        // 应用当前选中的预设，返回生效的预设名（无可选项时返回 null）
+        internal static string ApplySelectedPreset()
+        {
+            if (s_PresetNames == null || s_PresetNames.Count == 0) return null;
+            int idx = s_SelectedPresetIndex;
+            if (idx < 0 || idx >= s_PresetNames.Count) idx = 0;
+            var pick = s_PresetNames[idx];
+            ApplyPresetByName(pick);
+            ShowPresetUiHint($"已应用预设：{pick}");
+            PushClientToast($"已应用预设：{pick}");
+            return pick;
+        }
+
+        // —— 字体包选择器（三个渠道共用一份扫描结果，选择索引按 entry 分别记忆） ——
+        internal static List<string> GetFontBundleNames(ConfigEntry<string> e)
+        {
+            if (!s_FontBundleListLoaded) ScanFontBundles(true, e != null ? e.Value : null);
+            return s_FontBundleNames;
+        }
+
+        internal static int GetFontBundleSelection(ConfigEntryBase entry, string currentValue)
+        {
+            return EnsureFontBundleSelection(entry, currentValue);
+        }
+
+        internal static void SetFontBundleSelection(ConfigEntryBase entry, int index, string currentValue)
+        {
+            UpdateFontBundleSelection(entry, index, currentValue);
+        }
+
+        internal static int RefreshFontBundles(ConfigEntry<string> e)
+        {
+            ScanFontBundles(true, e != null ? e.Value : null);
+            // 定向失效资源包字体缓存并重刷本渠道样式：
+            // 局内替换同名字体文件后点「刷新」即可立即生效，无需重开战局
+            SubtitleSystem.SubtitleFontLoader.InvalidateBundleFontCache();
+            TryRefreshByFontBundleEntry(e);
+            ShowFontBundleUiHint("已刷新字体资源包： " + s_FontBundleNames.Count + " 个");
+            return s_FontBundleNames != null ? s_FontBundleNames.Count : 0;
+        }
+
+        // 把当前选择写入 entry 并触发对应渠道的运行期样式刷新；返回应用后的显示名
+        internal static string ApplyFontBundleSelection(ConfigEntry<string> e)
+        {
+            if (e == null || s_FontBundleNames == null || s_FontBundleNames.Count == 0) return null;
+            int idx = EnsureFontBundleSelection(e, e.Value);
+            if (idx < 0 || idx >= s_FontBundleNames.Count) idx = 0;
+            var pick = s_FontBundleNames[idx];
+            e.Value = pick;
+            UpdateFontBundleSelection(e, idx, e.Value);
+            ShowFontBundleUiHint("已应用： " + FormatFontBundleLabel(pick));
+            TryRefreshByFontBundleEntry(e);
+            return FormatFontBundleLabel(pick);
+        }
+
+        // 保存当前设置为预设文件（同名覆盖）。
+        // 成功返回展示路径并重扫预设列表（ScanPresets(true) 会把选择回同步到当前 cfg 值，
+        // 与旧抽屉一致：保存后不自动选中新预设）；失败返回 null。
+        internal static string SavePresetAs(string rawName)
+        {
+            string savedPath = SaveCurrentSettingsToPresetFile(rawName);
+            if (string.IsNullOrEmpty(savedPath))
+            {
+                ShowPresetUiHint("保存失败，请查看日志");
+                return null;
+            }
+            ShowPresetUiHint("已成功保存预设文件");
+            PushClientToast($"已成功保存预设文件，位于 {savedPath}");
+            ScanPresets(true);
+            return savedPath;
+        }
+
+        // —— 随机测试发送（两个测试按钮的实际逻辑；IMGUI 抽屉与 GUI 行共用） ——
+        internal static void SendRandomTestSubtitle()
+        {
+            try
+            {
+                var mgr = Subtitle.Plugin.Instance != null
+                    ? Subtitle.Plugin.Instance.GetOrCreateSubtitleManagerAnyScene()
+                    : null;
+
+                if (mgr == null)
+                {
+                    s_Log.LogWarning("[Subtitle] SubtitleManager 未就绪，无法发送测试字幕。");
+                }
+                else
+                {
+                    SendRandomTestLine("Subtitle", Channel.Subtitle, SubtitleShowRoleTag, SubtitleShowDistance,
+                        "（占位）这是随机测试字幕。", "[Subtitle] 未找到可用的本地台词文件，改用占位文本。",
+                        delegate (string shown, Color c) { mgr.AddSubtitle(shown, c, 3.0f); });
+                }
+            }
+            catch (Exception e)
+            {
+                s_Log.LogWarning("[Subtitle] TestSubtitle random failed: " + e);
+            }
+        }
+
+        internal static void SendRandomTestDanmaku()
+        {
+            try
+            {
+                var mgr = Subtitle.Plugin.Instance != null
+                    ? Subtitle.Plugin.Instance.GetOrCreateSubtitleManagerAnyScene()
+                    : null;
+
+                if (mgr != null)
+                {
+                    mgr.ApplyDanmakuSettings();
+                    mgr.InitializeDanmakuLayer();
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        SendRandomTestLine("Danmaku", Channel.Danmaku, DanmakuShowRoleTag, DanmakuShowDistance,
+                            "（占位）这是随机测试弹幕。", null,
+                            delegate (string shown, Color c) { mgr.AddDanmaku(shown, c); });
+                    }
+                }
+                else
+                {
+                    s_Log.LogWarning("[Subtitle] SubtitleManager 未就绪，无法发送测试弹幕。");
+                }
+            }
+            catch (Exception e)
+            {
+                s_Log.LogWarning("[Subtitle] TestDanmaku random failed: " + e);
+            }
+        }
+
         // ===================== 自绘 UI =====================
+        // 两个 Picker 共用的 “◀ 名称 ▶” 循环选择行，返回（可能被按钮修改后的）选择索引
+        private static int DrawCyclerRow(List<string> names, int index, string prevText, string nextText, string emptyText, Func<string, string> labelFormatter)
+        {
+            int count = names != null ? names.Count : 0;
+
+            if (GUILayout.Button(prevText, GUILayout.Width(28)))
+            {
+                if (count > 0)
+                    index = (index - 1 + count) % count;
+            }
+
+            string label = (count > 0 && index >= 0 && index < count)
+                ? (labelFormatter != null ? labelFormatter(names[index]) : names[index])
+                : emptyText;
+            GUILayout.Label(label, GUILayout.ExpandWidth(true));
+
+            if (GUILayout.Button(nextText, GUILayout.Width(28)))
+            {
+                if (count > 0)
+                    index = (index + 1) % count;
+            }
+
+            return index;
+        }
+
+        // 两个 Picker 共用的绿色提示样式（懒创建）
+        private static void EnsureGreenHintStyle(ref GUIStyle style)
+        {
+            if (style != null) return;
+            style = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                wordWrap = true,
+                alignment = TextAnchor.UpperLeft
+            };
+            style.normal.textColor = new Color(0.7f, 1f, 0.7f, 1f);
+        }
+
         private static void DrawPresetPicker(ConfigEntryBase entry)
         {
             if (!s_PresetListLoaded) ScanPresets(true);
@@ -852,40 +844,16 @@ namespace Subtitle.Config
             // 原有的横排：选择器 + 刷新 + 应用
             GUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("◀", GUILayout.Width(28)))
-            {
-                if (s_PresetNames.Count > 0)
-                    s_SelectedPresetIndex = (s_SelectedPresetIndex - 1 + s_PresetNames.Count) % s_PresetNames.Count;
-            }
-
-            var label = (s_PresetNames.Count > 0 && s_SelectedPresetIndex >= 0 && s_SelectedPresetIndex < s_PresetNames.Count)
-                ? s_PresetNames[s_SelectedPresetIndex]
-                : "(无预设)";
-            GUILayout.Label(label, GUILayout.ExpandWidth(true));
-
-            if (GUILayout.Button("▶", GUILayout.Width(28)))
-            {
-                if (s_PresetNames.Count > 0)
-                    s_SelectedPresetIndex = (s_SelectedPresetIndex + 1) % s_PresetNames.Count;
-            }
+            s_SelectedPresetIndex = DrawCyclerRow(s_PresetNames, s_SelectedPresetIndex, "◀", "▶", "(无预设)", null);
 
             if (GUILayout.Button("刷新", GUILayout.Width(64)))
             {
-                ScanPresets(true);
-                s_Log.LogInfo("[Settings] Preset list refreshed. Count=" + s_PresetNames.Count);
-                ShowPresetUiHint($"已刷新预设：{s_PresetNames.Count} 个");
-                PushClientToast($"已刷新预设：{s_PresetNames.Count} 个");
+                RefreshPresetList();
             }
 
             if (GUILayout.Button("应用", GUILayout.Width(64)))
             {
-                if (s_PresetNames.Count > 0)
-                {
-                    var pick = s_PresetNames[s_SelectedPresetIndex];
-                    ApplyPresetByName(pick);
-                    ShowPresetUiHint($"已应用预设：{pick}");
-                    PushClientToast($"已应用预设：{pick}");
-                }
+                ApplySelectedPreset();
             }
 
             GUILayout.EndHorizontal(); // —— 横排结束 ——
@@ -911,17 +879,8 @@ namespace Subtitle.Config
                 s_SavePresetInput = GUILayout.TextField(s_SavePresetInput ?? "", GUILayout.MinWidth(140));
                 if (GUILayout.Button("确定", GUILayout.Width(52)))
                 {
-                    string savedPath = SaveCurrentSettingsToPresetFile(s_SavePresetInput);
-                    if (!string.IsNullOrEmpty(savedPath))
-                    {
-                        ShowPresetUiHint("已成功保存预设文件");
-                        PushClientToast($"已成功保存预设文件，位于 {savedPath}");
-                        ScanPresets(true);
-                    }
-                    else
-                    {
-                        ShowPresetUiHint("保存失败，请查看日志");
-                    }
+                    // 保存/提示/重扫 已提取到 SavePresetAs（GUI 保存预设行共用同一实现）
+                    SavePresetAs(s_SavePresetInput);
                     s_SavePresetMode = false;
                 }
                 if (GUILayout.Button("取消", GUILayout.Width(52)))
@@ -934,16 +893,7 @@ namespace Subtitle.Config
 
             // ★ 新增：提示文字独占新的一行（在竖向容器内就是下一行）
             // —— 提示行：永久占位，不抖动 —— 
-            if (s_HintStyleGreen == null)
-            {
-                s_HintStyleGreen = new GUIStyle(GUI.skin.label)
-                {
-                    fontStyle = FontStyle.Bold,
-                    wordWrap = true,
-                    alignment = TextAnchor.UpperLeft
-                };
-                s_HintStyleGreen.normal.textColor = new Color(0.7f, 1f, 0.7f, 1f);
-            }
+            EnsureGreenHintStyle(ref s_HintStyleGreen);
 
             GUILayout.Space(4);
             string hintMsg = (s_PresetUiHintUntil > 0 && Time.realtimeSinceStartup < s_PresetUiHintUntil)
@@ -966,58 +916,23 @@ namespace Subtitle.Config
             GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
             GUILayout.BeginHorizontal();
 
-            if (GUILayout.Button("<", GUILayout.Width(28)))
-            {
-                if (s_FontBundleNames.Count > 0)
-                    currentIndex = (currentIndex - 1 + s_FontBundleNames.Count) % s_FontBundleNames.Count;
-            }
-
-            UpdateFontBundleSelection(entry, currentIndex, e.Value);
-
-            string label = (s_FontBundleNames.Count > 0 && currentIndex >= 0 && currentIndex < s_FontBundleNames.Count)
-                ? FormatFontBundleLabel(s_FontBundleNames[currentIndex])
-                : "(无字体)";
-            GUILayout.Label(label, GUILayout.ExpandWidth(true));
-
-            if (GUILayout.Button(">", GUILayout.Width(28)))
-            {
-                if (s_FontBundleNames.Count > 0)
-                    currentIndex = (currentIndex + 1) % s_FontBundleNames.Count;
-            }
-
+            currentIndex = DrawCyclerRow(s_FontBundleNames, currentIndex, "<", ">", "(无字体)", FormatFontBundleLabel);
             UpdateFontBundleSelection(entry, currentIndex, e.Value);
 
             if (GUILayout.Button("刷新", GUILayout.Width(64)))
             {
-                ScanFontBundles(true, e.Value);
+                RefreshFontBundles(e);
                 currentIndex = EnsureFontBundleSelection(entry, e.Value);
-                ShowFontBundleUiHint("已刷新字体资源包： " + s_FontBundleNames.Count + " 个");
             }
 
             if (GUILayout.Button("应用", GUILayout.Width(64)))
             {
-                if (s_FontBundleNames.Count > 0)
-                {
-                    var pick = s_FontBundleNames[currentIndex];
-                    e.Value = pick;
-                    UpdateFontBundleSelection(entry, currentIndex, e.Value);
-                    ShowFontBundleUiHint("已应用： " + FormatFontBundleLabel(pick));
-                    TryRefreshByFontBundleEntry(e);
-                }
+                ApplyFontBundleSelection(e);
             }
 
             GUILayout.EndHorizontal();
 
-            if (s_FontBundleHintStyle == null)
-            {
-                s_FontBundleHintStyle = new GUIStyle(GUI.skin.label)
-                {
-                    fontStyle = FontStyle.Bold,
-                    wordWrap = true,
-                    alignment = TextAnchor.UpperLeft
-                };
-                s_FontBundleHintStyle.normal.textColor = new Color(0.7f, 1f, 0.7f, 1f);
-            }
+            EnsureGreenHintStyle(ref s_FontBundleHintStyle);
 
             GUILayout.Space(4);
             string dir = GetFontBundleDir();
@@ -1080,7 +995,7 @@ namespace Subtitle.Config
             if (ReferenceEquals(e, World3DFontBundleName)) { TryRefreshWorld3DStyleRuntime(); return; }
         }
 
-        private static string FormatFontBundleLabel(string name)
+        internal static string FormatFontBundleLabel(string name)
         {
             return string.IsNullOrEmpty(name) ? "(不覆盖)" : name;
         }
@@ -1174,49 +1089,60 @@ namespace Subtitle.Config
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("▶ 随机测试字幕", GUILayout.Height(24), GUILayout.Width(260)))
             {
-                try
-                {
-                    var mgr = Subtitle.Plugin.Instance != null
-                        ? Subtitle.Plugin.Instance.GetOrCreateSubtitleManagerAnyScene()
-                        : null;
-
-                    if (mgr == null)
-                    {
-                        s_Log.LogWarning("[Subtitle] SubtitleManager 未就绪，无法发送测试字幕。");
-                    }
-                    else
-                    {
-                        string voiceKey, line;
-                        if (!TryPickRandomAllowedLine("Subtitle", out voiceKey, out line))
-                        {
-                            s_Log.LogWarning("[Subtitle] 未找到可用的本地台词文件，改用占位文本。");
-                            voiceKey = "_default";
-                            line = "（占位）这是随机测试字幕。";
-                        }
-
-                        string aiType = GetRandomAiTypeForTest(voiceKey);
-                        var kind = GuessRoleKindFromAiType(aiType);   // ★ 新增辅助：见下一个小节
-                        string roleName = MapAITypeLabelLocal(aiType);
-                        string roleTag = roleName + "：";
-
-                        bool showRole = SubtitleShowRoleTag != null ? SubtitleShowRoleTag.Value : true;
-                        bool showDist = SubtitleShowDistance != null ? SubtitleShowDistance.Value : true;
-                        int randM = UnityEngine.Random.Range(10, 151);
-                        string distSuffix = showDist ? (" <b>·</b>" + randM + "m") : "";
-
-                        string shown = showRole ? (WrapRoleTag(roleTag, kind, Channel.Subtitle) + line) : line;
-                        shown += distSuffix;
-
-                        var textColor = GetTextColor(kind, Channel.Subtitle);
-                        mgr.AddSubtitle(shown, textColor, 3.0f);
-                    }
-                }
-                catch (Exception e)
-                {
-                    s_Log.LogWarning("[Subtitle] TestSubtitle random failed: " + e);
-                }
+                SendRandomTestSubtitle();
             }
             GUILayout.EndHorizontal();
+        }
+
+        // 两个“随机测试”按钮共用的 组句+发送 逻辑（fallbackWarning 为 null 时不打日志）
+        private static void SendRandomTestLine(string channel, Channel ch, ConfigEntry<bool> showRoleEntry, ConfigEntry<bool> showDistEntry,
+            string placeholderLine, string fallbackWarning, Action<string, Color> send)
+        {
+            string voiceKey, line;
+            if (!TryPickRandomAllowedLine(channel, out voiceKey, out line))
+            {
+                if (!string.IsNullOrEmpty(fallbackWarning))
+                    s_Log.LogWarning(fallbackWarning);
+                voiceKey = "_default";
+                line = placeholderLine;
+            }
+
+            // 主播模式：测试按钮直读 JSON（绕过 GetSubtitleForChannel），这里单独打码
+            line = Subtitle.Utils.StreamerFilter.Apply(line);
+
+            string aiType = GetRandomAiTypeForTest(voiceKey);
+            var kind = GuessRoleKindFromAiType(aiType);
+            string roleName = MapAITypeLabelLocal(aiType);
+            string roleTag = roleName + "：";
+
+            bool showRole = showRoleEntry != null ? showRoleEntry.Value : true;
+            bool showDist = showDistEntry != null ? showDistEntry.Value : true;
+            int randM = UnityEngine.Random.Range(10, 151);
+            string distSuffix = showDist ? (" <b>·</b>" + randM + "m") : "";
+
+            string shown = showRole ? (WrapRoleTag(roleTag, kind, ch) + line) : line;
+            shown += distSuffix;
+
+            var textColor = GetTextColor(kind, ch);
+            send(shown, textColor);
+        }
+
+        // 设置预览面板「随机」按钮复用：随机挑一条通过台词过滤的真实语音行，
+        // 并顺手给出猜测的角色类别（与 F12 测试按钮同一条挑选链路：voiceKey → aiType → RoleKind）。
+        // 同文件内组合现有 private 实现，无需改动原方法的可见性。
+        internal static bool TryPickRandomPreviewLine(string channel, out string aiType, out RoleKind kind, out string text)
+        {
+            aiType = null;
+            kind = RoleKind.Player;
+            text = null;
+
+            string voiceKey, line;
+            if (!TryPickRandomAllowedLine(channel, out voiceKey, out line)) return false;
+
+            aiType = GetRandomAiTypeForTest(voiceKey);
+            kind = GuessRoleKindFromAiType(aiType);
+            text = line;
+            return true;
         }
 
         private static void DrawPhraseFilterPanelButton(ConfigEntryBase entry)
@@ -1230,59 +1156,24 @@ namespace Subtitle.Config
             GUILayout.EndHorizontal();
         }
 
+        private static void DrawSettingsWindowButton(ConfigEntryBase entry)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("打开图形化设置界面", GUILayout.Height(24), GUILayout.Width(260)))
+            {
+                try { Subtitle.SettingsUI.SettingsWindow.ToggleVisible(); } catch { }
+            }
+            GUILayout.EndHorizontal();
+        }
+
         private static void DrawTestDanmakuButton(ConfigEntryBase entry)
         {
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("▶ 随机测试弹幕（3条）", GUILayout.Height(24), GUILayout.Width(260)))
             {
-                try
-                {
-                    var mgr = Subtitle.Plugin.Instance != null
-                        ? Subtitle.Plugin.Instance.GetOrCreateSubtitleManagerAnyScene()
-                        : null;
-
-                    if (mgr != null)
-                    {
-                        mgr.ApplyDanmakuSettings();
-                        mgr.InitializeDanmakuLayer();
-
-                        bool showRoleDm = DanmakuShowRoleTag != null ? DanmakuShowRoleTag.Value : true;
-                        bool showDistDm = DanmakuShowDistance != null ? DanmakuShowDistance.Value : true;
-
-                        for (int i = 0; i < 3; i++)
-                        {
-                            string voiceKey, line;
-                            if (!TryPickRandomAllowedLine("Danmaku", out voiceKey, out line))
-                            {
-                                voiceKey = "_default";
-                                line = "（占位）这是随机测试弹幕。";
-                            }
-
-                            string aiType = GetRandomAiTypeForTest(voiceKey);
-                            var kind = GuessRoleKindFromAiType(aiType);
-                            string roleName = MapAITypeLabelLocal(aiType);
-                            string roleTag = roleName + "：";
-
-                            int randM = UnityEngine.Random.Range(10, 151);
-                            string distSuffix = showDistDm ? (" <b>·</b>" + randM + "m") : "";
-
-                            string shown = showRoleDm ? (WrapRoleTag(roleTag, kind, Channel.Danmaku) + line) : line;
-                            shown += distSuffix;
-
-                            var textColor = GetTextColor(kind, Channel.Danmaku);
-                            mgr.AddDanmaku(shown, textColor);
-                        }
-                    }
-                    else
-                    {
-                        s_Log.LogWarning("[Subtitle] SubtitleManager 未就绪，无法发送测试弹幕。");
-                    }
-                }
-                catch (Exception e)
-                {
-                    s_Log.LogWarning("[Subtitle] TestDanmaku random failed: " + e);
-                }
+                SendRandomTestDanmaku();
             }
             GUILayout.EndHorizontal();
         }
@@ -1354,6 +1245,33 @@ namespace Subtitle.Config
         "ravangezryachiyevent"
     };
 
+        // 别名 -> 角色类别 的字典（按原 if 链顺序构建，重复别名只保留先命中的角色；
+        // 键保持数组里的原始写法、用 Ordinal 比较，与原先 In(t, arr) 的逐字节比较完全等价）
+        private static readonly Dictionary<string, RoleKind> s_RoleKindByAlias = BuildRoleKindAliasMap();
+
+        private static Dictionary<string, RoleKind> BuildRoleKindAliasMap()
+        {
+            var map = new Dictionary<string, RoleKind>(StringComparer.Ordinal);
+            AddRoleAliases(map, kRogueAliasesLC, RoleKind.Rogue);
+            AddRoleAliases(map, kRaiderAliasesLC, RoleKind.Raider);
+            AddRoleAliases(map, kScavAliasesLC, RoleKind.Scav);
+            AddRoleAliases(map, kCultistAliasesLC, RoleKind.Cultist);
+            AddRoleAliases(map, kGoonsAliasesLC, RoleKind.Goons);
+            AddRoleAliases(map, kBossFollowerAliasesLC, RoleKind.BossFollower);
+            AddRoleAliases(map, kZombieAliasesLC, RoleKind.Zombie);
+            AddRoleAliases(map, kBossAliasesLC, RoleKind.Bosses);
+            return map;
+        }
+
+        private static void AddRoleAliases(Dictionary<string, RoleKind> map, string[] aliases, RoleKind kind)
+        {
+            for (int i = 0; i < aliases.Length; i++)
+            {
+                if (!map.ContainsKey(aliases[i]))
+                    map.Add(aliases[i], kind);
+            }
+        }
+
         public static RoleKind GuessRoleKindFromAiType(string aiType)
         {
             try
@@ -1361,15 +1279,9 @@ namespace Subtitle.Config
                 if (string.IsNullOrEmpty(aiType)) return RoleKind.Player;
                 var t = aiType.ToLowerInvariant();
 
-                // 先查你搬过来的别名表
-                if (In(t, kRogueAliasesLC)) return RoleKind.Rogue;
-                if (In(t, kRaiderAliasesLC)) return RoleKind.Raider;
-                if (In(t, kScavAliasesLC)) return RoleKind.Scav;
-                if (In(t, kCultistAliasesLC)) return RoleKind.Cultist;
-                if (In(t, kGoonsAliasesLC)) return RoleKind.Goons;
-                if (In(t, kBossFollowerAliasesLC)) return RoleKind.BossFollower;
-                if (In(t, kZombieAliasesLC)) return RoleKind.Zombie;
-                if (In(t, kBossAliasesLC)) return RoleKind.Bosses;
+                // 先查别名表（字典 O(1)，替代原来的 8 次数组线性扫描）
+                RoleKind aliased;
+                if (s_RoleKindByAlias.TryGetValue(t, out aliased)) return aliased;
 
                 // 再做规则 fallback（保持你现有的 startsWith/contains 逻辑）
                 if (t.StartsWith("pmcbear") || t == "pmcbear") return RoleKind.PmcBear;
@@ -1390,17 +1302,26 @@ namespace Subtitle.Config
         // ===================== 构建：字体/布局/背景 =====================
         public static SubtitleSystem.FontSpec BuildSubtitleFontSpec()
         {
+            return BuildFontSpec(SubtitleFontBundleName, SubtitleFontFamilyCsv, SubtitleFontSize, 26, SubtitleFontBold, SubtitleFontItalic);
+        }
+
+        // 三个渠道共用的 FontSpec 构建；CSV 统一同时接受 ; 和 , 两种分隔符
+        // （原字幕版只按 , 切，弹幕/3D 版按 ;, 切——统一为超集，不影响既有配置）
+        private static SubtitleSystem.FontSpec BuildFontSpec(
+            ConfigEntry<string> bundleEntry, ConfigEntry<string> csvEntry, ConfigEntry<int> sizeEntry,
+            int defaultSize, ConfigEntry<bool> boldEntry, ConfigEntry<bool> italicEntry)
+        {
             var spec = new SubtitleSystem.FontSpec();
             try
             {
-                var csv = SubtitleFontFamilyCsv != null ? (SubtitleFontFamilyCsv.Value ?? "") : "";
+                var csv = csvEntry != null ? (csvEntry.Value ?? "") : "";
                 var list = new List<string>();
-                var bundle = SubtitleFontBundleName != null ? (SubtitleFontBundleName.Value ?? "") : "";
+                var bundle = bundleEntry != null ? (bundleEntry.Value ?? "") : "";
                 if (!string.IsNullOrEmpty(bundle))
                     list.Add("bundle:" + bundle);
                 if (!string.IsNullOrEmpty(csv))
                 {
-                    var arr = csv.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    var arr = csv.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
                     for (int i = 0; i < arr.Length; i++)
                     {
                         var s = arr[i].Trim();
@@ -1408,10 +1329,9 @@ namespace Subtitle.Config
                     }
                 }
                 spec.family = list;
-                spec.size = SubtitleFontSize != null ? Math.Max(12, SubtitleFontSize.Value) : 26;
-                spec.bold = SubtitleFontBold != null && SubtitleFontBold.Value;
-                spec.italic = SubtitleFontItalic != null && SubtitleFontItalic.Value;
-
+                spec.size = sizeEntry != null ? Math.Max(12, sizeEntry.Value) : defaultSize;
+                spec.bold = boldEntry != null && boldEntry.Value;
+                spec.italic = italicEntry != null && italicEntry.Value;
             }
             catch { }
             return spec;
@@ -1433,8 +1353,6 @@ namespace Subtitle.Config
                 s.safeArea = SubtitleLayoutSafeArea != null && SubtitleLayoutSafeArea.Value;
                 s.maxWidthPercent = SubtitleLayoutMaxWidthPercent != null ? SubtitleLayoutMaxWidthPercent.Value : 0.90f;
                 s.lineSpacing = SubtitleLayoutLineSpacing != null ? SubtitleLayoutLineSpacing.Value : 0.0f;
-                s.grow = "both";
-                s.bias = 0.5f;
                 if (SubtitleLayoutOverrideAlign != null && SubtitleLayoutOverrideAlign.Value != Settings.TextAnchorOption.None)
                     s.overrideTextAlignment = SubtitleLayoutOverrideAlign.Value.ToString();
                 else
@@ -1463,7 +1381,6 @@ namespace Subtitle.Config
                     0.0,
                     SubtitleBgMarginY != null ? SubtitleBgMarginY.Value : 6.0
                 };
-                b.cornerRadius = 8;
                 b.sprite = SubtitleBgSprite != null ? (SubtitleBgSprite.Value ?? "") : "";
 
                 b.shadow = new SubtitleSystem.ShadowSpec
@@ -1529,17 +1446,25 @@ namespace Subtitle.Config
             }
             catch { }
 
+            ApplyOutlineOverride(text, SubtitleOutlineEnabled, SubtitleOutlineColor, SubtitleOutlineDistX, SubtitleOutlineDistY, 1.5f);
+            ApplyShadowOverride(text, SubtitleShadowEnabled, SubtitleShadowColor, SubtitleShadowDistX, SubtitleShadowDistY, SubtitleShadowUseGraphicAlpha);
+        }
+
+        // 三个渠道共用的描边组件应用逻辑（各自 try/catch 语义保留在 helper 内）
+        private static void ApplyOutlineOverride(Text text, ConfigEntry<bool> enabledEntry, ConfigEntry<Color> colorEntry,
+            ConfigEntry<float> distXEntry, ConfigEntry<float> distYEntry, float defaultDist)
+        {
             try
             {
                 var go = text.gameObject;
                 var ol = go.GetComponent<Outline>();
-                if (SubtitleOutlineEnabled != null && SubtitleOutlineEnabled.Value)
+                if (enabledEntry != null && enabledEntry.Value)
                 {
                     if (ol == null) ol = go.AddComponent<Outline>();
                     ol.useGraphicAlpha = true;
-                    if (SubtitleOutlineColor != null) ol.effectColor = SubtitleOutlineColor.Value;
-                    float dx = SubtitleOutlineDistX != null ? SubtitleOutlineDistX.Value : 1.5f;
-                    float dy = SubtitleOutlineDistY != null ? SubtitleOutlineDistY.Value : 1.5f;
+                    if (colorEntry != null) ol.effectColor = colorEntry.Value;
+                    float dx = distXEntry != null ? distXEntry.Value : defaultDist;
+                    float dy = distYEntry != null ? distYEntry.Value : defaultDist;
                     ol.effectDistance = new Vector2(dx, dy);
                 }
                 else
@@ -1548,7 +1473,12 @@ namespace Subtitle.Config
                 }
             }
             catch { }
+        }
 
+        // 三个渠道共用的阴影组件应用逻辑
+        private static void ApplyShadowOverride(Text text, ConfigEntry<bool> enabledEntry, ConfigEntry<Color> colorEntry,
+            ConfigEntry<float> distXEntry, ConfigEntry<float> distYEntry, ConfigEntry<bool> useGraphicAlphaEntry)
+        {
             try
             {
                 var go = text.gameObject;
@@ -1560,13 +1490,13 @@ namespace Subtitle.Config
                         if (!(shadows[i] is Outline)) { drop = shadows[i]; break; }
                 }
 
-                if (SubtitleShadowEnabled != null && SubtitleShadowEnabled.Value)
+                if (enabledEntry != null && enabledEntry.Value)
                 {
                     if (drop == null) drop = go.AddComponent<Shadow>();
-                    if (SubtitleShadowUseGraphicAlpha != null) drop.useGraphicAlpha = SubtitleShadowUseGraphicAlpha.Value;
-                    if (SubtitleShadowColor != null) drop.effectColor = SubtitleShadowColor.Value;
-                    float dx = SubtitleShadowDistX != null ? SubtitleShadowDistX.Value : 2f;
-                    float dy = SubtitleShadowDistY != null ? SubtitleShadowDistY.Value : -2f;
+                    if (useGraphicAlphaEntry != null) drop.useGraphicAlpha = useGraphicAlphaEntry.Value;
+                    if (colorEntry != null) drop.effectColor = colorEntry.Value;
+                    float dx = distXEntry != null ? distXEntry.Value : 2f;
+                    float dy = distYEntry != null ? distYEntry.Value : -2f;
                     drop.effectDistance = new Vector2(dx, dy);
                 }
                 else
@@ -1583,10 +1513,23 @@ namespace Subtitle.Config
             if (preset == null || preset.Setting == null) return;
             var S = preset.Setting;
 
-            // 一次性套入
-            for (int i = 0; i < s_SnapshotReaders.Count; i++)
+            // 批量套入：期间抑制每个 SettingChanged 触发的样式刷新，结束后每个子系统只刷新一次
+            s_BatchApplying = true;
+            try
             {
-                try { s_SnapshotReaders[i](S); } catch { }
+                for (int i = 0; i < s_SnapshotReaders.Count; i++)
+                {
+                    try { s_SnapshotReaders[i](S); } catch { }
+                }
+            }
+            finally
+            {
+                s_BatchApplying = false;
+                for (int i = 0; i < s_BatchPendingRefreshes.Count; i++)
+                {
+                    try { s_BatchPendingRefreshes[i](); } catch { }
+                }
+                s_BatchPendingRefreshes.Clear();
             }
         }
 
@@ -1606,7 +1549,7 @@ namespace Subtitle.Config
                 var file = Path.Combine(GetLocalesDir(), "RoleType.jsonc");
                 if (!File.Exists(file)) return;
 
-                var json = StripJsonComments(File.ReadAllText(file, Encoding.UTF8));
+                var json = JsoncUtils.StripJsonComments(File.ReadAllText(file, Encoding.UTF8));
                 var root = JObject.Parse(json);
                 foreach (var p in root.Properties())
                 {
@@ -1695,76 +1638,13 @@ namespace Subtitle.Config
         // ===================== 杂项工具 =====================
         private static string GetLocalesDir()
         {
-            return Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales", "ch");
-        }
-
-        private static string GetVoicesDir()
-        {
-            return Path.Combine(GetLocalesDir(), "voices");
-        }
-
-        private static string StripJsonComments(string src)
-        {
-            if (string.IsNullOrEmpty(src)) return src;
-            var sb = new StringBuilder(src.Length);
-            bool inStr = false;
-            for (int i = 0; i < src.Length; i++)
-            {
-                char c = src[i];
-                if (c == '"')
-                {
-                    bool escaped = (i > 0 && src[i - 1] == '\\');
-                    if (!escaped) inStr = !inStr;
-                    sb.Append(c);
-                }
-                else if (!inStr && c == '/' && i + 1 < src.Length)
-                {
-                    char n = src[i + 1];
-                    if (n == '/')
-                    {
-                        i += 2;
-                        while (i < src.Length && src[i] != '\n') i++;
-                        sb.Append('\n');
-                    }
-                    else if (n == '*')
-                    {
-                        i += 2;
-                        while (i + 1 < src.Length && !(src[i] == '*' && src[i + 1] == '/')) i++;
-                        i++; // skip '/'
-                    }
-                    else sb.Append(c);
-                }
-                else sb.Append(c);
-            }
-            return sb.ToString();
+            // 统一由 PhraseFilterManager 解析（含多级回退与缓存；正常安装布局下路径不变）
+            return PhraseFilterManager.LocalesDir;
         }
 
         public static SubtitleSystem.FontSpec BuildDanmakuFontSpec()
         {
-            var spec = new SubtitleSystem.FontSpec();
-            try
-            {
-                var csv = DanmakuFontFamilyCsv != null ? (DanmakuFontFamilyCsv.Value ?? "") : "";
-                var list = new List<string>();
-                var bundle = DanmakuFontBundleName != null ? (DanmakuFontBundleName.Value ?? "") : "";
-                if (!string.IsNullOrEmpty(bundle))
-                    list.Add("bundle:" + bundle);
-                if (!string.IsNullOrEmpty(csv))
-                {
-                    var arr = csv.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
-                    for (int i = 0; i < arr.Length; i++)
-                    {
-                        var s = arr[i].Trim();
-                        if (!string.IsNullOrEmpty(s)) list.Add(s);
-                    }
-                }
-                spec.family = list;
-                spec.size = DanmakuFontSize != null ? Math.Max(12, DanmakuFontSize.Value) : 24;
-                spec.bold = DanmakuFontBold != null && DanmakuFontBold.Value;
-                spec.italic = DanmakuFontItalic != null && DanmakuFontItalic.Value;
-            }
-            catch { }
-            return spec;
+            return BuildFontSpec(DanmakuFontBundleName, DanmakuFontFamilyCsv, DanmakuFontSize, 24, DanmakuFontBold, DanmakuFontItalic);
         }
 
         public static void ApplyDanmakuTextOverrides(UnityEngine.UI.Text text)
@@ -1786,73 +1666,13 @@ namespace Subtitle.Config
             }
             catch { }
 
-            try
-            {
-                var go = text.gameObject;
-                var ol = go.GetComponent<UnityEngine.UI.Outline>();
-                if (DanmakuOutlineEnabled != null && DanmakuOutlineEnabled.Value)
-                {
-                    if (ol == null) ol = go.AddComponent<UnityEngine.UI.Outline>();
-                    ol.useGraphicAlpha = true;
-                    if (DanmakuOutlineColor != null) ol.effectColor = DanmakuOutlineColor.Value;
-                    float dx = DanmakuOutlineDistX != null ? DanmakuOutlineDistX.Value : 1.2f;
-                    float dy = DanmakuOutlineDistY != null ? DanmakuOutlineDistY.Value : 1.2f;
-                    ol.effectDistance = new Vector2(dx, dy);
-                }
-                else if (ol != null) UnityEngine.Object.Destroy(ol);
-            }
-            catch { }
-
-            try
-            {
-                var go = text.gameObject;
-                UnityEngine.UI.Shadow drop = null;
-                var shadows = go.GetComponents<UnityEngine.UI.Shadow>();
-                if (shadows != null)
-                {
-                    for (int i = 0; i < shadows.Length; i++)
-                        if (!(shadows[i] is UnityEngine.UI.Outline)) { drop = shadows[i]; break; }
-                }
-                if (DanmakuShadowEnabled != null && DanmakuShadowEnabled.Value)
-                {
-                    if (drop == null) drop = go.AddComponent<UnityEngine.UI.Shadow>();
-                    if (DanmakuShadowUseGraphicAlpha != null) drop.useGraphicAlpha = DanmakuShadowUseGraphicAlpha.Value;
-                    if (DanmakuShadowColor != null) drop.effectColor = DanmakuShadowColor.Value;
-                    float dx = DanmakuShadowDistX != null ? DanmakuShadowDistX.Value : 2f;
-                    float dy = DanmakuShadowDistY != null ? DanmakuShadowDistY.Value : -2f;
-                    drop.effectDistance = new Vector2(dx, dy);
-                }
-                else if (drop != null) UnityEngine.Object.Destroy(drop);
-            }
-            catch { }
+            ApplyOutlineOverride(text, DanmakuOutlineEnabled, DanmakuOutlineColor, DanmakuOutlineDistX, DanmakuOutlineDistY, 1.2f);
+            ApplyShadowOverride(text, DanmakuShadowEnabled, DanmakuShadowColor, DanmakuShadowDistX, DanmakuShadowDistY, DanmakuShadowUseGraphicAlpha);
         }
 
         public static SubtitleSystem.FontSpec BuildWorld3DFontSpec()
         {
-            var spec = new SubtitleSystem.FontSpec();
-            try
-            {
-                var csv = World3DFontFamilyCsv != null ? (World3DFontFamilyCsv.Value ?? "") : "";
-                var list = new List<string>();
-                var bundle = World3DFontBundleName != null ? (World3DFontBundleName.Value ?? "") : "";
-                if (!string.IsNullOrEmpty(bundle))
-                    list.Add("bundle:" + bundle);
-                if (!string.IsNullOrEmpty(csv))
-                {
-                    var arr = csv.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
-                    for (int i = 0; i < arr.Length; i++)
-                    {
-                        var s = arr[i].Trim();
-                        if (!string.IsNullOrEmpty(s)) list.Add(s);
-                    }
-                }
-                spec.family = list;
-                spec.size = World3DFontSize != null ? Math.Max(12, World3DFontSize.Value) : 26;
-                spec.bold = World3DFontBold != null && World3DFontBold.Value;
-                spec.italic = World3DFontItalic != null && World3DFontItalic.Value;
-            }
-            catch { }
-            return spec;
+            return BuildFontSpec(World3DFontBundleName, World3DFontFamilyCsv, World3DFontSize, 26, World3DFontBold, World3DFontItalic);
         }
 
         public static void ApplyWorld3DTextOverrides(UnityEngine.UI.Text text)
@@ -1892,45 +1712,8 @@ namespace Subtitle.Config
             }
             catch { }
 
-            try
-            {
-                var go = text.gameObject;
-                var ol = go.GetComponent<UnityEngine.UI.Outline>();
-                if (World3DOutlineEnabled != null && World3DOutlineEnabled.Value)
-                {
-                    if (ol == null) ol = go.AddComponent<UnityEngine.UI.Outline>();
-                    ol.useGraphicAlpha = true;
-                    if (World3DOutlineColor != null) ol.effectColor = World3DOutlineColor.Value;
-                    float dx = World3DOutlineDistX != null ? World3DOutlineDistX.Value : 1.5f;
-                    float dy = World3DOutlineDistY != null ? World3DOutlineDistY.Value : 1.5f;
-                    ol.effectDistance = new Vector2(dx, dy);
-                }
-                else if (ol != null) UnityEngine.Object.Destroy(ol);
-            }
-            catch { }
-
-            try
-            {
-                var go = text.gameObject;
-                UnityEngine.UI.Shadow drop = null;
-                var shadows = go.GetComponents<UnityEngine.UI.Shadow>();
-                if (shadows != null)
-                {
-                    for (int i = 0; i < shadows.Length; i++)
-                        if (!(shadows[i] is UnityEngine.UI.Outline)) { drop = shadows[i]; break; }
-                }
-                if (World3DShadowEnabled != null && World3DShadowEnabled.Value)
-                {
-                    if (drop == null) drop = go.AddComponent<UnityEngine.UI.Shadow>();
-                    if (World3DShadowUseGraphicAlpha != null) drop.useGraphicAlpha = World3DShadowUseGraphicAlpha.Value;
-                    if (World3DShadowColor != null) drop.effectColor = World3DShadowColor.Value;
-                    float dx = World3DShadowDistX != null ? World3DShadowDistX.Value : 2f;
-                    float dy = World3DShadowDistY != null ? World3DShadowDistY.Value : -2f;
-                    drop.effectDistance = new Vector2(dx, dy);
-                }
-                else if (drop != null) UnityEngine.Object.Destroy(drop);
-            }
-            catch { }
+            ApplyOutlineOverride(text, World3DOutlineEnabled, World3DOutlineColor, World3DOutlineDistX, World3DOutlineDistY, 1.5f);
+            ApplyShadowOverride(text, World3DShadowEnabled, World3DShadowColor, World3DShadowDistX, World3DShadowDistY, World3DShadowUseGraphicAlpha);
         }
 
         private static bool TryPickRandomAllowedLine(string channel, out string voiceKey, out string text)
@@ -1966,7 +1749,7 @@ namespace Subtitle.Config
             text = null;
             try
             {
-                var dir = GetVoicesDir();
+                var dir = PhraseFilterManager.VoicesDir;
                 if (!Directory.Exists(dir)) return false;
 
                 var files = Directory.GetFiles(dir, "*.jsonc", SearchOption.TopDirectoryOnly);
@@ -1985,9 +1768,9 @@ namespace Subtitle.Config
                 var vk = Path.GetFileNameWithoutExtension(file);
                 voiceKey = string.IsNullOrEmpty(vk) ? "_default" : vk;
 
-                var jsonc = File.ReadAllText(file, Encoding.UTF8);
-                var json = StripJsonComments(jsonc);
-                var root = JObject.Parse(json);
+                // 复用 PhraseFilterManager 的 JSON 缓存，避免每次点击都 ReadAllText + Parse
+                var root = PhraseFilterManager.GetVoiceJsonByPath(file);
+                if (root == null) return false;
 
                 var props = new List<JProperty>();
                 foreach (var p in root.Properties()) props.Add(p);
@@ -2029,12 +1812,6 @@ namespace Subtitle.Config
                 return !string.IsNullOrEmpty(text);
             }
             catch { return false; }
-        }
-
-        private static string WrapColorTag(string s, Color c)
-        {
-            string hex = ColorUtility.ToHtmlStringRGB(c);
-            return "<color=#" + hex + ">" + s + "</color>";
         }
 
         public static void NormalizeTextRectForBackground(UnityEngine.UI.Text text)
@@ -2104,282 +1881,6 @@ namespace Subtitle.Config
             return string.IsNullOrEmpty(t) ? "preset" : t;
         }
 
-        // 下面是若干 Put* 小工具（把 ConfigEntry 写进 JObject）
-
-        private static void PutBool(JObject o, string key, BepInEx.Configuration.ConfigEntry<bool> e)
-        { if (o != null && e != null) o[key] = e.Value; }
-
-        private static void PutInt(JObject o, string key, BepInEx.Configuration.ConfigEntry<int> e)
-        { if (o != null && e != null) o[key] = e.Value; }
-
-        private static void PutFloat(JObject o, string key, BepInEx.Configuration.ConfigEntry<float> e)
-        { if (o != null && e != null) o[key] = (double)e.Value; }
-
-        private static void PutStr(JObject o, string key, BepInEx.Configuration.ConfigEntry<string> e)
-        { if (o != null && e != null) o[key] = e.Value ?? ""; }
-
-        private static void PutCsv(JObject o, string key, BepInEx.Configuration.ConfigEntry<string> e)
-        {
-            if (o == null || e == null) return;
-            var csv = e.Value ?? "";
-            var arr = new JArray();
-            if (!string.IsNullOrEmpty(csv))
-            {
-                var parts = csv.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    var s = parts[i].Trim();
-                    if (!string.IsNullOrEmpty(s)) arr.Add(s);
-                }
-            }
-            o[key] = arr;
-        }
-
-        private static void PutColor(JObject o, string key, BepInEx.Configuration.ConfigEntry<Color> e)
-        {
-            if (o == null || e == null) return;
-            var c = e.Value;
-            // 保存为 [r,g,b,a] (0~1)，你的加载器支持数组与 #hex 两种，这里用数组更直观
-            var a = new JArray((double)c.r, (double)c.g, (double)c.b, (double)c.a);
-            o[key] = a;
-        }
-
-        private static void RegisterPresetBindings()
-        {
-            s_SnapshotWriters.Clear();
-            s_SnapshotReaders.Clear();
-
-            // —— General —— 
-            RegBool("EnableSubtitle", EnableSubtitle);
-            RegBool("SubtitleShowRoleTag", SubtitleShowRoleTag);
-            RegBool("SubtitleShowPmcName", SubtitleShowPmcName);
-            RegBool("SubtitleShowScavName", SubtitleShowScavName);
-            RegEnum("SubtitlePlayerSelfPronoun", SubtitlePlayerSelfPronoun);
-            RegEnum("SubtitleTeammateSelfPronoun", SubtitleTeammateSelfPronoun);
-            RegFloat("SubtitleMaxDistanceMeters", SubtitleMaxDistanceMeters);
-            RegBool("SubtitleShowDistance", SubtitleShowDistance);
-            RegFloat("SubtitleDisplayDelaySec", SubtitleDisplayDelaySec);
-            RegBool("EnableMapBroadcastSubtitle", EnableMapBroadcastSubtitle);
-            RegBool("SubtitleZombieEnabled", SubtitleZombieEnabled);
-            RegInt("SubtitleZombieCooldownSec", SubtitleZombieCooldownSec);
-
-            // —— 字幕：字体/对齐/换行 —— 
-            RegStr("SubtitleFontBundleName", SubtitleFontBundleName);
-            RegCsv("SubtitleFontFamilyCsv", SubtitleFontFamilyCsv);
-            RegInt("SubtitleFontSize", SubtitleFontSize);
-            RegBool("SubtitleFontBold", SubtitleFontBold);
-            RegBool("SubtitleFontItalic", SubtitleFontItalic);
-            RegEnum("SubtitleAlignment", SubtitleAlignment);
-            RegBool("SubtitleWrap", SubtitleWrap);
-            RegInt("SubtitleWrapLength", SubtitleWrapLength);
-
-            // —— 字幕：描边/阴影 —— 
-            RegBool("SubtitleOutlineEnabled", SubtitleOutlineEnabled);
-            RegColor("SubtitleOutlineColor", SubtitleOutlineColor);
-            RegFloat("SubtitleOutlineDistX", SubtitleOutlineDistX);
-            RegFloat("SubtitleOutlineDistY", SubtitleOutlineDistY);
-
-            RegBool("SubtitleShadowEnabled", SubtitleShadowEnabled);
-            RegColor("SubtitleShadowColor", SubtitleShadowColor);
-            RegFloat("SubtitleShadowDistX", SubtitleShadowDistX);
-            RegFloat("SubtitleShadowDistY", SubtitleShadowDistY);
-            RegBool("SubtitleShadowUseGraphicAlpha", SubtitleShadowUseGraphicAlpha);
-
-            // —— 字幕：布局/背景 —— 
-            RegEnum("SubtitleLayoutAnchor", SubtitleLayoutAnchor);
-            RegFloat("SubtitleLayoutOffsetX", SubtitleLayoutOffsetX);
-            RegFloat("SubtitleLayoutOffsetY", SubtitleLayoutOffsetY);
-            RegBool("SubtitleLayoutSafeArea", SubtitleLayoutSafeArea);
-            RegFloat("SubtitleLayoutMaxWidthPercent", SubtitleLayoutMaxWidthPercent);
-            RegFloat("SubtitleLayoutLineSpacing", SubtitleLayoutLineSpacing);
-            RegEnum("SubtitleLayoutOverrideAlign", SubtitleLayoutOverrideAlign);
-            RegFloat("SubtitleLayoutStackOffsetPercent", SubtitleLayoutStackOffsetPercent);
-
-            RegBool("SubtitleBgEnabled", SubtitleBgEnabled);
-            RegStr("SubtitleBgFit", SubtitleBgFit);
-            RegColor("SubtitleBgColor", SubtitleBgColor);
-            RegFloat("SubtitleBgPaddingX", SubtitleBgPaddingX);
-            RegFloat("SubtitleBgPaddingY", SubtitleBgPaddingY);
-            RegFloat("SubtitleBgMarginY", SubtitleBgMarginY);
-            RegStr("SubtitleBgSprite", SubtitleBgSprite);
-
-            RegBool("SubtitleBgShadowEnabled", SubtitleBgShadowEnabled);
-            RegColor("SubtitleBgShadowColor", SubtitleBgShadowColor);
-            RegFloat("SubtitleBgShadowDistX", SubtitleBgShadowDistX);
-            RegFloat("SubtitleBgShadowDistY", SubtitleBgShadowDistY);
-            RegBool("SubtitleBgShadowUseGraphicAlpha", SubtitleBgShadowUseGraphicAlpha);
-
-            // —— 弹幕：通用 + 字体/描边/阴影 —— 
-            RegBool("EnableDanmaku", EnableDanmaku);
-            RegInt("DanmakuLanes", DanmakuLanes);
-            RegFloat("DanmakuSpeed", DanmakuSpeed);
-            RegInt("DanmakuMinGapPx", DanmakuMinGapPx);
-            RegFloat("DanmakuSpawnDelaySec", DanmakuSpawnDelaySec);
-            RegInt("DanmakuFontSize", DanmakuFontSize);
-            RegFloat("DanmakuTopOffsetPercent", DanmakuTopOffsetPercent);
-            RegFloat("DanmakuAreaMaxPercent", DanmakuAreaMaxPercent);
-            RegBool("DanmakuShowRoleTag", DanmakuShowRoleTag);
-            RegBool("DanmakuShowPmcName", DanmakuShowPmcName);
-            RegBool("DanmakuShowScavName", DanmakuShowScavName);
-            RegEnum("DanmakuPlayerSelfPronoun", DanmakuPlayerSelfPronoun);
-            RegEnum("DanmakuTeammateSelfPronoun", DanmakuTeammateSelfPronoun);
-            RegFloat("DanmakuMaxDistanceMeters", DanmakuMaxDistanceMeters);
-            RegBool("DanmakuShowDistance", DanmakuShowDistance);
-            RegBool("EnableMapBroadcastDanmaku", EnableMapBroadcastDanmaku);
-            RegBool("DanmakuZombieEnabled", DanmakuZombieEnabled);
-            RegInt("DanmakuZombieCooldownSec", DanmakuZombieCooldownSec);
-
-            RegStr("DanmakuFontBundleName", DanmakuFontBundleName);
-            RegCsv("DanmakuFontFamilyCsv", DanmakuFontFamilyCsv);
-            RegBool("DanmakuFontBold", DanmakuFontBold);
-            RegBool("DanmakuFontItalic", DanmakuFontItalic);
-            RegBool("DanmakuOutlineEnabled", DanmakuOutlineEnabled);
-            RegColor("DanmakuOutlineColor", DanmakuOutlineColor);
-            RegFloat("DanmakuOutlineDistX", DanmakuOutlineDistX);
-            RegFloat("DanmakuOutlineDistY", DanmakuOutlineDistY);
-            RegBool("DanmakuShadowEnabled", DanmakuShadowEnabled);
-            RegColor("DanmakuShadowColor", DanmakuShadowColor);
-            RegFloat("DanmakuShadowDistX", DanmakuShadowDistX);
-            RegFloat("DanmakuShadowDistY", DanmakuShadowDistY);
-            RegBool("DanmakuShadowUseGraphicAlpha", DanmakuShadowUseGraphicAlpha);
-
-            // —— World3D —— 
-            RegBool("EnableWorld3D", EnableWorld3D);
-            RegBool("World3DShowRoleTag", World3DShowRoleTag);
-            RegBool("World3DShowPmcName", World3DShowPmcName);
-            RegBool("World3DShowScavName", World3DShowScavName);
-            RegEnum("World3DPlayerSelfPronoun", World3DPlayerSelfPronoun);
-            RegEnum("World3DTeammateSelfPronoun", World3DTeammateSelfPronoun);
-            RegFloat("World3DMaxDistanceMeters", World3DMaxDistanceMeters);
-            RegBool("World3DShowDistance", World3DShowDistance);
-            RegFloat("World3DDisplayDelaySec", World3DDisplayDelaySec);
-            RegFloat("World3DVerticalOffsetY", World3DVerticalOffsetY);
-            RegBool("World3DFacePlayer", World3DFacePlayer);
-            RegBool("World3DBGEnabled", World3DBGEnabled);
-            RegColor("World3DBGColor", World3DBGColor);
-            RegBool("World3DShowSelf", World3DShowSelf);
-            RegBool("World3DZombieEnabled", World3DZombieEnabled);
-            RegInt("World3DZombieCooldownSec", World3DZombieCooldownSec);
-
-            RegStr("World3DFontBundleName", World3DFontBundleName);
-            RegCsv("World3DFontFamilyCsv", World3DFontFamilyCsv);
-            RegInt("World3DFontSize", World3DFontSize);
-            RegBool("World3DFontBold", World3DFontBold);
-            RegBool("World3DFontItalic", World3DFontItalic);
-            RegEnum("World3DAlignment", World3DAlignment);
-            RegBool("World3DWrap", World3DWrap);
-            RegInt("World3DWrapLength", World3DWrapLength);
-            RegFloat("World3DWorldScale", World3DWorldScale);
-            RegFloat("World3DDynamicPixelsPerUnit", World3DDynamicPixelsPerUnit);
-            RegFloat("World3DFaceUpdateIntervalSec", World3DFaceUpdateIntervalSec);
-            RegInt("World3DStackMaxLines", World3DStackMaxLines);
-            RegFloat("World3DStackOffsetY", World3DStackOffsetY);
-            RegFloat("World3DFadeInSec", World3DFadeInSec);
-            RegFloat("World3DFadeOutSec", World3DFadeOutSec);
-            RegBool("World3DOutlineEnabled", World3DOutlineEnabled);
-            RegColor("World3DOutlineColor", World3DOutlineColor);
-            RegFloat("World3DOutlineDistX", World3DOutlineDistX);
-            RegFloat("World3DOutlineDistY", World3DOutlineDistY);
-            RegBool("World3DShadowEnabled", World3DShadowEnabled);
-            RegColor("World3DShadowColor", World3DShadowColor);
-            RegFloat("World3DShadowDistX", World3DShadowDistX);
-            RegFloat("World3DShadowDistY", World3DShadowDistY);
-            RegBool("World3DShadowUseGraphicAlpha", World3DShadowUseGraphicAlpha);
-
-            // —— 角色/广播颜色 —— 
-            RegColor("SubRole_Player", SubRole_Player);
-            RegColor("SubRole_Teammate", SubRole_Teammate);
-            RegColor("SubRole_PmcBear", SubRole_PmcBear);
-            RegColor("SubRole_PmcUsec", SubRole_PmcUsec);
-            RegColor("SubRole_Scav", SubRole_Scav);
-            RegColor("SubRole_Raider", SubRole_Raider);
-            RegColor("SubRole_Rogue", SubRole_Rogue);
-            RegColor("SubRole_Cultist", SubRole_Cultist);
-            RegColor("SubRole_BossFollower", SubRole_BossFollower);
-            RegColor("SubRole_Zombie", SubRole_Zombie);
-            RegColor("SubRole_Goons", SubRole_Goons);
-            RegColor("SubRole_Bosses", SubRole_Bosses);
-            RegColor("SubRole_LabAnnouncer", SubRole_LabAnnouncer);
-
-            RegColor("SubText_Player", SubText_Player);
-            RegColor("SubText_Teammate", SubText_Teammate);
-            RegColor("SubText_PmcBear", SubText_PmcBear);
-            RegColor("SubText_PmcUsec", SubText_PmcUsec);
-            RegColor("SubText_Scav", SubText_Scav);
-            RegColor("SubText_Raider", SubText_Raider);
-            RegColor("SubText_Rogue", SubText_Rogue);
-            RegColor("SubText_Cultist", SubText_Cultist);
-            RegColor("SubText_BossFollower", SubText_BossFollower);
-            RegColor("SubText_Zombie", SubText_Zombie);
-            RegColor("SubText_Goons", SubText_Goons);
-            RegColor("SubText_Bosses", SubText_Bosses);
-            RegColor("SubText_LabAnnouncer", SubText_LabAnnouncer);
-
-            RegColor("DmRole_Player", DmRole_Player);
-            RegColor("DmRole_Teammate", DmRole_Teammate);
-            RegColor("DmRole_PmcBear", DmRole_PmcBear);
-            RegColor("DmRole_PmcUsec", DmRole_PmcUsec);
-            RegColor("DmRole_Scav", DmRole_Scav);
-            RegColor("DmRole_Raider", DmRole_Raider);
-            RegColor("DmRole_Rogue", DmRole_Rogue);
-            RegColor("DmRole_Cultist", DmRole_Cultist);
-            RegColor("DmRole_BossFollower", DmRole_BossFollower);
-            RegColor("DmRole_Zombie", DmRole_Zombie);
-            RegColor("DmRole_Goons", DmRole_Goons);
-            RegColor("DmRole_Bosses", DmRole_Bosses);
-            RegColor("DmRole_LabAnnouncer", DmRole_LabAnnouncer);
-
-            RegColor("DmText_Player", DmText_Player);
-            RegColor("DmText_Teammate", DmText_Teammate);
-            RegColor("DmText_PmcBear", DmText_PmcBear);
-            RegColor("DmText_PmcUsec", DmText_PmcUsec);
-            RegColor("DmText_Scav", DmText_Scav);
-            RegColor("DmText_Raider", DmText_Raider);
-            RegColor("DmText_Rogue", DmText_Rogue);
-            RegColor("DmText_Cultist", DmText_Cultist);
-            RegColor("DmText_BossFollower", DmText_BossFollower);
-            RegColor("DmText_Zombie", DmText_Zombie);
-            RegColor("DmText_Goons", DmText_Goons);
-            RegColor("DmText_Bosses", DmText_Bosses);
-            RegColor("DmText_LabAnnouncer", DmText_LabAnnouncer);
-
-            RegColor("W3dRole_Player", W3dRole_Player);
-            RegColor("W3dRole_Teammate", W3dRole_Teammate);
-            RegColor("W3dRole_PmcBear", W3dRole_PmcBear);
-            RegColor("W3dRole_PmcUsec", W3dRole_PmcUsec);
-            RegColor("W3dRole_Scav", W3dRole_Scav);
-            RegColor("W3dRole_Raider", W3dRole_Raider);
-            RegColor("W3dRole_Rogue", W3dRole_Rogue);
-            RegColor("W3dRole_Cultist", W3dRole_Cultist);
-            RegColor("W3dRole_BossFollower", W3dRole_BossFollower);
-            RegColor("W3dRole_Zombie", W3dRole_Zombie);
-            RegColor("W3dRole_Goons", W3dRole_Goons);
-            RegColor("W3dRole_Bosses", W3dRole_Bosses);
-            RegColor("W3dRole_LabAnnouncer", W3dRole_LabAnnouncer);
-
-            RegColor("W3dText_Player", W3dText_Player);
-            RegColor("W3dText_Teammate", W3dText_Teammate);
-            RegColor("W3dText_PmcBear", W3dText_PmcBear);
-            RegColor("W3dText_PmcUsec", W3dText_PmcUsec);
-            RegColor("W3dText_Scav", W3dText_Scav);
-            RegColor("W3dText_Raider", W3dText_Raider);
-            RegColor("W3dText_Rogue", W3dText_Rogue);
-            RegColor("W3dText_Cultist", W3dText_Cultist);
-            RegColor("W3dText_BossFollower", W3dText_BossFollower);
-            RegColor("W3dText_Zombie", W3dText_Zombie);
-            RegColor("W3dText_Goons", W3dText_Goons);
-            RegColor("W3dText_Bosses", W3dText_Bosses);
-            RegColor("W3dText_LabAnnouncer", W3dText_LabAnnouncer);
-
-        }
-
-
-        private static bool In(string keyLC, string[] arr)
-        {
-            for (int i = 0; i < arr.Length; i++) if (keyLC == arr[i]) return true;
-            return false;
-        }
-
         public enum Channel { Subtitle, Danmaku, World3D }
 
         // 角色类别（补丁层会根据 IPlayer 判定归类）
@@ -2393,69 +1894,140 @@ namespace Subtitle.Config
             BossFollower, Zombie, Goons, Bosses
         }
 
+        // —— 颜色查找表：[渠道][角色] -> ConfigEntry（首次使用时构建；键集合与原 switch 完全一致）——
+        private static Dictionary<Channel, Dictionary<RoleKind, ConfigEntry<Color>>> s_RoleColorEntries;
+        private static Dictionary<Channel, Dictionary<RoleKind, ConfigEntry<Color>>> s_TextColorEntries;
+
+        private static Dictionary<Channel, Dictionary<RoleKind, ConfigEntry<Color>>> GetRoleColorEntries()
+        {
+            if (s_RoleColorEntries == null)
+            {
+                s_RoleColorEntries = new Dictionary<Channel, Dictionary<RoleKind, ConfigEntry<Color>>>
+                {
+                    { Channel.Subtitle, new Dictionary<RoleKind, ConfigEntry<Color>>
+                        {
+                            { RoleKind.Player, SubRole_Player },
+                            { RoleKind.Teammate, SubRole_Teammate },
+                            { RoleKind.PmcBear, SubRole_PmcBear },
+                            { RoleKind.PmcUsec, SubRole_PmcUsec },
+                            { RoleKind.Scav, SubRole_Scav },
+                            { RoleKind.Raider, SubRole_Raider },
+                            { RoleKind.Rogue, SubRole_Rogue },
+                            { RoleKind.Cultist, SubRole_Cultist },
+                            { RoleKind.BossFollower, SubRole_BossFollower },
+                            { RoleKind.Zombie, SubRole_Zombie },
+                            { RoleKind.Goons, SubRole_Goons },
+                            { RoleKind.Bosses, SubRole_Bosses },
+                        } },
+                    { Channel.Danmaku, new Dictionary<RoleKind, ConfigEntry<Color>>
+                        {
+                            { RoleKind.Player, DmRole_Player },
+                            { RoleKind.Teammate, DmRole_Teammate },
+                            { RoleKind.PmcBear, DmRole_PmcBear },
+                            { RoleKind.PmcUsec, DmRole_PmcUsec },
+                            { RoleKind.Scav, DmRole_Scav },
+                            { RoleKind.Raider, DmRole_Raider },
+                            { RoleKind.Rogue, DmRole_Rogue },
+                            { RoleKind.Cultist, DmRole_Cultist },
+                            { RoleKind.BossFollower, DmRole_BossFollower },
+                            { RoleKind.Zombie, DmRole_Zombie },
+                            { RoleKind.Goons, DmRole_Goons },
+                            { RoleKind.Bosses, DmRole_Bosses },
+                        } },
+                    { Channel.World3D, new Dictionary<RoleKind, ConfigEntry<Color>>
+                        {
+                            { RoleKind.Player, W3dRole_Player },
+                            { RoleKind.Teammate, W3dRole_Teammate },
+                            { RoleKind.PmcBear, W3dRole_PmcBear },
+                            { RoleKind.PmcUsec, W3dRole_PmcUsec },
+                            { RoleKind.Scav, W3dRole_Scav },
+                            { RoleKind.Raider, W3dRole_Raider },
+                            { RoleKind.Rogue, W3dRole_Rogue },
+                            { RoleKind.Cultist, W3dRole_Cultist },
+                            { RoleKind.BossFollower, W3dRole_BossFollower },
+                            { RoleKind.Zombie, W3dRole_Zombie },
+                            { RoleKind.Goons, W3dRole_Goons },
+                            { RoleKind.Bosses, W3dRole_Bosses },
+                        } },
+                };
+            }
+            return s_RoleColorEntries;
+        }
+
+        private static Dictionary<Channel, Dictionary<RoleKind, ConfigEntry<Color>>> GetTextColorEntries()
+        {
+            if (s_TextColorEntries == null)
+            {
+                s_TextColorEntries = new Dictionary<Channel, Dictionary<RoleKind, ConfigEntry<Color>>>
+                {
+                    { Channel.Subtitle, new Dictionary<RoleKind, ConfigEntry<Color>>
+                        {
+                            { RoleKind.Player, SubText_Player },
+                            { RoleKind.Teammate, SubText_Teammate },
+                            { RoleKind.PmcBear, SubText_PmcBear },
+                            { RoleKind.PmcUsec, SubText_PmcUsec },
+                            { RoleKind.Scav, SubText_Scav },
+                            { RoleKind.Raider, SubText_Raider },
+                            { RoleKind.Rogue, SubText_Rogue },
+                            { RoleKind.Cultist, SubText_Cultist },
+                            { RoleKind.BossFollower, SubText_BossFollower },
+                            { RoleKind.Zombie, SubText_Zombie },
+                            { RoleKind.Goons, SubText_Goons },
+                            { RoleKind.Bosses, SubText_Bosses },
+                        } },
+                    { Channel.Danmaku, new Dictionary<RoleKind, ConfigEntry<Color>>
+                        {
+                            { RoleKind.Player, DmText_Player },
+                            { RoleKind.Teammate, DmText_Teammate },
+                            { RoleKind.PmcBear, DmText_PmcBear },
+                            { RoleKind.PmcUsec, DmText_PmcUsec },
+                            { RoleKind.Scav, DmText_Scav },
+                            { RoleKind.Raider, DmText_Raider },
+                            { RoleKind.Rogue, DmText_Rogue },
+                            { RoleKind.Cultist, DmText_Cultist },
+                            { RoleKind.BossFollower, DmText_BossFollower },
+                            { RoleKind.Zombie, DmText_Zombie },
+                            { RoleKind.Goons, DmText_Goons },
+                            { RoleKind.Bosses, DmText_Bosses },
+                        } },
+                    { Channel.World3D, new Dictionary<RoleKind, ConfigEntry<Color>>
+                        {
+                            { RoleKind.Player, W3dText_Player },
+                            { RoleKind.Teammate, W3dText_Teammate },
+                            { RoleKind.PmcBear, W3dText_PmcBear },
+                            { RoleKind.PmcUsec, W3dText_PmcUsec },
+                            { RoleKind.Scav, W3dText_Scav },
+                            { RoleKind.Raider, W3dText_Raider },
+                            { RoleKind.Rogue, W3dText_Rogue },
+                            { RoleKind.Cultist, W3dText_Cultist },
+                            { RoleKind.BossFollower, W3dText_BossFollower },
+                            { RoleKind.Zombie, W3dText_Zombie },
+                            { RoleKind.Goons, W3dText_Goons },
+                            { RoleKind.Bosses, W3dText_Bosses },
+                        } },
+                };
+            }
+            return s_TextColorEntries;
+        }
+
+        private static Color LookupColor(Dictionary<Channel, Dictionary<RoleKind, ConfigEntry<Color>>> table, RoleKind kind, Channel ch)
+        {
+            Dictionary<RoleKind, ConfigEntry<Color>> byKind;
+            ConfigEntry<Color> entry;
+            if (table != null && table.TryGetValue(ch, out byKind) && byKind != null &&
+                byKind.TryGetValue(kind, out entry) && entry != null)
+                return entry.Value;
+            return Color.white; // 没命中就回退纯白
+        }
+
         // 角色名前缀颜色
         public static Color GetRoleColor(RoleKind kind, Channel ch)
         {
             try
             {
-                switch (ch)
-                {
-                    case Channel.Subtitle:
-                        switch (kind)
-                        {
-                            case RoleKind.Player: return SubRole_Player.Value;
-                            case RoleKind.Teammate: return SubRole_Teammate.Value;
-                            case RoleKind.PmcBear: return SubRole_PmcBear.Value;
-                            case RoleKind.PmcUsec: return SubRole_PmcUsec.Value;
-                            case RoleKind.Scav: return SubRole_Scav.Value;
-                            case RoleKind.Raider: return SubRole_Raider.Value;
-                            case RoleKind.Rogue: return SubRole_Rogue.Value;
-                            case RoleKind.Cultist: return SubRole_Cultist.Value;
-                            case RoleKind.BossFollower: return SubRole_BossFollower.Value;
-                            case RoleKind.Zombie: return SubRole_Zombie.Value;
-                            case RoleKind.Goons: return SubRole_Goons.Value;
-                            case RoleKind.Bosses: return SubRole_Bosses.Value;
-                        }
-                        break;
-                    case Channel.Danmaku:
-                        switch (kind)
-                        {
-                            case RoleKind.Player: return DmRole_Player.Value;
-                            case RoleKind.Teammate: return DmRole_Teammate.Value;
-                            case RoleKind.PmcBear: return DmRole_PmcBear.Value;
-                            case RoleKind.PmcUsec: return DmRole_PmcUsec.Value;
-                            case RoleKind.Scav: return DmRole_Scav.Value;
-                            case RoleKind.Raider: return DmRole_Raider.Value;
-                            case RoleKind.Rogue: return DmRole_Rogue.Value;
-                            case RoleKind.Cultist: return DmRole_Cultist.Value;
-                            case RoleKind.BossFollower: return DmRole_BossFollower.Value;
-                            case RoleKind.Zombie: return DmRole_Zombie.Value;
-                            case RoleKind.Goons: return DmRole_Goons.Value;
-                            case RoleKind.Bosses: return DmRole_Bosses.Value;
-                        }
-                        break;
-                    case Channel.World3D:
-                        switch (kind)
-                        {
-                            case RoleKind.Player: return W3dRole_Player.Value;
-                            case RoleKind.Teammate: return W3dRole_Teammate.Value;
-                            case RoleKind.PmcBear: return W3dRole_PmcBear.Value;
-                            case RoleKind.PmcUsec: return W3dRole_PmcUsec.Value;
-                            case RoleKind.Scav: return W3dRole_Scav.Value;
-                            case RoleKind.Raider: return W3dRole_Raider.Value;
-                            case RoleKind.Rogue: return W3dRole_Rogue.Value;
-                            case RoleKind.Cultist: return W3dRole_Cultist.Value;
-                            case RoleKind.BossFollower: return W3dRole_BossFollower.Value;
-                            case RoleKind.Zombie: return W3dRole_Zombie.Value;
-                            case RoleKind.Goons: return W3dRole_Goons.Value;
-                            case RoleKind.Bosses: return W3dRole_Bosses.Value;
-                        }
-                        break;
-                }
+                return LookupColor(GetRoleColorEntries(), kind, ch);
             }
             catch { }
-
-            // 回退旧配置，再回退白色
             return Color.white; // 没命中就回退纯白
         }
 
@@ -2464,63 +2036,9 @@ namespace Subtitle.Config
         {
             try
             {
-                switch (ch)
-                {
-                    case Channel.Subtitle:
-                        switch (kind)
-                        {
-                            case RoleKind.Player: return SubText_Player.Value;
-                            case RoleKind.Teammate: return SubText_Teammate.Value;
-                            case RoleKind.PmcBear: return SubText_PmcBear.Value;
-                            case RoleKind.PmcUsec: return SubText_PmcUsec.Value;
-                            case RoleKind.Scav: return SubText_Scav.Value;
-                            case RoleKind.Raider: return SubText_Raider.Value;
-                            case RoleKind.Rogue: return SubText_Rogue.Value;
-                            case RoleKind.Cultist: return SubText_Cultist.Value;
-                            case RoleKind.BossFollower: return SubText_BossFollower.Value;
-                            case RoleKind.Zombie: return SubText_Zombie.Value;
-                            case RoleKind.Goons: return SubText_Goons.Value;
-                            case RoleKind.Bosses: return SubText_Bosses.Value;
-                        }
-                        break;
-                    case Channel.Danmaku:
-                        switch (kind)
-                        {
-                            case RoleKind.Player: return DmText_Player.Value;
-                            case RoleKind.Teammate: return DmText_Teammate.Value;
-                            case RoleKind.PmcBear: return DmText_PmcBear.Value;
-                            case RoleKind.PmcUsec: return DmText_PmcUsec.Value;
-                            case RoleKind.Scav: return DmText_Scav.Value;
-                            case RoleKind.Raider: return DmText_Raider.Value;
-                            case RoleKind.Rogue: return DmText_Rogue.Value;
-                            case RoleKind.Cultist: return DmText_Cultist.Value;
-                            case RoleKind.BossFollower: return DmText_BossFollower.Value;
-                            case RoleKind.Zombie: return DmText_Zombie.Value;
-                            case RoleKind.Goons: return DmText_Goons.Value;
-                            case RoleKind.Bosses: return DmText_Bosses.Value;
-                        }
-                        break;
-                    case Channel.World3D:
-                        switch (kind)
-                        {
-                            case RoleKind.Player: return W3dText_Player.Value;
-                            case RoleKind.Teammate: return W3dText_Teammate.Value;
-                            case RoleKind.PmcBear: return W3dText_PmcBear.Value;
-                            case RoleKind.PmcUsec: return W3dText_PmcUsec.Value;
-                            case RoleKind.Scav: return W3dText_Scav.Value;
-                            case RoleKind.Raider: return W3dText_Raider.Value;
-                            case RoleKind.Rogue: return W3dText_Rogue.Value;
-                            case RoleKind.Cultist: return W3dText_Cultist.Value;
-                            case RoleKind.BossFollower: return W3dText_BossFollower.Value;
-                            case RoleKind.Zombie: return W3dText_Zombie.Value;
-                            case RoleKind.Goons: return W3dText_Goons.Value;
-                            case RoleKind.Bosses: return W3dText_Bosses.Value;
-                        }
-                        break;
-                }
+                return LookupColor(GetTextColorEntries(), kind, ch);
             }
             catch { }
-
             return Color.white; // 没命中就回退纯白
         }
 

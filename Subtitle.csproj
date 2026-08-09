@@ -35,29 +35,11 @@
   <PropertyGroup>
     <StartupObject />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == '3.11.x|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\3.11.x\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == '3.10.x|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\3.10.x\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="DissonanceVoip, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
     <Reference Include="DOTween, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\DOTween.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\DOTween.dll</HintPath>
     </Reference>
     <Reference Include="PhysicsModule">
       <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
@@ -131,7 +113,7 @@
       <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIModule">
-      <HintPath>..\..\..\..\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+      <HintPath>V:\EFToffline\EFToffline - 4.1debug\EscapeFromTarkov_Data\Managed\UnityEngine.UIModule.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -139,6 +121,11 @@
     <Compile Include="Config\Settings.Methods.cs" />
     <Compile Include="Config\PhraseFilterManager.cs" />
     <Compile Include="Config\PhraseFilterPanel.cs" />
+    <Compile Include="Config\UiWidgets.cs" />
+    <Compile Include="SettingsUI\SettingsWindow.cs" />
+    <Compile Include="SettingsUI\SettingControlFactory.cs" />
+    <Compile Include="SettingsUI\SettingControlFactory.FontListEditor.cs" />
+    <Compile Include="SettingsUI\SettingsPreviewPanel.cs" />
     <Compile Include="Debug\DebugPhrasePanel.cs" />
     <Compile Include="Patch\BattleUIScreenShowPatch.cs" />
     <Compile Include="Patch\GameWorldPatches.cs" />
@@ -151,8 +138,11 @@
     <Compile Include="SubtitleUI\SubtitleDanmaku.cs" />
     <Compile Include="SubtitleUI\SubtitleTextStyle.cs" />
     <Compile Include="Utils\FriendlyUtils.cs" />
+    <Compile Include="Utils\I18n.cs" />
+    <Compile Include="Utils\JsoncUtils.cs" />
     <Compile Include="Utils\SpeakerIndex.cs" />
     <Compile Include="Utils\SubtitleEnum.cs" />
+    <Compile Include="Utils\StreamerFilter.cs" />
     <Compile Include="Utils\UIStateListener.cs" />
     <Compile Include="World3D\SubtitleWorld3D.cs" />
   </ItemGroup>

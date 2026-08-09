@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Logging;
 using Comfort.Common;
 using EFT;
@@ -16,7 +16,7 @@ using Subtitle;
 
 namespace Subtitle
 {
-    [BepInPlugin("Volcano.Subtitle", "Volcano-Subtitle 火山家的实时字幕", "1.7.0")]
+    [BepInPlugin("Volcano.Subtitle", "Volcano-Subtitle 火山家的实时字幕", "1.8.1")]
     public class Plugin : BaseUnityPlugin
     {
         public static Plugin Instance { get; private set; }
@@ -26,9 +26,6 @@ namespace Subtitle
         public SubtitleManager SubtitleComponent { get; private set; }
         private GameObject _debugUiGo;
         private GameObject _standaloneCanvasGO;
-
-        private GameObject _testCanvasRoot;         // 我们自己的 Overlay Canvas
-        private SubtitleManager _testManager;       // 测试专用的 SubtitleManager
 
         private static string PresetsDir
         {
@@ -41,6 +38,9 @@ namespace Subtitle
             Instance = this;
             DontDestroyOnLoad(this);
 
+            // 图形化设置窗口：常驻创建（默认隐藏），热键轮询在下方 Plugin.Update 中
+            SettingsUI.SettingsWindow.EnsureCreated();
+
             // 1) 告诉样式系统字体目录（先放着，当前仅用于 file 名推测）
             SubtitleSystem.SubtitleFontLoader.SetFontsDir(Path.Combine(PresetsDir, "fonts"));
             SubtitleSystem.SubtitleFontLoader.SetFontBundleDir(
@@ -48,10 +48,8 @@ namespace Subtitle
 
             SubtitleSystem.SubtitleTextPreset.Current = null;
 
-            // 刷新一次运行期层
-            var mgr = Subtitle.Plugin.Instance != null
-                ? Subtitle.Plugin.Instance.GetOrCreateSubtitleManagerAnyScene()
-                : null;
+            // 刷新一次运行期层（此处 Instance 刚赋值为 this，直接调用即可）
+            var mgr = GetOrCreateSubtitleManagerAnyScene();
             if (mgr != null)
             {
                 mgr.ApplyDanmakuSettings();
@@ -89,53 +87,18 @@ namespace Subtitle
                 Log?.LogError("[Subtitle] PatchAll failed (continue): " + e);
             }
 
-            // --- 新增：仅当 Fika 存在时才尝试打探针（不会影响单机） ---
-            try
-            {
-                SubtitlePatch.FikaManualPatch.TryPatchFikaIfPresent(harmony);
-            }
-            catch (Exception e)
-            {
-                Log?.LogWarning("[Subtitle] Fika manual patch failed: " + e);
-            }
-
             new BattleUIScreenShowPatch().Enable();
             new GameWorldRegisterPlayerPatch().Enable();
             new GameWorldUnregisterPlayerPatch().Enable();
 
-            harmony.PatchAll(typeof(SubtitlePatch));
-            // ====== LabRadioPatch 启动自检 ======
+            // ====== LabRadioPatch 启动：预热广播文本映射 ======
             try
             {
-                // 1) 反射确认目标方法存在
-                var miQ = HarmonyLib.AccessTools.Method(typeof(global::QueuePlayer), "Play", new System.Type[] { typeof(UnityEngine.AudioClip) });
-                if (miQ != null) Log?.LogInfo("[LabBroadcast] Target OK: QueuePlayer.Play(AudioClip)");
-                else Log?.LogWarning("[LabBroadcast] Target NOT found: QueuePlayer.Play(AudioClip)");
-
-                // 2) 主动调用 LabRadioPatch.Bootstrap()（打印“init bootstrap.”并预热映射）
                 Subtitle.LabRadioPatch.Bootstrap();
-            }
-            catch (System.Exception e)
-            {
-                Log?.LogWarning("[LabBroadcast] bootstrap failed: " + e);
-            }
-            try
-            {
-                var mi = HarmonyLib.AccessTools.Method(
-                    typeof(EFT.GlobalEvents.AudioEvents.BroadcastItemChangedEvent),
-                    "Invoke",
-                    new System.Type[] {
-            typeof(CommonAssets.Scripts.Audio.RadioSystem.ERadioStation),
-            typeof(CommonAssets.Scripts.Audio.RadioSystem.BroadcastItemData),
-            typeof(float)
-                    }
-                );
-                if (mi != null) Log?.LogInfo("[LabBroadcast] Hook target located: " + mi.DeclaringType + "." + mi.Name);
-                else Log?.LogWarning("[LabBroadcast] Hook target NOT found.");
             }
             catch (Exception e)
             {
-                Log?.LogWarning("[LabBroadcast] Hook target locate failed: " + e);
+                Log?.LogWarning("[LabBroadcast] bootstrap failed: " + e);
             }
         }
 
@@ -176,6 +139,14 @@ namespace Subtitle
 
         void Update()
         {
+            // 设置界面热键：轮询放在这里（与调试面板同一条已验证可靠的路径）；SettingsWindow 自身不再轮询，避免双触发
+            if (Subtitle.Config.Settings.SettingsWindowHotkey != null &&
+                Subtitle.Config.Settings.SettingsWindowHotkey.Value.IsDown())
+            {
+                Log?.LogInfo("[SettingsUI] 设置界面热键触发，切换窗口显隐。");
+                SettingsUI.SettingsWindow.ToggleVisible();
+            }
+
             // 只在 Debug 开启且有 GameWorld（藏身处/离线局）时运行
             bool shouldEnable =
                 Subtitle.Config.Settings.EnableDebugTools != null &&
@@ -249,73 +220,6 @@ namespace Subtitle
             mgr.InitializeDanmakuLayer();
             Subtitle.Plugin.Log?.LogInfo("[Danmaku] TestCanvas root ready.");
             return mgr;
-        }
-
-        private void EnsureTestCanvasAndManager()
-        {
-            if (_testCanvasRoot == null)
-            {
-                _testCanvasRoot = new GameObject("Subtitle.TestCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-                DontDestroyOnLoad(_testCanvasRoot);
-
-                var canvas = _testCanvasRoot.GetComponent<Canvas>();
-                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-
-                var scaler = _testCanvasRoot.GetComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-
-            if (_testManager == null)
-            {
-                var go = new GameObject("Subtitle.TestRoot", typeof(RectTransform));
-                go.transform.SetParent(_testCanvasRoot.transform, false);
-
-                _testManager = go.AddComponent<SubtitleManager>();
-                _testManager.SetVisible(true);
-
-                // —— 把内部生成的 "SubtitlePanel" 稍微调个位置/宽度，尽量确保可见 —— //
-                var panelTr = go.transform.Find("SubtitleStackPanel") as RectTransform;
-                if (panelTr != null)
-                {
-                    // 让垂直布局占满宽度，避免文字被挤成“竖排”
-                    var vlg = panelTr.GetComponent<VerticalLayoutGroup>();
-                    if (vlg != null) vlg.childForceExpandWidth = true;
-                }
-            }
-        }
-
-        private static readonly ManualLogSource s_Log =
-        BepInEx.Logging.Logger.CreateLogSource("Subtitle.Debug");
-
-        private static void LoadPresetByName(string name)
-        {
-            if (string.IsNullOrEmpty(name)) name = "default";
-
-            var path = Path.Combine(PresetsDir, name + ".jsonc");
-            if (!File.Exists(path))
-            {
-                // 兜底 default.jsonc
-                path = Path.Combine(PresetsDir, "default.jsonc");
-            }
-
-            var preset = SubtitleSystem.SubtitleTextPreset.LoadFromFile(path);
-            if (preset == null && !name.Equals("default", StringComparison.OrdinalIgnoreCase))
-            {
-                // 再尝试一次 default，防御性处理
-                var fallback = Path.Combine(PresetsDir, "default.jsonc");
-                preset = SubtitleSystem.SubtitleTextPreset.LoadFromFile(fallback);
-            }
-
-            SubtitleSystem.SubtitleTextPreset.Current = preset;
-            if (preset == null)
-            {
-                s_Log.LogWarning("[SubtitleStyle] failed to load preset; styles will not apply until a valid preset is selected.");
-            }
-            else
-            {
-                s_Log.LogInfo("[SubtitleStyle] loaded preset: " + (string.IsNullOrEmpty(preset.Name) ? name : preset.Name));
-            }
         }
     }
 }

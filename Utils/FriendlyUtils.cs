@@ -1,4 +1,4 @@
-﻿using Comfort.Common;
+using Comfort.Common;
 using EFT;
 using HarmonyLib;
 
@@ -61,6 +61,17 @@ namespace Subtitle.Utils
             return null;
         }
 
+        // —— 本地玩家 GroupId 缓存：每条语音都会判定多次友军，避免反复 Singleton+反射 ——
+        private static IPlayer s_CachedMainPlayer;
+        private static string s_CachedMainGroupId;
+
+        // 对局结束（本地玩家注销）时调用，清空缓存
+        public static void InvalidateMainPlayerCache()
+        {
+            s_CachedMainPlayer = null;
+            s_CachedMainGroupId = null;
+        }
+
         // ★ 友军判定：与本地玩家 GroupId 一致，且不是本地玩家本人
         public static bool IsFriendlyToMain(this IPlayer player)
         {
@@ -69,7 +80,14 @@ namespace Subtitle.Utils
                 var main = GetMainPlayer();
                 if (player == null || main == null) return false;
 
-                var mg = GetGroupIdSafe(main);
+                // 本地玩家引用不变时直接复用缓存的 GroupId
+                if (!object.ReferenceEquals(main, s_CachedMainPlayer))
+                {
+                    s_CachedMainPlayer = main;
+                    s_CachedMainGroupId = GetGroupIdSafe(main);
+                }
+
+                var mg = s_CachedMainGroupId;
                 var og = GetGroupIdSafe(player);
 
                 return !string.IsNullOrEmpty(mg)

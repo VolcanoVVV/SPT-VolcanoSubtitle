@@ -1,8 +1,7 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.RegularExpressions;
 using UnityEngine;
 using Subtitle.Utils;
 
@@ -12,10 +11,15 @@ namespace SubtitleSystem
     {
         // 目录：.../BepInEx/plugins/subtitle/locales/ch/
         // 里面放：usec_1.jsonc、bear_1.jsonc、...、default.jsonc
-        private static readonly string BaseDir =
-            Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales", "ch");
-        private static readonly string VoiceDir =
-            Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "locales", "ch", "voices");
+        // 目录解析统一走 PhraseFilterManager（含多级回退与缓存；正常安装布局下路径不变，懒求值避免静态初始化时序问题）
+        private static string BaseDir
+        {
+            get { return Subtitle.Config.PhraseFilterManager.LocalesDir; }
+        }
+        private static string VoiceDir
+        {
+            get { return Subtitle.Config.PhraseFilterManager.VoicesDir; }
+        }
 
         private const string DefaultVoice = "Default_Voice";
 
@@ -35,15 +39,10 @@ namespace SubtitleSystem
         /// 2) 命中 netId 则取首条；否则从 General 随机一条；
         /// 3) voiceKey 未命或缺失时，降级到 default.jsonc 按相同逻辑。
         /// </summary>
-        public static string GetSubtitle(string voiceKey, string phrase, string netId)
-        {
-            return GetSubtitleForChannel("Subtitle", voiceKey, phrase, netId);
-        }
-
         public static string GetSubtitleForChannel(string channel, string voiceKey, string phrase, string netId)
         {
             if (string.IsNullOrWhiteSpace(phrase))
-                return "(未知语音)222";
+                return "(未知语音)";
 
             // 归一化：文件名一律用小写
             string vk = string.IsNullOrWhiteSpace(voiceKey) ? DefaultVoice : voiceKey.Trim();
@@ -63,17 +62,17 @@ namespace SubtitleSystem
             string s;
 
             // 1) voiceKey + netId（若是数组，取第 0 条）
-            if (allowNetId && loadedVk && TryPick(_cache[vk], p, n, false, out s)) return s;
+            if (allowNetId && loadedVk && TryPick(_cache[vk], p, n, false, out s)) return StreamerFilter.Apply(s);
 
             // 2) voiceKey + General（随机一条）
-            if (allowGeneral && loadedVk && TryPick(_cache[vk], p, "General", true, out s)) return s;
+            if (allowGeneral && loadedVk && TryPick(_cache[vk], p, "General", true, out s)) return StreamerFilter.Apply(s);
 
             // 3) default + netId
             EnsureLoaded(DefaultVoice);
-            if (allowNetId && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, n, false, out s)) return s;
+            if (allowNetId && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, n, false, out s)) return StreamerFilter.Apply(s);
 
             // 4) default + General（随机一条）
-            if (allowGeneral && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, "General", true, out s)) return s;
+            if (allowGeneral && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, "General", true, out s)) return StreamerFilter.Apply(s);
 
             Debug.LogWarning(string.Format("[SubtitleSystem] Miss voice='{0}' phrase='{1}' netId='{2}'.",
                 vk, p, n));
@@ -105,9 +104,8 @@ namespace SubtitleSystem
                 }
 
                 var json = File.ReadAllText(path);
-                // 支持 .jsonc：去注释
-                json = Regex.Replace(json, @"//.*?$", "", RegexOptions.Multiline);
-                json = Regex.Replace(json, @"/\*.*?\*/", "", RegexOptions.Singleline);
+                // 支持 .jsonc：去注释（逐字符扫描，字符串字面量内的 // 不会被误删）
+                json = JsoncUtils.StripJsonComments(json);
 
                 var root = JObject.Parse(json);
 

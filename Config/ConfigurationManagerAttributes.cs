@@ -1,4 +1,4 @@
-﻿/// <summary>
+/// <summary>
 /// Class that specifies how a setting should be displayed inside the ConfigurationManager settings window.
 /// 
 /// Usage:
@@ -126,6 +126,12 @@ internal sealed class ConfigurationManagerAttributes
     /// 0 by default, higher number is higher on the list.
     /// </summary>
     public int? Order;
+
+    /// <summary>
+    /// 子选项缩进级别（本 Mod 自用，ConfigurationManager 官方字段之外的新增元数据）。
+    /// 0（默认）= 普通项；>=1 = 上方开关/选项的从属子项，图形化设置界面里整行向右缩进显示。
+    /// </summary>
+    public int Indent;
 
     /// <summary>
     /// Only show the value, don't allow editing it.

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -146,6 +146,9 @@ namespace Subtitle
         {
             if (string.IsNullOrEmpty(text)) return;
 
+            // 主播模式：对广播正文打码（roletag 角色名不打码）
+            text = Subtitle.Utils.StreamerFilter.Apply(text);
+
             // 1) roletag：RoleType.jsonc → 键 "LabAnnouncer"，找不到就回退到“系统广播”
             string roleName = Subtitle.Config.Settings.GetRoleLabel(BROADCAST_ROLE_KEY, "系统广播");
             string roleTag = roleName + "：";
@@ -223,7 +226,7 @@ namespace Subtitle
                 }
 
                 string raw = File.ReadAllText(path, Encoding.UTF8);
-                string json = StripJsonComments(raw);
+                string json = Subtitle.Utils.JsoncUtils.StripJsonComments(raw);
 
                 // 1) 顶层 "clip":"text" 映射（忽略保留字）
                 // 允许写：
@@ -281,48 +284,6 @@ namespace Subtitle
         }
 
         // ======== 小工具 ========
-
-        private static string StripJsonComments(string src)
-        {
-            if (string.IsNullOrEmpty(src)) return src;
-            var sb = new StringBuilder(src.Length);
-            bool inStr = false;
-            for (int i = 0; i < src.Length; i++)
-            {
-                char c = src[i];
-                if (c == '"')
-                {
-                    bool escaped = (i > 0 && src[i - 1] == '\\');
-                    if (!escaped) inStr = !inStr;
-                    sb.Append(c);
-                }
-                else if (!inStr && c == '/' && i + 1 < src.Length)
-                {
-                    char n = src[i + 1];
-                    if (n == '/')
-                    {
-                        i += 2;
-                        while (i < src.Length && src[i] != '\n') i++;
-                        sb.Append('\n');
-                    }
-                    else if (n == '*')
-                    {
-                        i += 2;
-                        while (i + 1 < src.Length && !(src[i] == '*' && src[i + 1] == '/')) i++;
-                        i++;
-                    }
-                    else
-                    {
-                        sb.Append(c);
-                    }
-                }
-                else
-                {
-                    sb.Append(c);
-                }
-            }
-            return sb.ToString();
-        }
 
         private static bool EndsWith(List<string> tail, string[] seq)
         {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using EFT;
 using EFT.UI;
@@ -22,8 +22,9 @@ namespace Subtitle.Patch
 
             Plugin.Instance.TryAttachToBattleUIScreen(__instance);
 
-            // 监听界面切换事件（假设界面有 OnDisable 或 OnDestroy 事件）
-            __instance.gameObject.AddComponent<UIStateListener>();
+            // 监听界面切换事件（假设界面有 OnDisable 或 OnDestroy 事件）；已挂过就不要重复 AddComponent
+            if (__instance.GetComponent<UIStateListener>() == null)
+                __instance.gameObject.AddComponent<UIStateListener>();
         }
     }
 }

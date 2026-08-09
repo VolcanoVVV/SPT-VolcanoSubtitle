@@ -1,4 +1,4 @@
-﻿// Filename: Subtitle.Danmaku.cs
+// Filename: Subtitle.Danmaku.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -133,10 +133,13 @@ namespace SubtitleSystem
         }
 
         // 逐条发送弹幕（有间隔），车道不可用时等待直到可用
+        private static readonly WaitForSecondsRealtime _laneBusyWait = new WaitForSecondsRealtime(0.05f); // 车道繁忙时的重试步进（缓存避免分配）
+
         private IEnumerator CoSpawnLoop()
         {
             _spawnLoopRunning = true;
-            var shortWait = new WaitForSecondsRealtime(0.05f); // 车道繁忙时的重试步进
+            // 每条生成循环只取一次间隔配置，避免每轮 yield 都分配
+            var spawnDelayWait = _spawnDelaySec > 0f ? new WaitForSecondsRealtime(_spawnDelaySec) : null;
             while (_danmakuQueue.Count > 0)
             {
                 var item = _danmakuQueue.Peek();
@@ -145,12 +148,12 @@ namespace SubtitleSystem
                 {
                     _danmakuQueue.Dequeue();
                     // 两条弹幕之间留出极短间隔（可在设置改 0.1 或 0.3）
-                    if (_spawnDelaySec > 0f)
-                        yield return new WaitForSecondsRealtime(_spawnDelaySec);
+                    if (spawnDelayWait != null)
+                        yield return spawnDelayWait;
                 }
                 else
                 {
-                    yield return shortWait;
+                    yield return _laneBusyWait;
                 }
             }
             _spawnLoopRunning = false;
@@ -212,9 +215,7 @@ namespace SubtitleSystem
             // ★ 最终颜色：由调用方传入（稍后来自 Settings.DanmakuTextColor）
             txt.color = color;
 
-            // 计算尺寸
-            Canvas.ForceUpdateCanvases();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
+            // 计算尺寸（preferred* 按需计算，无需强制重建所有 Canvas）
             float textWidth = txt.preferredWidth;
             float textHeight = txt.preferredHeight;
 
@@ -281,10 +282,6 @@ namespace SubtitleSystem
                 txt.verticalOverflow = VerticalWrapMode.Overflow;
                 txt.raycastTarget = false;
             }
-            else
-            {
-                go.transform.SetParent(_danmakuLayer, false);
-            }
 
             return go;
         }
@@ -293,7 +290,6 @@ namespace SubtitleSystem
         {
             if (go == null) return;
             go.SetActive(false);
-            go.transform.SetParent(_danmakuLayer, false);
             _pool.Enqueue(go);
         }
 

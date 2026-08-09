@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json; // 需确保项目里已有\
+using Newtonsoft.Json; // 需确保项目里已有\
 using Newtonsoft.Json.Linq;
 using Subtitle.Config;
 using System;
@@ -34,12 +34,15 @@ namespace SubtitleSystem
             }
 
             string jsonc = File.ReadAllText(presetPath);
-            string json = StripJsonComments(jsonc);
+            string json = Subtitle.Utils.JsoncUtils.StripJsonComments(jsonc);
 
+            // 只解析一次：先拿 JObject，再映射到预设对象
+            JObject root = null;
             SubtitleTextPreset preset = null;
             try
             {
-                preset = JsonConvert.DeserializeObject<SubtitleTextPreset>(json);
+                root = JObject.Parse(json);
+                preset = root.ToObject<SubtitleTextPreset>();
             }
             catch (Exception e)
             {
@@ -79,7 +82,6 @@ namespace SubtitleSystem
             // ★ 解析 Setting（支持两种位置：根级 或 Styles 下的 Setting）
             try
             {
-                var root = JObject.Parse(json);
                 JToken settingTok = null;
 
                 if (root.TryGetValue("Setting", StringComparison.OrdinalIgnoreCase, out settingTok) ||
@@ -122,52 +124,6 @@ namespace SubtitleSystem
                 map[name] = files[i];
             }
             return map;
-        }
-
-        // —— 工具：去掉 JSONC 注释 —— //
-        private static string StripJsonComments(string input)
-        {
-            if (string.IsNullOrEmpty(input)) return input;
-
-            // 先去掉块注释
-            string s = Regex.Replace(input, @"/\*[\s\S]*?\*/", string.Empty);
-
-            // 再逐字符扫描，去掉“非字符串中的 // 到行尾”
-            System.Text.StringBuilder sb = new System.Text.StringBuilder(s.Length);
-            bool inStr = false;
-            char strQuote = '\0';
-            for (int i = 0; i < s.Length; i++)
-            {
-                char c = s[i];
-
-                // 进入/退出字符串（处理转义）
-                if (!inStr && (c == '"' || c == '\''))
-                {
-                    inStr = true; strQuote = c; sb.Append(c); continue;
-                }
-                if (inStr)
-                {
-                    sb.Append(c);
-                    if (c == '\\')
-                    {
-                        if (i + 1 < s.Length) { sb.Append(s[i + 1]); i++; }
-                        continue;
-                    }
-                    if (c == strQuote) { inStr = false; strQuote = '\0'; }
-                    continue;
-                }
-
-                // 非字符串内，遇到 // 则跳到行尾
-                if (c == '/' && i + 1 < s.Length && s[i + 1] == '/')
-                {
-                    while (i < s.Length && s[i] != '\n') i++;
-                    sb.Append('\n');
-                    continue;
-                }
-
-                sb.Append(c);
-            }
-            return sb.ToString();
         }
 
 
@@ -276,11 +232,7 @@ public sealed class LayoutSpec
     public double maxWidthPercent = 0.90;
     // 行距叠加（给多行字幕使用）
     public double lineSpacing = 0.0;
-    // 文本盒相对锚点的延展方式：right | left | both（both=左右对称）
-    public string grow = "both";
-    // 延展偏置（0=只向右，1=只向左，0.5=左右对称）
-    public double bias = 0.5;
-    // 可选：当 grow=both 时强制 Text 对齐为居中更自然（MiddleCenter 等）
+    // 可选：强制 Text 对齐（如 MiddleCenter；null/空 表示不改）
     public string overrideTextAlignment;
     // ★ 新增：底部堆叠面板离屏幕底部的相对高度（0~0.5）
     public double stackOffsetPercent = 0.12;
@@ -294,7 +246,6 @@ public sealed class BackgroundSpec
     public string color = "rgba(0,0,0,0.35)";
     public double[] padding = new double[] { 12.0, 6.0 };
     public double[] margin = new double[] { 0.0, 6.0 };
-    public int cornerRadius = 8;            // 若使用九宫格 sprite 时起效
     public string sprite;                   // 可选：游戏内置九宫格资源名
     // 背景投影（可复用已有 ShadowSpec）
     public ShadowSpec shadow = new ShadowSpec { enabled = false };
@@ -341,6 +292,13 @@ public sealed class BackgroundSpec
         public static void SetFontBundleDir(string dir)
         {
             _fontBundleDir = dir;
+        }
+
+        // 清空资源包字体缓存：局内替换/新增同名字体文件后，由设置界面的「刷新」按钮调用，
+        // 强制下次解析重新从磁盘加载（定向失效，不影响游戏字体缓存）
+        public static void InvalidateBundleFontCache()
+        {
+            if (_bundleFontCache != null) _bundleFontCache.Clear();
         }
 
         public static Font ResolveFont(FontSpec spec)
@@ -434,15 +392,9 @@ public sealed class BackgroundSpec
                 var key = names[i];
                 if (string.IsNullOrEmpty(key)) continue;
 
+                // _gameFontCache 使用 OrdinalIgnoreCase 比较器，直接查找即可
                 Font f;
                 if (_gameFontCache.TryGetValue(key, out f)) return f;
-
-                // 也兼容大小写不一致
-                foreach (var kv in _gameFontCache)
-                {
-                    if (string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase))
-                        return kv.Value;
-                }
             }
             return null;
         }
@@ -540,6 +492,16 @@ public sealed class BackgroundSpec
             }
         }
 
+        // 供设置 GUI 的字体选择器使用：确保游戏字体缓存已构建，返回全部可用游戏字体名（排序后的缓存键）。
+        // 这些名字在 *FontFamilyCsv 里以 "game:名字" 的形式书写。
+        internal static List<string> GetGameFontNames()
+        {
+            EnsureGameFontCache();
+            var names = new List<string>(_gameFontCache.Keys);
+            names.Sort(StringComparer.OrdinalIgnoreCase);
+            return names;
+        }
+
         // —— 尝试加载：系统字体 —— //
         private static Font TryLoadOSFont(List<string> families, int size)
         {
@@ -559,7 +521,8 @@ public sealed class BackgroundSpec
 
         private static Font TryBuiltinArial()
         {
-            try { return Resources.GetBuiltinResource<Font>("Arial.ttf"); }
+            // 走 UiWidgets 的共享缓存，避免重复 GetBuiltinResource
+            try { return UiWidgets.DefaultFont; }
             catch { return null; }
         }
     }
@@ -568,6 +531,11 @@ public sealed class BackgroundSpec
     // ———— 工具：颜色解析 ————
     internal static class ColorUtil
     {
+        // 预编译正则，避免每次解析颜色都重建
+        private static readonly Regex RgbaRegex = new Regex(
+            @"rgba?\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(\d*\.?\d+))?\s*\)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         public static bool TryParseColor(string s, out Color c)
         {
             c = Color.white;
@@ -592,7 +560,7 @@ public sealed class BackgroundSpec
             }
 
             // rgba(r,g,b,a)
-            var m = Regex.Match(s, @"rgba?\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(\d*\.?\d+))?\s*\)", RegexOptions.IgnoreCase);
+            var m = RgbaRegex.Match(s);
             if (m.Success)
             {
                 int r = Clamp0_255(m.Groups[1].Value);

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -189,18 +189,18 @@ namespace Subtitle.Config
             imgPanel.color = new Color(0.1f, 0.1f, 0.1f, 0.92f);
 
             // ---------- TopBar ----------
-            var top = CreateRect(panel.transform, "TopBar", new Vector2(0f, 0.9f), new Vector2(1f, 1f));
+            var top = UiWidgets.CreateRect(panel.transform, "TopBar", new Vector2(0f, 0.9f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
             var topImg = top.gameObject.AddComponent<Image>();
             topImg.color = new Color(0.15f, 0.15f, 0.15f, 1f);
 
-            _title = CreateText(top, "Title", "台词显示控制面板", 18, TextAnchor.MiddleLeft);
+            _title = UiWidgets.CreateText(top, "Title", "台词显示控制面板", 18, TextAnchor.MiddleLeft, Vector2.zero, Vector2.zero);
             var titleRT = _title.rectTransform;
             titleRT.anchorMin = new Vector2(0f, 0f);
             titleRT.anchorMax = new Vector2(0.38f, 1f);
             titleRT.offsetMin = new Vector2(10f, 0f);
             titleRT.offsetMax = new Vector2(-10f, 0f);
 
-            var channelLabel = CreateText(top, "ChannelLabel", "类型:", 14, TextAnchor.MiddleRight);
+            var channelLabel = UiWidgets.CreateText(top, "ChannelLabel", "类型:", 14, TextAnchor.MiddleRight, Vector2.zero, Vector2.zero);
             var channelLabelRT = channelLabel.rectTransform;
             channelLabelRT.anchorMin = new Vector2(0.38f, 0.1f);
             channelLabelRT.anchorMax = new Vector2(0.45f, 0.9f);
@@ -208,17 +208,17 @@ namespace Subtitle.Config
             channelLabelRT.offsetMax = new Vector2(-4f, 0f);
 
             // 频道三按钮（并列）
-            _btnChSubtitle = CreateButton(top, "ChSubtitle", "字幕", new Vector2(0.45f, 0.15f), new Vector2(0.55f, 0.85f));
-            _btnChDanmaku = CreateButton(top, "ChDanmaku", "弹幕", new Vector2(0.55f, 0.15f), new Vector2(0.65f, 0.85f));
-            _btnChWorld3D = CreateButton(top, "ChWorld3D", "3D气泡", new Vector2(0.65f, 0.15f), new Vector2(0.75f, 0.85f));
+            _btnChSubtitle = UiWidgets.CreateButton(top, "ChSubtitle", "字幕", new Vector2(0.45f, 0.15f), new Vector2(0.55f, 0.85f), ChannelNormal, 13, true);
+            _btnChDanmaku = UiWidgets.CreateButton(top, "ChDanmaku", "弹幕", new Vector2(0.55f, 0.15f), new Vector2(0.65f, 0.85f), ChannelNormal, 13, true);
+            _btnChWorld3D = UiWidgets.CreateButton(top, "ChWorld3D", "3D气泡", new Vector2(0.65f, 0.15f), new Vector2(0.75f, 0.85f), ChannelNormal, 13, true);
 
             _btnChSubtitle.onClick.AddListener(delegate { OnClickChannel("Subtitle"); });
             _btnChDanmaku.onClick.AddListener(delegate { OnClickChannel("Danmaku"); });
             _btnChWorld3D.onClick.AddListener(delegate { OnClickChannel("World3D"); });
 
-            _btnApply = CreateButton(top, "Apply", "应用", new Vector2(0.82f, 0.15f), new Vector2(0.90f, 0.85f));
-            _btnRefresh = CreateButton(top, "Refresh", "刷新", new Vector2(0.90f, 0.15f), new Vector2(0.95f, 0.85f));
-            _btnClose = CreateButton(top, "Close", "关闭", new Vector2(0.95f, 0.15f), new Vector2(1.0f, 0.85f));
+            _btnApply = UiWidgets.CreateButton(top, "Apply", "应用", new Vector2(0.82f, 0.15f), new Vector2(0.90f, 0.85f), ChannelNormal, 13, true);
+            _btnRefresh = UiWidgets.CreateButton(top, "Refresh", "刷新", new Vector2(0.90f, 0.15f), new Vector2(0.95f, 0.85f), ChannelNormal, 13, true);
+            _btnClose = UiWidgets.CreateButton(top, "Close", "关闭", new Vector2(0.95f, 0.15f), new Vector2(1.0f, 0.85f), ChannelNormal, 13, true);
 
             _btnApply.onClick.AddListener(ApplyAndSave);
             _btnRefresh.onClick.AddListener(OnClickRefresh);
@@ -228,27 +228,29 @@ namespace Subtitle.Config
             UpdateChannelButtonsVisual(PhraseFilterManager.CurrentChannel);
 
             // ---------- BottomBar ----------
-            var bottom = CreateRect(panel.transform, "BottomBar", new Vector2(0f, 0f), new Vector2(1f, 0.08f));
+            var bottom = UiWidgets.CreateRect(panel.transform, "BottomBar", new Vector2(0f, 0f), new Vector2(1f, 0.08f), Vector2.zero, Vector2.zero);
             var bottomImg = bottom.gameObject.AddComponent<Image>();
             bottomImg.color = new Color(0.15f, 0.15f, 0.15f, 1f);
-            _hint = CreateText(bottom, "Hint", "选择声线 -> 右侧控 语音事件/语音ID 开关台词。", 13, TextAnchor.MiddleLeft);
+            _hint = UiWidgets.CreateText(bottom, "Hint", "选择声线 -> 右侧控 语音事件/语音ID 开关台词。", 13, TextAnchor.MiddleLeft, Vector2.zero, Vector2.zero);
             _hint.rectTransform.offsetMin = new Vector2(10f, 0f);
 
             // ---------- Left ----------
-            var left = CreateRect(panel.transform, "Left", new Vector2(0f, 0.08f), new Vector2(0.35f, 0.9f));
+            var left = UiWidgets.CreateRect(panel.transform, "Left", new Vector2(0f, 0.08f), new Vector2(0.35f, 0.9f), Vector2.zero, Vector2.zero);
             var leftImg = left.gameObject.AddComponent<Image>();
             leftImg.color = new Color(0.12f, 0.12f, 0.12f, 1f);
 
-            MakeScrollWithContent(left, out _voiceScroll, out _voiceContent);
-            _voiceBtnTpl = CreateFlatButtonTemplate(panel.transform, "VoiceBtnTpl");
+            UiWidgets.MakeScrollWithContent(left, out _voiceScroll, out _voiceContent, true);
+            _voiceBtnTpl = UiWidgets.CreateFlatButtonTemplate(panel.transform, "VoiceBtnTpl", 24f, VoiceRowNormal, false,
+                new Color(0.38f, 0.38f, 0.38f, 1f), new Color(0.20f, 0.20f, 0.20f, 1f), 13, "", new Vector2(6f, 0f), new Vector2(-6f, 0f), true);
 
             // ---------- Right ----------
-            var right = CreateRect(panel.transform, "Right", new Vector2(0.35f, 0.08f), new Vector2(1f, 0.9f));
+            var right = UiWidgets.CreateRect(panel.transform, "Right", new Vector2(0.35f, 0.08f), new Vector2(1f, 0.9f), Vector2.zero, Vector2.zero);
             var rightImg = right.gameObject.AddComponent<Image>();
             rightImg.color = new Color(0.12f, 0.12f, 0.12f, 1f);
 
-            MakeScrollWithContent(right, out _lineScroll, out _lineContent);
-            _lineBtnTpl = CreateFlatButtonTemplate(panel.transform, "LineBtnTpl");
+            UiWidgets.MakeScrollWithContent(right, out _lineScroll, out _lineContent, true);
+            _lineBtnTpl = UiWidgets.CreateFlatButtonTemplate(panel.transform, "LineBtnTpl", 24f, VoiceRowNormal, false,
+                new Color(0.38f, 0.38f, 0.38f, 1f), new Color(0.20f, 0.20f, 0.20f, 1f), 13, "", new Vector2(6f, 0f), new Vector2(-6f, 0f), true);
 
             CreateTooltip(panel.transform);
         }
@@ -310,11 +312,11 @@ namespace Subtitle.Config
 
         private void RefreshVoiceList(bool keepSelection)
         {
-            ClearChildren(_voiceContent);
+            UiWidgets.ClearChildren(_voiceContent);
             _voiceButtons.Clear();
 
             // 右侧是否清空：这里为了稳妥，先清空再按当前 voice 重新画
-            ClearChildren(_lineContent);
+            UiWidgets.ClearChildren(_lineContent);
 
             if (!keepSelection)
                 _currentVoiceKey = null;
@@ -324,7 +326,7 @@ namespace Subtitle.Config
 
             if (voices.Count == 0)
             {
-                AddInfoRow(_voiceContent, "未加载声线资源，稍后重试。");
+                UiWidgets.AddInfoRow(_voiceContent, "未加载声线资源，稍后重试。", true, Color.white);
                 LayoutRebuilder.ForceRebuildLayoutImmediate(_voiceContent);
                 return;
             }
@@ -342,7 +344,7 @@ namespace Subtitle.Config
                 var vf = PhraseFilterManager.GetOrCreateVoice(PhraseFilterManager.CurrentChannel, vk);
                 string label = FormatToggle(vf.Enabled, GetVoiceDisplayName(vk));
 
-                var btn = InstantiateButton(_voiceBtnTpl, _voiceContent, label, 8f);
+                var btn = UiWidgets.InstantiateButton(_voiceBtnTpl, _voiceContent, label, new Vector2(8f, 0f), new Vector2(-6f, 0f), true, 0f);
                 _voiceButtons[vk] = btn;
 
                 var captured = vk;
@@ -407,12 +409,12 @@ namespace Subtitle.Config
 
         private void RefreshLinesForVoice(string voiceKey)
         {
-            ClearChildren(_lineContent);
+            UiWidgets.ClearChildren(_lineContent);
             if (string.IsNullOrEmpty(voiceKey)) return;
 
             var vf = PhraseFilterManager.GetOrCreateVoice(PhraseFilterManager.CurrentChannel, voiceKey);
 
-            var voiceToggle = InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(vf.Enabled, "声线启用"), 12f);
+            var voiceToggle = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(vf.Enabled, "声线启用"), new Vector2(12f, 0f), new Vector2(-6f, 0f), true, 0f);
             AttachScrollHandlers(voiceToggle.gameObject, _lineScroll);
             voiceToggle.onClick.AddListener(delegate {
                 vf.Enabled = !vf.Enabled;
@@ -426,7 +428,7 @@ namespace Subtitle.Config
             var map = PhraseFilterManager.LoadVoiceTriggerNetIds(voiceKey);
             if (map.Count == 0)
             {
-                AddInfoRow(_lineContent, "未找到该声线的触发器。");
+                UiWidgets.AddInfoRow(_lineContent, "未找到该声线的触发器。", true, Color.white);
                 return;
             }
 
@@ -458,7 +460,7 @@ namespace Subtitle.Config
                 triggerLayout.spacing = 2f;
                 triggerLayout.padding = new RectOffset(0, 0, 0, 0);
 
-                var expandBtn = InstantiateButton(_lineBtnTpl, triggerRt, expanded ? "v" : ">", 0f);
+                var expandBtn = UiWidgets.InstantiateButton(_lineBtnTpl, triggerRt, expanded ? "v" : ">", new Vector2(0f, 0f), new Vector2(-6f, 0f), true, 0f);
                 var expandLe = expandBtn.GetComponent<LayoutElement>();
                 if (expandLe != null)
                 {
@@ -484,7 +486,7 @@ namespace Subtitle.Config
                         StartCoroutine(RestoreScrollPositionNextFrame(_lineScroll, prevPos));
                 });
 
-                var header = InstantiateButton(_lineBtnTpl, triggerRt, FormatToggle(tf.Enabled, "语音事件: " + FormatTriggerLabel(trigger)), 16f);
+                var header = UiWidgets.InstantiateButton(_lineBtnTpl, triggerRt, FormatToggle(tf.Enabled, "语音事件: " + FormatTriggerLabel(trigger)), new Vector2(16f, 0f), new Vector2(-6f, 0f), true, 0f);
                 var headerLe = header.GetComponent<LayoutElement>();
                 if (headerLe != null) headerLe.flexibleWidth = 1f;
                 AttachScrollHandlers(header.gameObject, _lineScroll);
@@ -564,7 +566,7 @@ namespace Subtitle.Config
                 if (!expanded)
                     continue;
 
-                var generalOnlyBtn = InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(tf.GeneralOnly, "仅使用全局默认台词"), 48f);
+                var generalOnlyBtn = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(tf.GeneralOnly, "仅使用全局默认台词"), new Vector2(48f, 0f), new Vector2(-6f, 0f), true, 0f);
                 AttachScrollHandlers(generalOnlyBtn.gameObject, _lineScroll);
                 generalOnlyBtn.onClick.AddListener(delegate {
                     tf.GeneralOnly = !tf.GeneralOnly;
@@ -592,7 +594,7 @@ namespace Subtitle.Config
                     if (tf.NetIds != null && tf.NetIds.TryGetValue(id, out var val)) enabled = val;
                     else tf.NetIds[id] = enabled;
 
-                    var row = InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(enabled, GetNetIdLabel(id)), 64f);
+                    var row = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(enabled, GetNetIdLabel(id)), new Vector2(64f, 0f), new Vector2(-6f, 0f), true, 0f);
                     rows[id] = row;
                     AttachScrollHandlers(row.gameObject, _lineScroll);
 
@@ -918,7 +920,7 @@ namespace Subtitle.Config
             var textGo = new GameObject("Text");
             textGo.transform.SetParent(_tooltipGo.transform, false);
             _tooltipText = textGo.AddComponent<Text>();
-            _tooltipText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            _tooltipText.font = UiWidgets.DefaultFont;
             _tooltipText.fontSize = 14;
             _tooltipText.color = Color.white;
             _tooltipText.alignment = TextAnchor.UpperLeft;
@@ -1024,248 +1026,6 @@ namespace Subtitle.Config
             if (_tooltipRt == null) return;
             Vector3 pos = Input.mousePosition;
             _tooltipRt.position = pos + new Vector3(16f, -16f, 0f);
-        }
-private static void ClearChildren(RectTransform parent)
-        {
-            if (parent == null) return;
-            for (int i = parent.childCount - 1; i >= 0; i--)
-                Destroy(parent.GetChild(i).gameObject);
-        }
-
-        private static void AddInfoRow(RectTransform parent, string text)
-        {
-            var row = new GameObject("Info");
-            row.transform.SetParent(parent, false);
-            var rt = row.AddComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(100f, 24f);
-
-            var le = row.AddComponent<LayoutElement>();
-            le.preferredHeight = 24f;
-            le.minHeight = 24f;
-
-            var t = row.AddComponent<Text>();
-            t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            t.text = text;
-            t.fontSize = 13;
-            t.color = Color.white;
-            t.alignment = TextAnchor.MiddleLeft;
-        }
-
-        private static RectTransform CreateRect(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            var rt = go.AddComponent<RectTransform>();
-            rt.anchorMin = anchorMin;
-            rt.anchorMax = anchorMax;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-            return rt;
-        }
-
-        private static Text CreateText(RectTransform parent, string name, string text, int size, TextAnchor align)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-            var t = go.AddComponent<Text>();
-            t.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            t.text = text;
-            t.fontSize = size;
-            t.color = Color.white;
-            t.alignment = align;
-
-            var rt = t.rectTransform;
-            rt.anchorMin = new Vector2(0f, 0f);
-            rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-
-            return t;
-        }
-
-        private static Button CreateButton(RectTransform parent, string name, string label, Vector2 anchorMin, Vector2 anchorMax)
-        {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, false);
-
-            var rt = go.AddComponent<RectTransform>();
-            rt.anchorMin = anchorMin;
-            rt.anchorMax = anchorMax;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-
-            var img = go.AddComponent<Image>();
-            img.color = ChannelNormal;
-
-            var btn = go.AddComponent<Button>();
-            var colors = btn.colors;
-            colors.highlightedColor = new Color(0.35f, 0.35f, 0.35f, 1f);
-            colors.pressedColor = new Color(0.15f, 0.15f, 0.15f, 1f);
-            btn.colors = colors;
-
-            var txt = CreateText(rt, "Label", label, 13, TextAnchor.MiddleCenter);
-            txt.color = Color.white;
-
-            // 加个描边，防止暗背景“看不见”
-            var outline = txt.gameObject.AddComponent<Outline>();
-            outline.effectColor = new Color(0f, 0f, 0f, 0.75f);
-            outline.effectDistance = new Vector2(1f, -1f);
-
-            return btn;
-        }
-
-        private static Button CreateFlatButtonTemplate(Transform parent, string name)
-        {
-            var go = new GameObject(name);
-            if (parent != null) go.transform.SetParent(parent, false);
-
-            var rt = go.AddComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(100f, 24f);
-
-            var le = go.AddComponent<LayoutElement>();
-            le.preferredHeight = 24f;
-            le.minHeight = 24f;
-
-            var img = go.AddComponent<Image>();
-            img.color = VoiceRowNormal;
-
-            var btn = go.AddComponent<Button>();
-            var colors = btn.colors;
-            colors.highlightedColor = new Color(0.38f, 0.38f, 0.38f, 1f);
-            colors.pressedColor = new Color(0.20f, 0.20f, 0.20f, 1f);
-            btn.colors = colors;
-
-            var txt = CreateText(rt, "Label", "", 13, TextAnchor.MiddleLeft);
-            txt.color = Color.white;
-            txt.rectTransform.offsetMin = new Vector2(6f, 0f);
-            txt.rectTransform.offsetMax = new Vector2(-6f, 0f);
-
-            var outline = txt.gameObject.AddComponent<Outline>();
-            outline.effectColor = new Color(0f, 0f, 0f, 0.75f);
-            outline.effectDistance = new Vector2(1f, -1f);
-
-            go.SetActive(false);
-            return btn;
-        }
-
-        private static Button InstantiateButton(Button tpl, RectTransform parent, string text, float leftPadding)
-        {
-            var btn = Instantiate(tpl, parent);
-            btn.gameObject.SetActive(true);
-
-            // 注意：true = 包含 inactive 子物体
-            var lbl = btn.GetComponentInChildren<Text>(true);
-            if (lbl != null)
-            {
-                lbl.text = text;
-                lbl.enabled = true;
-                if (lbl.font == null) lbl.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                lbl.color = Color.white;
-
-                var rt = lbl.rectTransform;
-                rt.offsetMin = new Vector2(leftPadding, 0f);
-                rt.offsetMax = new Vector2(-6f, 0f);
-            }
-
-            return btn;
-        }
-
-        // 你当前已经换成 RectMask2D（保留）
-        private static void MakeScrollWithContent(RectTransform parent, out ScrollRect scroll, out RectTransform content)
-        {
-            var scrollGo = new GameObject("Scroll");
-            scrollGo.transform.SetParent(parent, false);
-
-            var rt = scrollGo.AddComponent<RectTransform>();
-            rt.anchorMin = new Vector2(0f, 0f);
-            rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = new Vector2(6f, 6f);
-            rt.offsetMax = new Vector2(-6f, -6f);
-
-            var img = scrollGo.AddComponent<Image>();
-            img.color = new Color(0.08f, 0.08f, 0.08f, 1f);
-
-            scroll = scrollGo.AddComponent<ScrollRect>();
-            scroll.horizontal = false;
-            scroll.vertical = true;
-            scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.scrollSensitivity = 25f;
-            scroll.inertia = true;
-
-            const float scrollbarWidth = 12f;
-            const float scrollbarPadding = 2f;
-
-            var scrollbarGo = new GameObject("Scrollbar");
-            scrollbarGo.transform.SetParent(scrollGo.transform, false);
-            var sbRt = scrollbarGo.AddComponent<RectTransform>();
-            sbRt.anchorMin = new Vector2(1f, 0f);
-            sbRt.anchorMax = new Vector2(1f, 1f);
-            sbRt.pivot = new Vector2(1f, 1f);
-            sbRt.sizeDelta = new Vector2(scrollbarWidth, 0f);
-            sbRt.anchoredPosition = new Vector2(-scrollbarPadding, 0f);
-
-            var sbBg = scrollbarGo.AddComponent<Image>();
-            sbBg.color = new Color(0.18f, 0.18f, 0.18f, 1f);
-
-            var sb = scrollbarGo.AddComponent<Scrollbar>();
-            sb.direction = Scrollbar.Direction.BottomToTop;
-
-            var handleGo = new GameObject("Handle");
-            handleGo.transform.SetParent(scrollbarGo.transform, false);
-            var handleRt = handleGo.AddComponent<RectTransform>();
-            handleRt.anchorMin = new Vector2(0f, 0f);
-            handleRt.anchorMax = new Vector2(1f, 1f);
-            handleRt.offsetMin = new Vector2(2f, 2f);
-            handleRt.offsetMax = new Vector2(-2f, -2f);
-
-            var handleImg = handleGo.AddComponent<Image>();
-            handleImg.color = new Color(0.55f, 0.55f, 0.55f, 1f);
-
-            sb.handleRect = handleRt;
-            sb.targetGraphic = handleImg;
-
-            scroll.verticalScrollbar = sb;
-            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
-            scroll.verticalScrollbarSpacing = scrollbarPadding;
-
-            var viewport = new GameObject("Viewport");
-            viewport.transform.SetParent(scrollGo.transform, false);
-
-            var vRt = viewport.AddComponent<RectTransform>();
-            vRt.anchorMin = new Vector2(0f, 0f);
-            vRt.anchorMax = new Vector2(1f, 1f);
-            vRt.offsetMin = Vector2.zero;
-            vRt.offsetMax = new Vector2(-(scrollbarWidth + scrollbarPadding), 0f);
-
-            var vImg = viewport.AddComponent<Image>();
-            vImg.color = new Color(0f, 0f, 0f, 0.001f);
-
-            viewport.AddComponent<RectMask2D>();
-
-            var contentGo = new GameObject("Content");
-            contentGo.transform.SetParent(viewport.transform, false);
-
-            content = contentGo.AddComponent<RectTransform>();
-            content.anchorMin = new Vector2(0f, 1f);
-            content.anchorMax = new Vector2(1f, 1f);
-            content.pivot = new Vector2(0.5f, 1f);
-            content.offsetMin = new Vector2(0f, 0f);
-            content.offsetMax = new Vector2(0f, 0f);
-
-            var vlg = contentGo.AddComponent<VerticalLayoutGroup>();
-            vlg.childControlHeight = true;
-            vlg.childControlWidth = true;
-            vlg.childForceExpandHeight = false;
-            vlg.childForceExpandWidth = true;
-            vlg.spacing = 2f;
-            vlg.padding = new RectOffset(4, 4, 4, 4);
-
-            var fitter = contentGo.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-
-            scroll.viewport = vRt;
-            scroll.content = content;
         }
     }
 }

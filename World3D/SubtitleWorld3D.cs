@@ -24,13 +24,44 @@ namespace SubtitleSystem
 
         private readonly Dictionary<int, World3DBubbleGroup> _world3dBubbles = new Dictionary<int, World3DBubbleGroup>();
         private readonly List<int> _world3dRemoveIds = new List<int>();
+        private readonly Queue<World3DBubble> _world3dPool = new Queue<World3DBubble>(); // 气泡对象池（减少 GC）
+        private readonly Dictionary<IPlayer, Transform> _headTransformCache = new Dictionary<IPlayer, Transform>(); // 头部 Transform 缓存
         private Camera _world3dCamera;
         private float _world3dNextCamRefresh;
+
+        // World3D 设置快照：避免每帧/每气泡重复读 ConfigEntry
+        private struct World3DSettingsSnapshot
+        {
+            public float ExtraOffsetY;
+            public float StackOffsetY;
+            public bool FacePlayer;
+            public float FaceUpdateInterval;
+        }
+        private World3DSettingsSnapshot _w3dSnap;
+
+        // 刷新 World3D 设置快照（创建气泡时与设置变更时调用）
+        private void RefreshWorld3DSnapshot()
+        {
+            _w3dSnap.ExtraOffsetY = GetWorld3DExtraOffsetY();
+            _w3dSnap.StackOffsetY = GetWorld3DStackOffsetY();
+            _w3dSnap.FacePlayer = ShouldFacePlayer();
+            _w3dSnap.FaceUpdateInterval = GetWorld3DFaceUpdateInterval();
+        }
+
+        // 回收气泡到对象池
+        private void RecycleWorld3DBubble(World3DBubble bubble)
+        {
+            if (bubble == null || !bubble.IsAlive) return;
+            bubble.Deactivate();
+            _world3dPool.Enqueue(bubble);
+        }
 
         public void AddWorld3D(IPlayer speaker, string text, Color color, float durationSec)
         {
             if (speaker == null || string.IsNullOrEmpty(text)) return;
             if (Subtitle.Config.Settings.EnableWorld3D != null && !Subtitle.Config.Settings.EnableWorld3D.Value) return;
+
+            RefreshWorld3DSnapshot(); // 每条语音刷新一次设置快照
 
             Transform anchor;
             float baseYOffset;
@@ -48,7 +79,7 @@ namespace SubtitleSystem
             float baseDur = durationSec > 0f ? durationSec : 2.5f;
             float dur = baseDur + extraDur;
 
-            var bubble = CreateWorld3DBubble(anchor, baseYOffset);
+            var bubble = GetWorld3DBubble(anchor, baseYOffset);
             bubble.Show(text, color, dur);
             group.Bubbles.Insert(0, bubble);
 
@@ -61,7 +92,7 @@ namespace SubtitleSystem
                     int idx = group.Bubbles.Count - 1;
                     var old = group.Bubbles[idx];
                     group.Bubbles.RemoveAt(idx);
-                    if (old != null) old.Destroy();
+                    if (old != null) RecycleWorld3DBubble(old);
                 }
             }
 
@@ -76,6 +107,7 @@ namespace SubtitleSystem
             var cam = GetWorld3DCamera();
 
             _world3dRemoveIds.Clear();
+            float stackOffset = _w3dSnap.StackOffsetY; // 循环不变量，提到组循环外
             foreach (var kv in _world3dBubbles)
             {
                 var group = kv.Value;
@@ -85,7 +117,6 @@ namespace SubtitleSystem
                     continue;
                 }
 
-                float stackOffset = GetWorld3DStackOffsetY();
                 for (int i = group.Bubbles.Count - 1; i >= 0; i--)
                 {
                     var bubble = group.Bubbles[i];
@@ -95,10 +126,10 @@ namespace SubtitleSystem
                         continue;
                     }
 
-                    bubble.Update(now, cam, stackOffset * i);
+                    bubble.Update(now, cam, stackOffset * i, _w3dSnap);
                     if (bubble.Expired)
                     {
-                        bubble.Destroy();
+                        RecycleWorld3DBubble(bubble);
                         group.Bubbles.RemoveAt(i);
                     }
                 }
@@ -119,6 +150,7 @@ namespace SubtitleSystem
 
         public void RefreshWorld3DStyles()
         {
+            RefreshWorld3DSnapshot(); // 设置变更时同步刷新快照
             if (_world3dBubbles.Count == 0) return;
             foreach (var kv in _world3dBubbles)
             {
@@ -129,13 +161,21 @@ namespace SubtitleSystem
                     var bubble = group.Bubbles[i];
                     if (bubble == null) continue;
                     bubble.ApplyStyle();
-                    bubble.ApplyOffset(GetWorld3DStackOffsetY() * i);
+                    bubble.ApplyOffset(_w3dSnap.StackOffsetY * i, _w3dSnap.ExtraOffsetY);
                 }
             }
         }
 
         private void OnDestroy()
         {
+            // 池化气泡随管理器一并销毁
+            while (_world3dPool.Count > 0)
+            {
+                var pooled = _world3dPool.Dequeue();
+                if (pooled != null) pooled.Destroy();
+            }
+            _headTransformCache.Clear();
+
             if (_world3dBubbles.Count == 0) return;
             foreach (var kv in _world3dBubbles)
             {
@@ -162,11 +202,27 @@ namespace SubtitleSystem
             return cam;
         }
 
+        // 优先从对象池复用气泡，池空才新建
+        private World3DBubble GetWorld3DBubble(Transform anchor, float baseYOffset)
+        {
+            while (_world3dPool.Count > 0)
+            {
+                var pooled = _world3dPool.Dequeue();
+                if (pooled != null && pooled.IsAlive)
+                {
+                    pooled.Reattach(anchor, baseYOffset, _w3dSnap.ExtraOffsetY, GetWorld3DCamera());
+                    return pooled;
+                }
+                // 已随锚点被 Unity 销毁的池化对象直接丢弃
+            }
+            return CreateWorld3DBubble(anchor, baseYOffset);
+        }
+
         private World3DBubble CreateWorld3DBubble(Transform anchor, float baseYOffset)
         {
             var root = new GameObject("World3DBubble", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasGroup));
             root.transform.SetParent(anchor, true);
-            root.transform.position = anchor.position + Vector3.up * (baseYOffset + GetWorld3DExtraOffsetY());
+            root.transform.position = anchor.position + Vector3.up * (baseYOffset + _w3dSnap.ExtraOffsetY);
             root.transform.localRotation = Quaternion.identity;
             float scale = GetWorld3DScale();
             root.transform.localScale = new Vector3(-scale, scale, scale);
@@ -206,13 +262,13 @@ namespace SubtitleSystem
 
             var group = root.GetComponent<CanvasGroup>();
 
-            var bubble = new World3DBubble(root, rootRt, bubbleRt, bg, textRt, text, group, scaler, baseYOffset);
+            var bubble = new World3DBubble(root, rootRt, bubbleRt, bg, textRt, text, group, scaler, canvas, baseYOffset);
             bubble.ApplyStyle();
-            bubble.ApplyOffset(0f);
+            bubble.ApplyOffset(0f, _w3dSnap.ExtraOffsetY);
             return bubble;
         }
 
-        private static bool TryGetWorld3DAnchor(IPlayer speaker, out Transform anchor, out float baseYOffset)
+        private bool TryGetWorld3DAnchor(IPlayer speaker, out Transform anchor, out float baseYOffset)
         {
             anchor = TryGetHeadTransform(speaker);
             if (anchor != null)
@@ -232,37 +288,52 @@ namespace SubtitleSystem
             return false;
         }
 
-        private static Transform TryGetHeadTransform(IPlayer speaker)
+        // 头部 Transform 按玩家缓存，失效（Unity 假空）时自动重解析
+        private Transform TryGetHeadTransform(IPlayer speaker)
         {
             if (speaker == null) return null;
+
+            Transform cached;
+            if (_headTransformCache.TryGetValue(speaker, out cached))
+            {
+                if (cached != null) return cached;
+                _headTransformCache.Remove(speaker);
+            }
+
+            var head = ResolveHeadTransform(speaker);
+            if (head != null) _headTransformCache[speaker] = head;
+            return head;
+        }
+
+        // 强类型解析（编译期校验），失败时走极简反射兜底
+        private static Transform ResolveHeadTransform(IPlayer speaker)
+        {
+            try
+            {
+                var bones = speaker.PlayerBones;
+                if (bones != null)
+                {
+                    var head = bones.Head;
+                    if (head != null && head.Original != null)
+                        return head.Original;
+                }
+            }
+            catch { }
 
             try
             {
                 var ts = Traverse.Create(speaker);
-
-                object headObj =
-                    (ts.Property("HeadTransform") != null ? ts.Property("HeadTransform").GetValue() : null) ??
-                    (ts.Field("HeadTransform") != null ? ts.Field("HeadTransform").GetValue() : null);
-                var head = ExtractTransform(headObj);
+                var headProp = ts.Property("HeadTransform");
+                var head = ExtractTransform(headProp != null ? headProp.GetValue() : null);
                 if (head != null) return head;
 
-                object bonesObj =
-                    (ts.Property("PlayerBones") != null ? ts.Property("PlayerBones").GetValue() : null) ??
-                    (ts.Field("PlayerBones") != null ? ts.Field("PlayerBones").GetValue() : null) ??
-                    (ts.Property("Bones") != null ? ts.Property("Bones").GetValue() : null) ??
-                    (ts.Field("Bones") != null ? ts.Field("Bones").GetValue() : null) ??
-                    (ts.Property("PlayerBody") != null ? ts.Property("PlayerBody").GetValue() : null) ??
-                    (ts.Field("PlayerBody") != null ? ts.Field("PlayerBody").GetValue() : null);
-
-                if (bonesObj != null)
+                var bodyProp = ts.Property("PlayerBody");
+                var body = bodyProp != null ? bodyProp.GetValue() : null;
+                if (body != null)
                 {
-                    var tb = Traverse.Create(bonesObj);
-                    object head2 =
-                        (tb.Property("Head") != null ? tb.Property("Head").GetValue() : null) ??
-                        (tb.Field("Head") != null ? tb.Field("Head").GetValue() : null) ??
-                        (tb.Property("HeadTransform") != null ? tb.Property("HeadTransform").GetValue() : null) ??
-                        (tb.Field("HeadTransform") != null ? tb.Field("HeadTransform").GetValue() : null);
-                    head = ExtractTransform(head2);
+                    var tb = Traverse.Create(body);
+                    var hb = tb.Property("Head");
+                    head = ExtractTransform(hb != null ? hb.GetValue() : null);
                     if (head != null) return head;
                 }
             }
@@ -276,14 +347,17 @@ namespace SubtitleSystem
             if (speaker == null) return null;
             try
             {
-                var ts = Traverse.Create(speaker);
-                var trObj = ts.Property("Transform") != null ? ts.Property("Transform").GetValue() : null;
-                var tr = trObj as Transform;
-                if (tr != null) return tr;
+                var bt = speaker.Transform;
+                if (bt != null && bt.Original != null)
+                    return bt.Original;
+            }
+            catch { }
 
-                var go =
-                    (ts.Property("gameObject") != null ? ts.Property("gameObject").GetValue() : null) as GameObject ??
-                    (ts.Field("gameObject") != null ? ts.Field("gameObject").GetValue() : null) as GameObject;
+            try
+            {
+                var ts = Traverse.Create(speaker);
+                var goProp = ts.Property("gameObject");
+                var go = (goProp != null ? goProp.GetValue() : null) as GameObject;
                 if (go != null) return go.transform;
             }
             catch { }
@@ -416,15 +490,22 @@ namespace SubtitleSystem
 
         private static string ApplyWorld3DWrap(string src)
         {
-            if (string.IsNullOrEmpty(src)) return src;
-
             bool wrapEnabled = Subtitle.Config.Settings.World3DWrap != null && Subtitle.Config.Settings.World3DWrap.Value;
             int limit = (Subtitle.Config.Settings.World3DWrapLength != null)
                 ? Subtitle.Config.Settings.World3DWrapLength.Value
                 : 0;
+            return ApplyWrapBySetting(src, wrapEnabled, limit);
+        }
 
-            if (!wrapEnabled) return src;
-            return (limit > 0) ? ForceWrapByLength(src, limit) : src;
+        private static bool ShouldFacePlayer()
+        {
+            try
+            {
+                if (Subtitle.Config.Settings.World3DFacePlayer != null)
+                    return Subtitle.Config.Settings.World3DFacePlayer.Value;
+            }
+            catch { }
+            return true;
         }
 
 
@@ -453,7 +534,7 @@ namespace SubtitleSystem
 
         private sealed class World3DBubble
         {
-            public readonly Transform Anchor;
+            public Transform Anchor { get; private set; }
             private readonly GameObject _root;
             private readonly RectTransform _rootRt;
             private readonly RectTransform _bubbleRt;
@@ -462,7 +543,8 @@ namespace SubtitleSystem
             private readonly Text _text;
             private readonly CanvasGroup _group;
             private readonly CanvasScaler _scaler;
-            private readonly float _baseYOffset;
+            private readonly Canvas _canvas; // 创建时缓存，避免每帧 GetComponent
+            private float _baseYOffset;
             private float _endTime;
             private float _fadeInSec;
             private float _fadeOutSec;
@@ -470,11 +552,13 @@ namespace SubtitleSystem
             private float _fadeOutStartTime;
             private string _rawText;
             private float _nextFaceUpdateTime;
+            private float _lastAlpha = -1f; // 上次写入的透明度，避免重复赋值弄脏 Canvas
 
             public bool Expired { get; private set; }
+            public bool IsAlive { get { return _root != null; } } // Unity 假空检查
 
             public World3DBubble(GameObject root, RectTransform rootRt, RectTransform bubbleRt, Image bg,
-                RectTransform textRt, Text text, CanvasGroup group, CanvasScaler scaler, float baseYOffset)
+                RectTransform textRt, Text text, CanvasGroup group, CanvasScaler scaler, Canvas canvas, float baseYOffset)
             {
                 _root = root;
                 _rootRt = rootRt;
@@ -484,9 +568,29 @@ namespace SubtitleSystem
                 _text = text;
                 _group = group;
                 _scaler = scaler;
+                _canvas = canvas;
                 _baseYOffset = baseYOffset;
                 Anchor = root != null ? root.transform.parent : null;
                 _nextFaceUpdateTime = 0f;
+            }
+
+            // 池化复用：重新挂到新锚点
+            public void Reattach(Transform anchor, float baseYOffset, float extraOffsetY, Camera cam)
+            {
+                if (_root == null) return;
+                Anchor = anchor;
+                _baseYOffset = baseYOffset;
+                _root.transform.SetParent(anchor, true);
+                _root.transform.position = anchor.position + Vector3.up * (baseYOffset + extraOffsetY);
+                _root.transform.localRotation = Quaternion.identity;
+                if (_canvas != null && cam != null && _canvas.worldCamera != cam)
+                    _canvas.worldCamera = cam;
+            }
+
+            // 回池前停用
+            public void Deactivate()
+            {
+                if (_root != null) _root.SetActive(false);
             }
 
             public void Show(string text, Color color, float durationSec)
@@ -497,8 +601,11 @@ namespace SubtitleSystem
                 _text.text = ApplyWorld3DWrap(_rawText);
                 _text.color = color;
 
-                ApplyResolution();
-                UpdateLayout();
+                // 每次显示都重应用样式（字体/字号/描边/阴影/背景/换行/分辨率）。
+                // 池化复用的气泡创建时才有样式设置，若不重应用会一直沿用回收前的旧样式
+                // （曾表现为局内改字体后气泡仍是旧字体，直到重开战局清空对象池）。
+                // ApplyStyle 不改文本颜色，上面的 color 赋值不受影响。
+                ApplyStyle();
 
                 float now = Time.unscaledTime;
                 float dur = durationSec;
@@ -513,7 +620,8 @@ namespace SubtitleSystem
                 _fadeOutStartTime = _endTime - Mathf.Max(0f, _fadeOutSec);
                 if (_fadeOutStartTime < now) _fadeOutStartTime = now;
 
-                _group.alpha = _fadeInSec > 0f ? 0f : 1f;
+                _lastAlpha = _fadeInSec > 0f ? 0f : 1f;
+                _group.alpha = _lastAlpha;
                 Expired = false;
                 if (!_root.activeSelf) _root.SetActive(true);
             }
@@ -529,20 +637,19 @@ namespace SubtitleSystem
                 UpdateLayout();
             }
 
-            public void ApplyOffset(float stackOffsetY)
+            public void ApplyOffset(float stackOffsetY, float extraOffsetY)
             {
                 if (_root == null) return;
-                var extra = GetWorld3DExtraOffsetY();
                 var anchor = Anchor != null ? Anchor : _root.transform.parent;
                 if (anchor != null)
-                    _root.transform.position = anchor.position + Vector3.up * (_baseYOffset + extra + stackOffsetY);
+                    _root.transform.position = anchor.position + Vector3.up * (_baseYOffset + extraOffsetY + stackOffsetY);
             }
 
-            public void Update(float now, Camera cam, float stackOffsetY)
+            public void Update(float now, Camera cam, float stackOffsetY, World3DSettingsSnapshot snap)
             {
                 if (_root == null) { Expired = true; return; }
 
-                ApplyOffset(stackOffsetY);
+                ApplyOffset(stackOffsetY, snap.ExtraOffsetY);
 
                 if (float.IsNaN(_endTime) || float.IsInfinity(_endTime))
                 {
@@ -567,11 +674,16 @@ namespace SubtitleSystem
                     float t = (now - _fadeOutStartTime) / _fadeOutSec;
                     alpha = Mathf.Min(alpha, 1f - Mathf.Clamp01(t));
                 }
-                _group.alpha = alpha;
-
-                if (cam != null && ShouldFacePlayer())
+                // 仅在值变化时写入，避免弄脏整个 Canvas
+                if (alpha != _lastAlpha)
                 {
-                    float interval = GetWorld3DFaceUpdateInterval();
+                    _group.alpha = alpha;
+                    _lastAlpha = alpha;
+                }
+
+                if (cam != null && snap.FacePlayer)
+                {
+                    float interval = snap.FaceUpdateInterval;
                     if (interval <= 0f || now >= _nextFaceUpdateTime)
                     {
                         var dir = cam.transform.position - _root.transform.position;
@@ -580,9 +692,8 @@ namespace SubtitleSystem
                         _nextFaceUpdateTime = interval <= 0f ? now : now + interval;
                     }
 
-                    var canvas = _root.GetComponent<Canvas>();
-                    if (canvas != null && canvas.worldCamera != cam)
-                        canvas.worldCamera = cam;
+                    if (_canvas != null && _canvas.worldCamera != cam)
+                        _canvas.worldCamera = cam;
                 }
             }
 
@@ -622,17 +733,6 @@ namespace SubtitleSystem
                     Object.Destroy(_root);
             }
 
-            private static bool ShouldFacePlayer()
-            {
-                try
-                {
-                    if (Subtitle.Config.Settings.World3DFacePlayer != null)
-                        return Subtitle.Config.Settings.World3DFacePlayer.Value;
-                }
-                catch { }
-                return true;
-            }
-
             private void ApplyBackground()
             {
                 if (_bg == null) return;
@@ -658,12 +758,12 @@ namespace SubtitleSystem
         private void UpdateWorld3DStack(World3DBubbleGroup group)
         {
             if (group == null) return;
-            float stackOffset = GetWorld3DStackOffsetY();
+            float stackOffset = _w3dSnap.StackOffsetY;
             for (int i = 0; i < group.Bubbles.Count; i++)
             {
                 var bubble = group.Bubbles[i];
                 if (bubble != null)
-                    bubble.ApplyOffset(stackOffset * i);
+                    bubble.ApplyOffset(stackOffset * i, _w3dSnap.ExtraOffsetY);
             }
         }
     }
