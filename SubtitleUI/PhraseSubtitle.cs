@@ -60,12 +60,19 @@ namespace SubtitleSystem
             // 2) voiceKey + General（随机一条）
             if (allowGeneral && loadedVk && TryPick(_cache[vk], p, "General", true, out s)) return StreamerFilter.Apply(s);
 
+            // 全局默认台词有独立过滤状态：关闭 Default_Voice 后，所有声线都不再回退到该文件。
+            bool allowDefaultNetId;
+            bool allowDefaultGeneral;
+            Subtitle.Config.PhraseFilterManager.GetAllowFlags(channel, DefaultVoice, p, n,
+                out allowDefaultNetId, out allowDefaultGeneral);
+            if (!allowDefaultNetId && !allowDefaultGeneral) return null;
+
             // 3) default + netId
             EnsureLoaded(DefaultVoice);
-            if (allowNetId && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, n, false, out s)) return StreamerFilter.Apply(s);
+            if (allowDefaultNetId && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, n, false, out s)) return StreamerFilter.Apply(s);
 
             // 4) default + General（随机一条）
-            if (allowGeneral && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, "General", true, out s)) return StreamerFilter.Apply(s);
+            if (allowDefaultGeneral && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, "General", true, out s)) return StreamerFilter.Apply(s);
 
             Debug.LogWarning(string.Format("[SubtitleSystem] Miss voice='{0}' phrase='{1}' netId='{2}'.",
                 vk, p, n));

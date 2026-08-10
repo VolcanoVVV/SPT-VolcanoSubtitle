@@ -52,6 +52,7 @@ namespace Subtitle.Config
 
         // —— Sections —— //
         private const string GeneralSection = "1. 通用";
+        internal const string InterfaceSection = "1.1 界面";
 
         private const string SubtitleGeneralSection = "2 字幕 - 通用";
         private const string SubtitleAdvancedSection = "2.1 字幕 - 进阶";
@@ -376,6 +377,7 @@ namespace Subtitle.Config
         public static ConfigEntry<float> VoiceDedupWindowSec;
         // 设置窗口整体不透明度（纯 GUI 偏好，不进预设快照）：调低后可透过窗口看到测试字幕/弹幕
         public static ConfigEntry<float> SettingsWindowOpacity;
+        public static ConfigEntry<float> InterfaceScale;
 
         public static void Init(ConfigFile config)
         {
@@ -555,6 +557,23 @@ namespace Subtitle.Config
                     "打开/关闭 图形化设置界面 的热键（默认 F9）。也可点界面右上角“关闭”退出。",
                     null,
                     new ConfigurationManagerAttributes { }));
+
+            InterfaceScale = Reg(
+                InterfaceSection,
+                "界面与文字缩放",
+                1.0f,
+                new ConfigDescription(
+                    "图形化设置界面与台词过滤面板的整体缩放（0.75~1.30）。\n会同时放大文字、按钮和间距，适合高分辨率屏幕或远距离观看。",
+                    new AcceptableValueRange<float>(0.75f, 1.30f),
+                    new ConfigurationManagerAttributes
+                    {
+                        IsAdvanced = true
+                    }),
+                null, delegate
+                {
+                    SettingsUI.SettingsWindow.ApplyScale();
+                    PhraseFilterPanel.ApplyScale();
+                });
 
             SubtitleShowRoleTag = Reg(
                SubtitleGeneralSection,
@@ -1979,23 +1998,26 @@ namespace Subtitle.Config
             IsAdvanced = true
                     })));
 
-            // 设置窗口不透明度：GUI 偏好（presetKey 为 null），拖动滑条即时生效 ——
-            // 调低后可透过设置窗口看到下方飞行的测试字幕/弹幕（不改变 Canvas 排序，字幕仍在窗口下层）
+            // 保留旧 cfg 键，仅在新版 GUI 中虚拟归入“界面”板块；同时作用于设置窗口和台词过滤面板。
             SettingsWindowOpacity = Reg(
                 DebugSection,
                 "设置界面 不透明度",
                 1.0f,
                 new ConfigDescription(
-                    "图形化设置界面的整体不透明度（0.2~1.0）。\n调低后可透过窗口看到“随机测试字幕/弹幕”飞过的效果。",
+                    "图形化设置界面与台词过滤面板的整体不透明度（0.2~1.0）。",
                     new AcceptableValueRange<float>(0.2f, 1.0f),
                     new ConfigurationManagerAttributes
                     {
-                        DispName = "设置界面 不透明度",
+                        DispName = "界面不透明度",
                         Category = "99.调试",
-                        Description = "图形化设置界面的整体不透明度（0.2~1.0）。调低后可透过窗口看到测试字幕/弹幕。",
+                        Description = "图形化设置界面与台词过滤面板的整体不透明度（0.2~1.0）。",
             IsAdvanced = true
                     }),
-                null, delegate { SettingsUI.SettingsWindow.ApplyOpacity(); });
+                null, delegate
+                {
+                    SettingsUI.SettingsWindow.ApplyOpacity();
+                    PhraseFilterPanel.ApplyOpacity();
+                });
 
             // —— 最后：把 entries 赋回，并统一设置 Order —— //
             // （预设快照 / 变更刷新 已在上面的 Reg 统一注册中顺带完成）

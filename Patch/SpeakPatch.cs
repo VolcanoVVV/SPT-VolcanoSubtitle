@@ -13,14 +13,11 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using static Subtitle.Config.Settings;
-<<<<<<< Updated upstream
-=======
 #if GAME_4_1
 using SpeakerClass = EFT.BaseSpeaker;
 #else
 using SpeakerClass = PhraseSpeakerClass;
 #endif
->>>>>>> Stashed changes
 
 [HarmonyPatch]
 public static class SubtitlePatch

@@ -9,14 +9,12 @@ using Comfort.Common;
 using EFT;
 using BepInEx.Logging;
 using Subtitle.Config;
-<<<<<<< Updated upstream
-=======
+using Subtitle.Utils;
 #if GAME_4_1
 using SpeakerClass = EFT.BaseSpeaker;
 #else
 using SpeakerClass = PhraseSpeakerClass;
 #endif
->>>>>>> Stashed changes
 
 namespace Subtitle.DebugTools
 {
@@ -215,8 +213,18 @@ namespace Subtitle.DebugTools
                 string vk = GetSpeakerVoiceKey(sp);
                 if (string.IsNullOrEmpty(vk)) vk = GetVoiceKey(ip);
 
-                // ★ label 优先显示 voiceKey；没有就退回玩家昵称/AI 角色
-                string label = !string.IsNullOrEmpty(vk) ? vk : GetDisplayName(ip);
+                string displayName = GetDisplayName(ip);
+                string label;
+                if (ip != null)
+                {
+                    label = string.IsNullOrEmpty(vk) ? displayName : displayName + "  [" + vk + "]";
+                }
+                else
+                {
+                    int speakerId = GetSpeakerId(sp);
+                    string fallback = speakerId == int.MinValue ? "Speaker" : "Speaker #" + speakerId;
+                    label = string.IsNullOrEmpty(vk) ? fallback : fallback + "  [" + vk + "]";
+                }
 
                 var btn = UiWidgets.InstantiateButton(_voiceBtnTpl, _voiceContent, label, new Vector2(8f, 2f), new Vector2(-8f, -2f), false, 28f);
                 btn.onClick.AddListener(delegate {
@@ -302,7 +310,11 @@ namespace Subtitle.DebugTools
         {
             if (sp == null) return null;
 
-            // 快路径
+            // 正式字幕在玩家注册时维护的 Speaker → IPlayer 索引优先级最高。
+            var indexed = SpeakerIndex.TryGetBySpeaker(sp);
+            if (indexed != null) return indexed;
+
+            // 部分版本会在 Speaker 上直接保留 Player/Owner。
             object v =
                 HarmonyLib.Traverse.Create(sp).Field("_player")?.GetValue() ??
                 HarmonyLib.Traverse.Create(sp).Property("Player")?.GetValue() ??
@@ -311,32 +323,145 @@ namespace Subtitle.DebugTools
             var ip = TryUnwrapPlayer(v);
             if (ip != null) return ip;
 
-            // 兜底：全扫描
+            // BaseSpeaker 通常只保留 Id，不一定反向持有玩家；从 GameWorld 玩家集合比较 Speaker。
+            var gw = Comfort.Common.Singleton<GameWorld>.Instance;
+            if (gw != null)
+            {
+                try
+                {
+                    var players = gw.AllAlivePlayersList;
+                    if (players != null)
+                    {
+                        int targetId = GetSpeakerId(sp);
+                        for (int i = 0; i < players.Count; i++)
+                        {
+                            IPlayer player = players[i];
+                            if (player == null) continue;
+                            SpeakerIndex.IndexPlayer(player);
+
+                            object playerSpeaker = GetPlayerSpeakerObject(player);
+                            if (object.ReferenceEquals(playerSpeaker, sp)) return player;
+                            if (targetId != int.MinValue && GetSpeakerId(playerSpeaker) == targetId) return player;
+                        }
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    IPlayer mainPlayer = gw.MainPlayer;
+                    if (mainPlayer != null)
+                    {
+                        SpeakerIndex.IndexPlayer(mainPlayer);
+                        object mainSpeaker = GetPlayerSpeakerObject(mainPlayer);
+                        if (object.ReferenceEquals(mainSpeaker, sp)) return mainPlayer;
+                        int targetId = GetSpeakerId(sp);
+                        if (targetId != int.MinValue && GetSpeakerId(mainSpeaker) == targetId) return mainPlayer;
+                    }
+                }
+                catch { }
+            }
+
+            // 最后保留旧版全成员扫描兜底。
             return TryUnwrapPlayer(sp);
         }
 
         private static string GetSpeakerVoiceKey(SpeakerClass sp)
         {
+            if (sp == null) return null;
+
+            try
+            {
+                string direct = sp.PlayerVoice;
+                if (!string.IsNullOrEmpty(direct)) return direct;
+            }
+            catch { }
+
+            string[] names = { "PlayerVoice", "Voice", "VoiceKey", "voice", "voiceKey" };
+            for (int i = 0; i < names.Length; i++)
+            {
+                try
+                {
+                    object value = HarmonyLib.Traverse.Create(sp).Property(names[i])?.GetValue() ??
+                                   HarmonyLib.Traverse.Create(sp).Field(names[i])?.GetValue();
+                    if (value != null && !string.IsNullOrEmpty(value.ToString())) return value.ToString();
+                }
+                catch { }
+            }
+
             return GetVoiceKey(GetSpeakerOwner(sp));
         }
 
         private static string GetDisplayName(IPlayer p)
         {
             if (p == null) return "Speaker";
+            string nickname = null;
+            string role = null;
             try
             {
-                if (!p.IsAI && p.Profile != null && !string.IsNullOrEmpty(p.Profile.Nickname))
-                    return "Player: " + p.Profile.Nickname;
+                if (p.Profile != null)
+                {
+                    nickname = p.Profile.Nickname;
+                    if (p.Profile.Info != null)
+                        role = p.Profile.Info.Settings.Role.ToString();
+                }
             }
             catch { }
+
             try
             {
-                string role = (p.Profile != null && p.Profile.Info != null) ?
-                    p.Profile.Info.Settings.Role.ToString() : "AI";
-                return "AI: " + role;
+                if (!p.IsAI)
+                    return string.IsNullOrEmpty(nickname) ? "Player" : nickname;
+
+                string roleLabel = string.IsNullOrEmpty(role) ? "AI" : Settings.GetRoleLabel(role, role);
+                if (!string.IsNullOrEmpty(nickname)) return nickname + " · " + roleLabel;
+                return roleLabel;
             }
             catch { }
-            return p.IsAI ? "AI" : "Player";
+
+            if (!string.IsNullOrEmpty(nickname)) return nickname;
+            return "Player";
+        }
+
+        private static object GetPlayerSpeakerObject(IPlayer player)
+        {
+            if (player == null) return null;
+
+            var concrete = player as Player;
+            if (concrete != null)
+            {
+                try { return concrete.Speaker; } catch { }
+            }
+
+            try
+            {
+                return HarmonyLib.Traverse.Create(player).Property("Speaker")?.GetValue() ??
+                       HarmonyLib.Traverse.Create(player).Property("PhraseSpeaker")?.GetValue() ??
+                       HarmonyLib.Traverse.Create(player).Field("Speaker")?.GetValue() ??
+                       HarmonyLib.Traverse.Create(player).Field("_speaker")?.GetValue() ??
+                       HarmonyLib.Traverse.Create(player).Field("_phraseSpeaker")?.GetValue();
+            }
+            catch { return null; }
+        }
+
+        private static int GetSpeakerId(object speaker)
+        {
+            if (speaker == null) return int.MinValue;
+            var typed = speaker as SpeakerClass;
+            if (typed != null)
+            {
+                try { return typed.Id; } catch { }
+            }
+
+            try
+            {
+                object value = HarmonyLib.Traverse.Create(speaker).Property("Id")?.GetValue() ??
+                               HarmonyLib.Traverse.Create(speaker).Field("Id")?.GetValue() ??
+                               HarmonyLib.Traverse.Create(speaker).Field("_id")?.GetValue();
+                if (value != null) return Convert.ToInt32(value);
+            }
+            catch { }
+            return int.MinValue;
         }
 
         private void RefreshClipsForSpeaker(SpeakerClass speaker)
@@ -853,6 +978,36 @@ row.onClick.AddListener(delegate {
             var result = new System.Collections.Generic.List<SpeakerClass>();
             var gw = Comfort.Common.Singleton<GameWorld>.Instance;
             if (gw == null) return result;
+
+            // 优先从玩家集合取 Speaker：这条路径天然保留 IPlayer/Profile 关系，可直接显示名字。
+            try
+            {
+                var players = gw.AllAlivePlayersList;
+                if (players != null)
+                {
+                    for (int i = 0; i < players.Count; i++)
+                    {
+                        IPlayer player = players[i];
+                        if (player == null) continue;
+                        SpeakerIndex.IndexPlayer(player);
+                        var speaker = GetPlayerSpeakerObject(player) as SpeakerClass;
+                        if (speaker != null && !result.Contains(speaker)) result.Add(speaker);
+                    }
+                }
+            }
+            catch { }
+
+            try
+            {
+                IPlayer mainPlayer = gw.MainPlayer;
+                if (mainPlayer != null)
+                {
+                    SpeakerIndex.IndexPlayer(mainPlayer);
+                    var speaker = GetPlayerSpeakerObject(mainPlayer) as SpeakerClass;
+                    if (speaker != null && !result.Contains(speaker)) result.Add(speaker);
+                }
+            }
+            catch { }
 
             // A) 常规入口：GameWorld.SpeakerManager
             object mgr =

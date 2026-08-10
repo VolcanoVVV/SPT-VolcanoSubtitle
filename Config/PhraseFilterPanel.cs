@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Subtitle.Utils;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -13,8 +14,19 @@ namespace Subtitle.Config
         private static PhraseFilterPanel s_instance;
 
         private Canvas _canvas;
+        private CanvasScaler _canvasScaler;
         private GameObject _panelBg;
+        private CanvasGroup _panelCanvasGroup;
         private RectTransform _root;
+        private RectTransform _windowRt;
+
+        private Image _channelAccent;
+        private Image _rightHeaderBg;
+        private Text _currentChannelText;
+        private Text _voiceHeaderText;
+        private Text _rightHeaderText;
+        private Text _statusText;
+        private InputField _voiceSearch;
 
         private ScrollRect _voiceScroll;
         private RectTransform _voiceContent;
@@ -36,13 +48,43 @@ namespace Subtitle.Config
         private Button _btnChSubtitle;
         private Button _btnChDanmaku;
         private Button _btnChWorld3D;
+        private Button _btnScopeCurrent;
+        private Button _btnScopeAll;
 
         private Button _btnApply;
         private Button _btnRefresh;
         private Button _btnClose;
+        private Button _btnFilterAll;
+        private Button _btnFilterEnabled;
+        private Button _btnFilterDisabled;
+        private Button _btnExpandAll;
+        private Button _btnCollapseAll;
+        private Text _applyLabel;
+        private Text _refreshLabel;
 
         // 选择状态
         private string _currentVoiceKey;
+        private readonly Dictionary<string, string> _selectedVoiceByChannel =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Vector2> _voiceScrollPositions =
+            new Dictionary<string, Vector2>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Vector2> _lineScrollPositions =
+            new Dictionary<string, Vector2>(StringComparer.OrdinalIgnoreCase);
+
+        private enum VoiceListFilter
+        {
+            All,
+            Enabled,
+            Disabled
+        }
+
+        private VoiceListFilter _voiceListFilter = VoiceListFilter.All;
+        private bool _editAllChannels;
+        private readonly HashSet<string> _dirtyChannels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private int _pendingChangeCount;
+        private float _refreshArmedAt = -999f;
+        private string _temporaryStatus;
+        private float _temporaryStatusUntil = -999f;
 
         // 用于高亮：voiceKey -> button
         private readonly Dictionary<string, Button> _voiceButtons =
@@ -53,12 +95,23 @@ namespace Subtitle.Config
         private int _lastVoiceCount = -1;
         private const float AutoRefreshInterval = 1f;
 
-        // 颜色（你可自行微调）
+        // 与新版设置窗口共用的中性底色；频道只使用局部强调色，不改变整窗背景。
+        private static readonly Color WindowBg = new Color(0.10f, 0.10f, 0.10f, 0.96f);
+        private static readonly Color PanelBg = new Color(0.12f, 0.12f, 0.12f, 1f);
+        private static readonly Color HeaderBg = new Color(0.15f, 0.15f, 0.15f, 1f);
+        private static readonly Color ButtonNormal = new Color(0.25f, 0.25f, 0.25f, 1f);
         private static readonly Color VoiceRowNormal = new Color(0.20f, 0.20f, 0.20f, 1f);
+        private static readonly Color VoiceRowDisabled = new Color(0.145f, 0.145f, 0.145f, 1f);
         private static readonly Color VoiceRowSelected = new Color(0.34f, 0.34f, 0.34f, 1f);
+        private static readonly Color MutedText = new Color(0.66f, 0.66f, 0.66f, 1f);
+        private static readonly Color SubtitleAccent = new Color(0.28f, 0.62f, 0.82f, 1f);
+        private static readonly Color DanmakuAccent = new Color(0.82f, 0.59f, 0.24f, 1f);
+        private static readonly Color World3DAccent = new Color(0.30f, 0.66f, 0.48f, 1f);
 
-        private static readonly Color ChannelNormal = new Color(0.25f, 0.25f, 0.25f, 1f);
-        private static readonly Color ChannelSelected = new Color(0.40f, 0.40f, 0.40f, 1f);
+        private static readonly Vector2 MinWindowSize = new Vector2(1000f, 600f);
+        private const float ConfirmWindowSec = 3f;
+        private const float TooltipMaxWidth = 420f;
+        private static readonly Vector2 TooltipOffset = new Vector2(14f, -14f);
 
         public static void ToggleVisible()
         {
@@ -69,6 +122,16 @@ namespace Subtitle.Config
                 s_instance = go.AddComponent<PhraseFilterPanel>();
             }
             s_instance.Toggle();
+        }
+
+        public static void ApplyOpacity()
+        {
+            if (s_instance != null) s_instance.ApplyOpacityInstance();
+        }
+
+        public static void ApplyScale()
+        {
+            if (s_instance != null) s_instance.ApplyScaleInstance();
         }
 
         private void Awake()
@@ -115,6 +178,7 @@ namespace Subtitle.Config
 
         private void Hide()
         {
+            SaveCurrentScrollPositions(PhraseFilterManager.CurrentChannel, _currentVoiceKey);
             if (_panelBg != null) _panelBg.SetActive(false);
             StopAutoRefresh();
             HideTooltip();
@@ -164,8 +228,13 @@ namespace Subtitle.Config
             goCanvas.transform.SetParent(transform, false);
             _canvas = goCanvas.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            _canvas.sortingOrder = 5001;
-            goCanvas.AddComponent<CanvasScaler>();
+            // 高于设置窗口（5002）：从设置页打开时台词面板显示在最上层，关闭后返回设置页。
+            _canvas.sortingOrder = 5003;
+            _canvas.pixelPerfect = true;
+            _canvasScaler = goCanvas.AddComponent<CanvasScaler>();
+            _canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            _canvasScaler.referenceResolution = new Vector2(1920f, 1080f);
+            _canvasScaler.matchWidthOrHeight = 0.5f;
             goCanvas.AddComponent<GraphicRaycaster>();
 
             _panelBg = new GameObject("PanelBg");
@@ -177,97 +246,229 @@ namespace Subtitle.Config
             bgRT.offsetMax = Vector2.zero;
             var imgBg = _panelBg.AddComponent<Image>();
             imgBg.color = new Color(0f, 0f, 0f, 0.4f);
+            _panelCanvasGroup = _panelBg.AddComponent<CanvasGroup>();
 
             var panel = new GameObject("Panel");
             panel.transform.SetParent(_panelBg.transform, false);
             _root = panel.AddComponent<RectTransform>();
-            _root.anchorMin = new Vector2(0.1f, 0.1f);
-            _root.anchorMax = new Vector2(0.9f, 0.9f);
-            _root.offsetMin = Vector2.zero;
-            _root.offsetMax = Vector2.zero;
+            _root.anchorMin = new Vector2(0.5f, 0.5f);
+            _root.anchorMax = new Vector2(0.5f, 0.5f);
+            _root.pivot = new Vector2(0.5f, 0.5f);
+            _root.sizeDelta = new Vector2(1480f, 820f);
+            _root.anchoredPosition = Vector2.zero;
+            _windowRt = _root;
             var imgPanel = panel.AddComponent<Image>();
-            imgPanel.color = new Color(0.1f, 0.1f, 0.1f, 0.92f);
+            imgPanel.color = WindowBg;
 
-            // ---------- TopBar ----------
-            var top = UiWidgets.CreateRect(panel.transform, "TopBar", new Vector2(0f, 0.9f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero);
+            // ---------- 标题栏 ----------
+            var top = UiWidgets.CreateRect(panel.transform, "TitleBar",
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -40f), Vector2.zero);
             var topImg = top.gameObject.AddComponent<Image>();
-            topImg.color = new Color(0.15f, 0.15f, 0.15f, 1f);
+            topImg.color = HeaderBg;
 
-            _title = UiWidgets.CreateText(top, "Title", "台词显示控制面板", 18, TextAnchor.MiddleLeft, Vector2.zero, Vector2.zero);
+            _title = UiWidgets.CreateText(top, "Title", I18n.Text("PhraseFilter.Title", "台词过滤面板"), 18,
+                TextAnchor.MiddleLeft, new Vector2(12f, 0f), new Vector2(-300f, 0f));
             var titleRT = _title.rectTransform;
             titleRT.anchorMin = new Vector2(0f, 0f);
-            titleRT.anchorMax = new Vector2(0.38f, 1f);
-            titleRT.offsetMin = new Vector2(10f, 0f);
-            titleRT.offsetMax = new Vector2(-10f, 0f);
+            titleRT.anchorMax = new Vector2(1f, 1f);
 
-            var channelLabel = UiWidgets.CreateText(top, "ChannelLabel", "类型:", 14, TextAnchor.MiddleRight, Vector2.zero, Vector2.zero);
-            var channelLabelRT = channelLabel.rectTransform;
-            channelLabelRT.anchorMin = new Vector2(0.38f, 0.1f);
-            channelLabelRT.anchorMax = new Vector2(0.45f, 0.9f);
-            channelLabelRT.offsetMin = new Vector2(4f, 0f);
-            channelLabelRT.offsetMax = new Vector2(-4f, 0f);
+            _btnApply = CreateRightAnchoredButton(top, "Save", I18n.Text("PhraseFilter.Save", "保存"), -280f, -190f, ButtonNormal, 13);
+            _btnRefresh = CreateRightAnchoredButton(top, "Refresh", I18n.Text("PhraseFilter.Refresh", "刷新"), -184f, -92f, ButtonNormal, 13);
+            _btnClose = CreateRightAnchoredButton(top, "Close", I18n.Text("Close", "关闭"), -86f, -8f, ButtonNormal, 13);
+            _applyLabel = _btnApply.GetComponentInChildren<Text>(true);
+            _refreshLabel = _btnRefresh.GetComponentInChildren<Text>(true);
 
-            // 频道三按钮（并列）
-            _btnChSubtitle = UiWidgets.CreateButton(top, "ChSubtitle", "字幕", new Vector2(0.45f, 0.15f), new Vector2(0.55f, 0.85f), ChannelNormal, 13, true);
-            _btnChDanmaku = UiWidgets.CreateButton(top, "ChDanmaku", "弹幕", new Vector2(0.55f, 0.15f), new Vector2(0.65f, 0.85f), ChannelNormal, 13, true);
-            _btnChWorld3D = UiWidgets.CreateButton(top, "ChWorld3D", "3D气泡", new Vector2(0.65f, 0.15f), new Vector2(0.75f, 0.85f), ChannelNormal, 13, true);
+            _btnApply.onClick.AddListener(ApplyAndSave);
+            _btnRefresh.onClick.AddListener(OnClickRefresh);
+            _btnClose.onClick.AddListener(Hide);
+            AttachWindowDrag(top.gameObject);
+
+            var accentRt = UiWidgets.CreateRect(panel.transform, "ChannelAccent",
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -43f), new Vector2(0f, -40f));
+            _channelAccent = accentRt.gameObject.AddComponent<Image>();
+
+            // ---------- 频道工具栏 ----------
+            var toolbar = UiWidgets.CreateRect(panel.transform, "ChannelToolbar",
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(8f, -89f), new Vector2(-8f, -47f));
+            var toolbarImg = toolbar.gameObject.AddComponent<Image>();
+            toolbarImg.color = PanelBg;
+
+            _currentChannelText = UiWidgets.CreateText(toolbar, "CurrentChannel", "", 14, TextAnchor.MiddleLeft,
+                new Vector2(12f, 0f), new Vector2(-900f, 0f));
+            var currentChannelRt = _currentChannelText.rectTransform;
+            currentChannelRt.anchorMin = new Vector2(0f, 0f);
+            currentChannelRt.anchorMax = new Vector2(0f, 1f);
+            currentChannelRt.offsetMin = new Vector2(12f, 0f);
+            currentChannelRt.offsetMax = new Vector2(160f, 0f);
+
+            _btnChSubtitle = CreateFixedButton(toolbar, "ChSubtitle", "字幕", 170f, 294f, ButtonNormal, 13);
+            _btnChDanmaku = CreateFixedButton(toolbar, "ChDanmaku", "弹幕", 298f, 422f, ButtonNormal, 13);
+            _btnChWorld3D = CreateFixedButton(toolbar, "ChWorld3D", "3D气泡", 426f, 566f, ButtonNormal, 13);
 
             _btnChSubtitle.onClick.AddListener(delegate { OnClickChannel("Subtitle"); });
             _btnChDanmaku.onClick.AddListener(delegate { OnClickChannel("Danmaku"); });
             _btnChWorld3D.onClick.AddListener(delegate { OnClickChannel("World3D"); });
 
-            _btnApply = UiWidgets.CreateButton(top, "Apply", "应用", new Vector2(0.82f, 0.15f), new Vector2(0.90f, 0.85f), ChannelNormal, 13, true);
-            _btnRefresh = UiWidgets.CreateButton(top, "Refresh", "刷新", new Vector2(0.90f, 0.15f), new Vector2(0.95f, 0.85f), ChannelNormal, 13, true);
-            _btnClose = UiWidgets.CreateButton(top, "Close", "关闭", new Vector2(0.95f, 0.15f), new Vector2(1.0f, 0.85f), ChannelNormal, 13, true);
+            var scopeLabel = UiWidgets.CreateText(toolbar, "EditScopeLabel", "编辑范围：", 13, TextAnchor.MiddleLeft,
+                Vector2.zero, Vector2.zero);
+            var scopeLabelRt = scopeLabel.rectTransform;
+            scopeLabelRt.anchorMin = new Vector2(0f, 0f);
+            scopeLabelRt.anchorMax = new Vector2(0f, 1f);
+            scopeLabelRt.offsetMin = new Vector2(602f, 0f);
+            scopeLabelRt.offsetMax = new Vector2(680f, 0f);
+            _btnScopeCurrent = CreateFixedButton(toolbar, "ScopeCurrent", "当前类型", 684f, 800f, ButtonNormal, 12);
+            _btnScopeAll = CreateFixedButton(toolbar, "ScopeAll", "三种类型", 804f, 924f, ButtonNormal, 12);
+            _btnScopeCurrent.onClick.AddListener(delegate { SetEditScope(false); });
+            _btnScopeAll.onClick.AddListener(delegate { SetEditScope(true); });
 
-            _btnApply.onClick.AddListener(ApplyAndSave);
-            _btnRefresh.onClick.AddListener(OnClickRefresh);
-            _btnClose.onClick.AddListener(Hide);
-
-            // 初始频道高亮  
-            UpdateChannelButtonsVisual(PhraseFilterManager.CurrentChannel);
-
-            // ---------- BottomBar ----------
-            var bottom = UiWidgets.CreateRect(panel.transform, "BottomBar", new Vector2(0f, 0f), new Vector2(1f, 0.08f), Vector2.zero, Vector2.zero);
+            // ---------- 状态栏 ----------
+            var bottom = UiWidgets.CreateRect(panel.transform, "StatusBar",
+                new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(8f, 8f), new Vector2(-8f, 40f));
             var bottomImg = bottom.gameObject.AddComponent<Image>();
-            bottomImg.color = new Color(0.15f, 0.15f, 0.15f, 1f);
-            _hint = UiWidgets.CreateText(bottom, "Hint", "选择声线 -> 右侧控 语音事件/语音ID 开关台词。", 13, TextAnchor.MiddleLeft, Vector2.zero, Vector2.zero);
-            _hint.rectTransform.offsetMin = new Vector2(10f, 0f);
+            bottomImg.color = HeaderBg;
+            _statusText = UiWidgets.CreateText(bottom, "Status", "", 12, TextAnchor.MiddleLeft,
+                new Vector2(10f, 0f), new Vector2(-10f, 0f));
+            _hint = _statusText;
 
-            // ---------- Left ----------
-            var left = UiWidgets.CreateRect(panel.transform, "Left", new Vector2(0f, 0.08f), new Vector2(0.35f, 0.9f), Vector2.zero, Vector2.zero);
+            // ---------- 左栏：角色与声线 ----------
+            var left = UiWidgets.CreateRect(panel.transform, "Left",
+                new Vector2(0f, 0f), new Vector2(0.31f, 1f), new Vector2(8f, 44f), new Vector2(-4f, -93f));
             var leftImg = left.gameObject.AddComponent<Image>();
-            leftImg.color = new Color(0.12f, 0.12f, 0.12f, 1f);
+            leftImg.color = PanelBg;
 
-            UiWidgets.MakeScrollWithContent(left, out _voiceScroll, out _voiceContent, true);
-            _voiceBtnTpl = UiWidgets.CreateFlatButtonTemplate(panel.transform, "VoiceBtnTpl", 24f, VoiceRowNormal, false,
+            var leftHead = UiWidgets.CreateRect(left, "LeftHeader",
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(2f, -74f), new Vector2(-2f, -2f));
+            var leftHeadImg = leftHead.gameObject.AddComponent<Image>();
+            leftHeadImg.color = HeaderBg;
+            _voiceHeaderText = UiWidgets.CreateText(leftHead, "Title", "角色与声线", 14, TextAnchor.MiddleLeft,
+                new Vector2(8f, 38f), new Vector2(-8f, 0f));
+
+            _voiceSearch = CreateSearchInput(leftHead, new Vector2(8f, 6f), new Vector2(-184f, 34f));
+            _voiceSearch.onValueChanged.AddListener(delegate { RefreshVoiceList(true, true); });
+            _btnFilterAll = CreateBottomRightButton(leftHead, "FilterAll", "全部", -178f, -122f);
+            _btnFilterEnabled = CreateBottomRightButton(leftHead, "FilterEnabled", "启用", -118f, -62f);
+            _btnFilterDisabled = CreateBottomRightButton(leftHead, "FilterDisabled", "停用", -58f, -4f);
+            _btnFilterAll.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.All); });
+            _btnFilterEnabled.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.Enabled); });
+            _btnFilterDisabled.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.Disabled); });
+
+            var voiceScrollWrap = UiWidgets.CreateRect(left, "VoiceScrollWrap", Vector2.zero, Vector2.one,
+                new Vector2(2f, 2f), new Vector2(-2f, -78f));
+            UiWidgets.MakeScrollWithContent(voiceScrollWrap, out _voiceScroll, out _voiceContent, true);
+            _voiceBtnTpl = UiWidgets.CreateFlatButtonTemplate(panel.transform, "VoiceBtnTpl", 28f, VoiceRowNormal, false,
                 new Color(0.38f, 0.38f, 0.38f, 1f), new Color(0.20f, 0.20f, 0.20f, 1f), 13, "", new Vector2(6f, 0f), new Vector2(-6f, 0f), true);
 
-            // ---------- Right ----------
-            var right = UiWidgets.CreateRect(panel.transform, "Right", new Vector2(0.35f, 0.08f), new Vector2(1f, 0.9f), Vector2.zero, Vector2.zero);
+            // ---------- 右栏：事件与台词 ID ----------
+            var right = UiWidgets.CreateRect(panel.transform, "Right",
+                new Vector2(0.31f, 0f), new Vector2(1f, 1f), new Vector2(4f, 44f), new Vector2(-8f, -93f));
             var rightImg = right.gameObject.AddComponent<Image>();
-            rightImg.color = new Color(0.12f, 0.12f, 0.12f, 1f);
+            rightImg.color = PanelBg;
 
-            UiWidgets.MakeScrollWithContent(right, out _lineScroll, out _lineContent, true);
-            _lineBtnTpl = UiWidgets.CreateFlatButtonTemplate(panel.transform, "LineBtnTpl", 24f, VoiceRowNormal, false,
+            var rightHead = UiWidgets.CreateRect(right, "RightHeader",
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(2f, -36f), new Vector2(-2f, -2f));
+            _rightHeaderBg = rightHead.gameObject.AddComponent<Image>();
+            _rightHeaderText = UiWidgets.CreateText(rightHead, "Context", "", 14, TextAnchor.MiddleLeft,
+                new Vector2(10f, 0f), new Vector2(-220f, 0f));
+            _btnExpandAll = CreateRightAnchoredButton(rightHead, "ExpandAll", "全部展开", -208f, -108f, ButtonNormal, 12);
+            _btnCollapseAll = CreateRightAnchoredButton(rightHead, "CollapseAll", "全部收起", -104f, -4f, ButtonNormal, 12);
+            _btnExpandAll.onClick.AddListener(delegate { SetAllTriggersExpanded(true); });
+            _btnCollapseAll.onClick.AddListener(delegate { SetAllTriggersExpanded(false); });
+
+            var lineScrollWrap = UiWidgets.CreateRect(right, "LineScrollWrap", Vector2.zero, Vector2.one,
+                new Vector2(2f, 2f), new Vector2(-2f, -40f));
+            UiWidgets.MakeScrollWithContent(lineScrollWrap, out _lineScroll, out _lineContent, true);
+            _lineBtnTpl = UiWidgets.CreateFlatButtonTemplate(panel.transform, "LineBtnTpl", 28f, VoiceRowNormal, false,
                 new Color(0.38f, 0.38f, 0.38f, 1f), new Color(0.20f, 0.20f, 0.20f, 1f), 13, "", new Vector2(6f, 0f), new Vector2(-6f, 0f), true);
 
-            CreateTooltip(panel.transform);
+            BuildResizeHandle(panel.transform);
+            CreateTooltip(goCanvas.transform);
+            ApplyOpacityInstance();
+            ApplyScaleInstance();
+            UpdateChannelButtonsVisual(PhraseFilterManager.CurrentChannel);
+            UpdateEditScopeButtons();
+            UpdateVoiceFilterButtons();
+            ShowRightEmptyState(I18n.Text("PhraseFilter.Empty", "从左侧选择角色或声线。"));
+            UpdateTitle();
+        }
+
+        private void ApplyOpacityInstance()
+        {
+            if (_panelCanvasGroup == null || Settings.SettingsWindowOpacity == null) return;
+            _panelCanvasGroup.alpha = Mathf.Clamp(Settings.SettingsWindowOpacity.Value, 0.2f, 1.0f);
+        }
+
+        private void ApplyScaleInstance()
+        {
+            if (_canvasScaler == null) return;
+            float scale = Settings.InterfaceScale == null ? 1f : Mathf.Clamp(Settings.InterfaceScale.Value, 0.75f, 1.30f);
+            _canvasScaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
+            Canvas.ForceUpdateCanvases();
+            ClampWindowToScreen();
+        }
+
+        private void ClampWindowToScreen()
+        {
+            if (_windowRt == null || _canvas == null) return;
+            float scale = _canvas.scaleFactor <= 0f ? 1f : _canvas.scaleFactor;
+            float screenW = Screen.width / scale;
+            float screenH = Screen.height / scale;
+            Vector2 size = _windowRt.sizeDelta;
+            size.x = Mathf.Min(size.x, screenW);
+            size.y = Mathf.Min(size.y, screenH);
+            _windowRt.sizeDelta = size;
+
+            float maxX = Mathf.Max(0f, (screenW - size.x) * 0.5f);
+            float maxY = Mathf.Max(0f, (screenH - size.y) * 0.5f);
+            Vector2 pos = _windowRt.anchoredPosition;
+            pos.x = Mathf.Clamp(pos.x, -maxX, maxX);
+            pos.y = Mathf.Clamp(pos.y, -maxY, maxY);
+            _windowRt.anchoredPosition = pos;
         }
 
         private void Update()
         {
             if (_tooltipGo != null && _tooltipGo.activeSelf)
                 UpdateTooltipPosition();
+
+            if (_refreshArmedAt > -900f && Time.unscaledTime - _refreshArmedAt > ConfirmWindowSec)
+            {
+                _refreshArmedAt = -999f;
+                if (_refreshLabel != null) _refreshLabel.text = I18n.Text("PhraseFilter.Refresh", "刷新");
+            }
+
+            if (!string.IsNullOrEmpty(_temporaryStatus) && Time.unscaledTime > _temporaryStatusUntil)
+            {
+                _temporaryStatus = null;
+                UpdateStatus();
+            }
         }
 
         private void OnClickRefresh()
         {
-            // 重新加载 preset（如果你 Manager 内部就是默认 preset，这里也没问题）
-            PhraseFilterManager.TryLoadPreset(PhraseFilterManager.CurrentPresetName);
+            if (_dirtyChannels.Count > 0 && Time.unscaledTime - _refreshArmedAt > ConfirmWindowSec)
+            {
+                _refreshArmedAt = Time.unscaledTime;
+                if (_refreshLabel != null) _refreshLabel.text = I18n.Text("PhraseFilter.RefreshConfirm", "确认刷新？");
+                SetTemporaryStatus(I18n.Text("PhraseFilter.RefreshWarning", "再次点击刷新将放弃未保存修改。"), ConfirmWindowSec);
+                return;
+            }
 
-            // 关键：刷新时保留当前选择
-            RefreshVoiceList(true);
+            _refreshArmedAt = -999f;
+            if (_refreshLabel != null) _refreshLabel.text = I18n.Text("PhraseFilter.Refresh", "刷新");
+            bool loaded = PhraseFilterManager.TryLoadPreset(PhraseFilterManager.CurrentPresetName);
+            if (loaded)
+            {
+                _dirtyChannels.Clear();
+                _pendingChangeCount = 0;
+                SetTemporaryStatus(I18n.Text("PhraseFilter.Refreshed", "已从文件重新载入。"), 2f);
+            }
+            else
+            {
+                SetTemporaryStatus(I18n.Text("PhraseFilter.RefreshFailed", "重新载入失败，请查看日志。"), 3f);
+            }
+
+            UpdateChannelButtonsVisual(PhraseFilterManager.CurrentChannel);
+            RefreshVoiceList(true, false, false);
 
             if (!string.IsNullOrEmpty(_currentVoiceKey))
             {
@@ -280,12 +481,21 @@ namespace Subtitle.Config
         private void OnClickChannel(string channel)
         {
             if (string.IsNullOrEmpty(channel)) return;
+            if (string.Equals(channel, PhraseFilterManager.CurrentChannel, StringComparison.OrdinalIgnoreCase)) return;
 
-            // 切频道时保留声线选择
+            string previousChannel = PhraseFilterManager.CurrentChannel;
+            SaveCurrentScrollPositions(previousChannel, _currentVoiceKey);
+            if (!string.IsNullOrEmpty(_currentVoiceKey))
+                _selectedVoiceByChannel[previousChannel] = _currentVoiceKey;
+
             PhraseFilterManager.SetCurrentChannel(channel);
+            string selected;
+            if (_selectedVoiceByChannel.TryGetValue(channel, out selected))
+                _currentVoiceKey = selected;
+
             UpdateChannelButtonsVisual(channel);
 
-            RefreshVoiceList(true);
+            RefreshVoiceList(true, false, false);
 
             if (!string.IsNullOrEmpty(_currentVoiceKey))
             {
@@ -293,14 +503,38 @@ namespace Subtitle.Config
                 RefreshLinesForVoice(_currentVoiceKey);
             }
             UpdateTitle();
+        }
+
+        private void SetEditScope(bool allChannels)
+        {
+            _editAllChannels = allChannels;
+            UpdateEditScopeButtons();
+            UpdateTitle();
+        }
+
+        private void UpdateEditScopeButtons()
+        {
+            Color accent = GetChannelAccent(PhraseFilterManager.CurrentChannel);
+            SetButtonBg(_btnScopeCurrent, !_editAllChannels ? accent : ButtonNormal);
+            SetButtonBg(_btnScopeAll, _editAllChannels ? accent : ButtonNormal);
         }
 
         private void ApplyAndSave()
         {
             var preset = PhraseFilterManager.GetOrCreateCurrent();
-            PhraseFilterManager.SavePreset(PhraseFilterManager.CurrentPresetName, preset);
+            bool saved = PhraseFilterManager.SavePreset(PhraseFilterManager.CurrentPresetName, preset);
+            if (saved)
+            {
+                _dirtyChannels.Clear();
+                _pendingChangeCount = 0;
+                SetTemporaryStatus(I18n.Text("PhraseFilter.Saved", "修改已保存。"), 2f);
+            }
+            else
+            {
+                SetTemporaryStatus(I18n.Text("PhraseFilter.SaveFailed", "保存失败，请查看日志。"), 3f);
+            }
 
-            // 保存后刷新，保留选择
+            UpdateChannelButtonsVisual(PhraseFilterManager.CurrentChannel);
             RefreshVoiceList(true);
             if (!string.IsNullOrEmpty(_currentVoiceKey))
             {
@@ -310,13 +544,14 @@ namespace Subtitle.Config
             UpdateTitle();
         }
 
-        private void RefreshVoiceList(bool keepSelection)
+        private void RefreshVoiceList(bool keepSelection, bool resetScroll = false, bool captureCurrentScroll = true)
         {
+            string channel = PhraseFilterManager.CurrentChannel;
+            if (captureCurrentScroll && !resetScroll && _voiceScroll != null && _voiceScroll.content != null)
+                _voiceScrollPositions[channel] = _voiceScroll.content.anchoredPosition;
+
             UiWidgets.ClearChildren(_voiceContent);
             _voiceButtons.Clear();
-
-            // 右侧是否清空：这里为了稳妥，先清空再按当前 voice 重新画
-            UiWidgets.ClearChildren(_lineContent);
 
             if (!keepSelection)
                 _currentVoiceKey = null;
@@ -328,6 +563,8 @@ namespace Subtitle.Config
             {
                 UiWidgets.AddInfoRow(_voiceContent, "未加载声线资源，稍后重试。", true, Color.white);
                 LayoutRebuilder.ForceRebuildLayoutImmediate(_voiceContent);
+                if (_voiceHeaderText != null) _voiceHeaderText.text = "角色与声线 · 0";
+                ShowRightEmptyState(I18n.Text("PhraseFilter.NoVoices", "未加载声线资源，稍后重试。"));
                 return;
             }
 
@@ -335,41 +572,66 @@ namespace Subtitle.Config
             if (keepSelection && !string.IsNullOrEmpty(_currentVoiceKey))
             {
                 bool exists = voices.Any(v => string.Equals(v, _currentVoiceKey, StringComparison.OrdinalIgnoreCase));
-                if (!exists) _currentVoiceKey = null;
+                if (!exists)
+                {
+                    _currentVoiceKey = null;
+                    ShowRightEmptyState(I18n.Text("PhraseFilter.Empty", "从左侧选择角色或声线。"));
+                }
             }
 
+            string query = _voiceSearch == null ? string.Empty : (_voiceSearch.text ?? string.Empty).Trim();
+            int visibleCount = 0;
             for (int i = 0; i < voices.Count; i++)
             {
                 var vk = voices[i];
                 var vf = PhraseFilterManager.GetOrCreateVoice(PhraseFilterManager.CurrentChannel, vk);
+                if (_voiceListFilter == VoiceListFilter.Enabled && !vf.Enabled) continue;
+                if (_voiceListFilter == VoiceListFilter.Disabled && vf.Enabled) continue;
+
+                string displayName = GetVoiceDisplayName(vk);
+                if (!string.IsNullOrEmpty(query) &&
+                    displayName.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0 &&
+                    vk.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
                 string label = FormatToggle(vf.Enabled, GetVoiceDisplayName(vk));
 
                 var btn = UiWidgets.InstantiateButton(_voiceBtnTpl, _voiceContent, label, new Vector2(8f, 0f), new Vector2(-6f, 0f), true, 0f);
                 _voiceButtons[vk] = btn;
+                visibleCount++;
 
                 var captured = vk;
                 btn.onClick.AddListener(delegate { OnSelectVoice(captured); });
-
-                // 初始高亮
-                if (!string.IsNullOrEmpty(_currentVoiceKey) &&
-                    string.Equals(_currentVoiceKey, vk, StringComparison.OrdinalIgnoreCase))
-                {
-                    SetButtonBg(btn, VoiceRowSelected);
-                }
-                else
-                {
-                    SetButtonBg(btn, VoiceRowNormal);
-                }
+                ApplyVoiceButtonVisual(btn, vf.Enabled,
+                    !string.IsNullOrEmpty(_currentVoiceKey) && string.Equals(_currentVoiceKey, vk, StringComparison.OrdinalIgnoreCase));
             }
 
+            if (visibleCount == 0)
+                UiWidgets.AddInfoRow(_voiceContent, "没有符合当前搜索或筛选条件的声线。", true, MutedText);
+
+            if (_voiceHeaderText != null)
+                _voiceHeaderText.text = "角色与声线 · " + visibleCount + "/" + voices.Count;
+
             LayoutRebuilder.ForceRebuildLayoutImmediate(_voiceContent);
-            if (_voiceScroll != null) _voiceScroll.verticalNormalizedPosition = 1f;
             Canvas.ForceUpdateCanvases();
+            if (_voiceScroll != null)
+            {
+                if (resetScroll)
+                    _voiceScroll.verticalNormalizedPosition = 1f;
+                else
+                {
+                    Vector2 savedPos;
+                    if (_voiceScrollPositions.TryGetValue(channel, out savedPos))
+                        StartCoroutine(RestoreScrollPositionNextFrame(_voiceScroll, savedPos));
+                }
+            }
         }
 
         private void OnSelectVoice(string voiceKey)
         {
+            SaveCurrentScrollPositions(PhraseFilterManager.CurrentChannel, _currentVoiceKey);
             _currentVoiceKey = voiceKey;
+            _selectedVoiceByChannel[PhraseFilterManager.CurrentChannel] = voiceKey;
             SetVoiceSelectionVisual(voiceKey);
             UpdateTitle();
             RefreshLinesForVoice(voiceKey);
@@ -377,11 +639,17 @@ namespace Subtitle.Config
 
         private void UpdateTitle()
         {
-            if (_title == null) return;
-            if (!string.IsNullOrEmpty(_currentVoiceKey))
-                _title.text = "台词显示控制面板 - " + GetVoiceDisplayName(_currentVoiceKey);
-            else
-                _title.text = "台词显示控制面板";
+            string channel = PhraseFilterManager.CurrentChannel;
+            string channelName = GetChannelDisplayName(channel);
+            if (_title != null) _title.text = I18n.Text("PhraseFilter.Title", "台词过滤面板");
+            if (_currentChannelText != null) _currentChannelText.text = "当前编辑：" + channelName;
+            if (_rightHeaderText != null)
+            {
+                _rightHeaderText.text = string.IsNullOrEmpty(_currentVoiceKey)
+                    ? channelName + " / 未选择声线"
+                    : channelName + " / " + GetVoiceDisplayName(_currentVoiceKey);
+            }
+            UpdateStatus();
         }
 
         private void SetVoiceSelectionVisual(string voiceKey)
@@ -389,15 +657,29 @@ namespace Subtitle.Config
             foreach (var kv in _voiceButtons)
             {
                 bool sel = string.Equals(kv.Key, voiceKey, StringComparison.OrdinalIgnoreCase);
-                SetButtonBg(kv.Value, sel ? VoiceRowSelected : VoiceRowNormal);
+                var vf = PhraseFilterManager.GetOrCreateVoice(PhraseFilterManager.CurrentChannel, kv.Key);
+                ApplyVoiceButtonVisual(kv.Value, vf.Enabled, sel);
             }
         }
 
         private void UpdateChannelButtonsVisual(string channel)
         {
-            SetButtonBg(_btnChSubtitle, string.Equals(channel, "Subtitle", StringComparison.OrdinalIgnoreCase) ? ChannelSelected : ChannelNormal);
-            SetButtonBg(_btnChDanmaku, string.Equals(channel, "Danmaku", StringComparison.OrdinalIgnoreCase) ? ChannelSelected : ChannelNormal);
-            SetButtonBg(_btnChWorld3D, string.Equals(channel, "World3D", StringComparison.OrdinalIgnoreCase) ? ChannelSelected : ChannelNormal);
+            Color accent = GetChannelAccent(channel);
+            SetButtonBg(_btnChSubtitle, string.Equals(channel, "Subtitle", StringComparison.OrdinalIgnoreCase) ? accent : ButtonNormal);
+            SetButtonBg(_btnChDanmaku, string.Equals(channel, "Danmaku", StringComparison.OrdinalIgnoreCase) ? accent : ButtonNormal);
+            SetButtonBg(_btnChWorld3D, string.Equals(channel, "World3D", StringComparison.OrdinalIgnoreCase) ? accent : ButtonNormal);
+            UpdateEditScopeButtons();
+            SetButtonBg(_btnApply, _dirtyChannels.Count > 0 ? accent : ButtonNormal);
+            if (_channelAccent != null) _channelAccent.color = accent;
+            if (_rightHeaderBg != null) _rightHeaderBg.color = Color.Lerp(HeaderBg, accent, 0.16f);
+
+            SetButtonLabel(_btnChSubtitle, "字幕" + (_dirtyChannels.Contains("Subtitle") ? "  •" : string.Empty));
+            SetButtonLabel(_btnChDanmaku, "弹幕" + (_dirtyChannels.Contains("Danmaku") ? "  •" : string.Empty));
+            SetButtonLabel(_btnChWorld3D, "3D气泡" + (_dirtyChannels.Contains("World3D") ? "  •" : string.Empty));
+            if (_applyLabel != null)
+                _applyLabel.text = _dirtyChannels.Count > 0 ? "保存  •" : I18n.Text("PhraseFilter.Save", "保存");
+            UpdateVoiceFilterButtons();
+            UpdateTitle();
         }
 
         private static void SetButtonBg(Button btn, Color c)
@@ -410,17 +692,24 @@ namespace Subtitle.Config
         private void RefreshLinesForVoice(string voiceKey)
         {
             UiWidgets.ClearChildren(_lineContent);
-            if (string.IsNullOrEmpty(voiceKey)) return;
+            if (string.IsNullOrEmpty(voiceKey))
+            {
+                ShowRightEmptyState(I18n.Text("PhraseFilter.Empty", "从左侧选择角色或声线。"));
+                return;
+            }
+
+            UpdateTitle();
 
             var vf = PhraseFilterManager.GetOrCreateVoice(PhraseFilterManager.CurrentChannel, voiceKey);
 
-            var voiceToggle = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(vf.Enabled, "声线启用"), new Vector2(12f, 0f), new Vector2(-6f, 0f), true, 0f);
+            var voiceToggle = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, "", new Vector2(12f, 0f), new Vector2(-6f, 0f), true, 0f);
+            StyleToggleButton(voiceToggle, vf.Enabled, "声线启用", true);
             AttachScrollHandlers(voiceToggle.gameObject, _lineScroll);
             voiceToggle.onClick.AddListener(delegate {
-                vf.Enabled = !vf.Enabled;
-                voiceToggle.GetComponentInChildren<Text>(true).text = FormatToggle(vf.Enabled, "声线启用");
+                SetVoiceEnabledForEditScope(voiceKey, !vf.Enabled);
+                StyleToggleButton(voiceToggle, vf.Enabled, "声线启用", true);
+                MarkDirty();
 
-                // 左侧同步刷新 + 保持选中  
                 RefreshVoiceList(true);
                 SetVoiceSelectionVisual(_currentVoiceKey);
             });
@@ -429,6 +718,7 @@ namespace Subtitle.Config
             if (map.Count == 0)
             {
                 UiWidgets.AddInfoRow(_lineContent, "未找到该声线的触发器。", true, Color.white);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(_lineContent);
                 return;
             }
 
@@ -448,10 +738,10 @@ namespace Subtitle.Config
                 var triggerRow = new GameObject("TriggerRow");
                 triggerRow.transform.SetParent(_lineContent, false);
                 var triggerRt = triggerRow.AddComponent<RectTransform>();
-                triggerRt.sizeDelta = new Vector2(100f, 24f);
+                triggerRt.sizeDelta = new Vector2(100f, 28f);
                 var triggerLe = triggerRow.AddComponent<LayoutElement>();
-                triggerLe.preferredHeight = 24f;
-                triggerLe.minHeight = 24f;
+                triggerLe.preferredHeight = 28f;
+                triggerLe.minHeight = 28f;
                 var triggerLayout = triggerRow.AddComponent<HorizontalLayoutGroup>();
                 triggerLayout.childControlHeight = true;
                 triggerLayout.childControlWidth = true;
@@ -460,13 +750,14 @@ namespace Subtitle.Config
                 triggerLayout.spacing = 2f;
                 triggerLayout.padding = new RectOffset(0, 0, 0, 0);
 
-                var expandBtn = UiWidgets.InstantiateButton(_lineBtnTpl, triggerRt, expanded ? "v" : ">", new Vector2(0f, 0f), new Vector2(-6f, 0f), true, 0f);
+                var expandBtn = UiWidgets.InstantiateButton(_lineBtnTpl, triggerRt, expanded ? "▼" : "▶", new Vector2(0f, 0f), new Vector2(-6f, 0f), true, 0f);
                 var expandLe = expandBtn.GetComponent<LayoutElement>();
                 if (expandLe != null)
                 {
-                    expandLe.preferredWidth = 24f;
-                    expandLe.minWidth = 24f;
+                    expandLe.preferredWidth = 32f;
+                    expandLe.minWidth = 32f;
                 }
+                SetButtonBg(expandBtn, Color.Lerp(HeaderBg, GetChannelAccent(PhraseFilterManager.CurrentChannel), expanded ? 0.28f : 0.08f));
                 var expandText = expandBtn.GetComponentInChildren<Text>(true);
                 if (expandText != null)
                 {
@@ -481,18 +772,22 @@ namespace Subtitle.Config
                     Vector2 prevPos = Vector2.zero;
                     if (_lineScroll != null && _lineScroll.content != null)
                         prevPos = _lineScroll.content.anchoredPosition;
+                    SaveCurrentScrollPositions(PhraseFilterManager.CurrentChannel, voiceKey);
                     RefreshLinesForVoice(voiceKey);
                     if (_lineScroll != null)
                         StartCoroutine(RestoreScrollPositionNextFrame(_lineScroll, prevPos));
                 });
 
-                var header = UiWidgets.InstantiateButton(_lineBtnTpl, triggerRt, FormatToggle(tf.Enabled, "语音事件: " + FormatTriggerLabel(trigger)), new Vector2(16f, 0f), new Vector2(-6f, 0f), true, 0f);
+                var triggerLabel = "语音事件：" + FormatTriggerLabel(trigger);
+                var header = UiWidgets.InstantiateButton(_lineBtnTpl, triggerRt, "", new Vector2(16f, 0f), new Vector2(-6f, 0f), true, 0f);
                 var headerLe = header.GetComponent<LayoutElement>();
                 if (headerLe != null) headerLe.flexibleWidth = 1f;
+                StyleToggleButton(header, tf.Enabled, triggerLabel, true);
                 AttachScrollHandlers(header.gameObject, _lineScroll);
                 header.onClick.AddListener(delegate {
-                    tf.Enabled = !tf.Enabled;
-                    header.GetComponentInChildren<Text>(true).text = FormatToggle(tf.Enabled, "语音事件: " + FormatTriggerLabel(trigger));
+                    SetTriggerEnabledForEditScope(voiceKey, trigger, !tf.Enabled);
+                    StyleToggleButton(header, tf.Enabled, triggerLabel, true);
+                    MarkDirty();
                 });
 
                 var ids = new List<string>(kv.Value ?? new List<string>());
@@ -559,14 +854,15 @@ namespace Subtitle.Config
                         bool val = true;
                         if (tf.NetIds != null && tf.NetIds.TryGetValue(rid, out var curVal))
                             val = curVal;
-                        btn.GetComponentInChildren<Text>(true).text = FormatToggle(val, GetNetIdLabel(rid));
+                        StyleToggleButton(btn, val, GetNetIdLabel(rid), false);
                     }
                 };
 
                 if (!expanded)
                     continue;
 
-                var generalOnlyBtn = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(tf.GeneralOnly, "仅使用全局默认台词"), new Vector2(48f, 0f), new Vector2(-6f, 0f), true, 0f);
+                var generalOnlyBtn = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, "", new Vector2(48f, 0f), new Vector2(-6f, 0f), true, 0f);
+                StyleToggleButton(generalOnlyBtn, tf.GeneralOnly, "仅使用全局默认台词", false);
                 AttachScrollHandlers(generalOnlyBtn.gameObject, _lineScroll);
                 generalOnlyBtn.onClick.AddListener(delegate {
                     tf.GeneralOnly = !tf.GeneralOnly;
@@ -580,8 +876,10 @@ namespace Subtitle.Config
                     {
                         RestoreNetIds(tf, ids);
                     }
-                    generalOnlyBtn.GetComponentInChildren<Text>(true).text = FormatToggle(tf.GeneralOnly, "仅使用全局默认台词");
+                    SyncTriggerToEditScope(voiceKey, trigger, tf);
+                    StyleToggleButton(generalOnlyBtn, tf.GeneralOnly, "仅使用全局默认台词", false);
                     refreshRows();
+                    MarkDirty();
                 });
                 AttachTooltip(generalOnlyBtn, delegate {
                     return PhraseFilterManager.GetGlobalLineText(voiceKey, trigger);
@@ -594,7 +892,8 @@ namespace Subtitle.Config
                     if (tf.NetIds != null && tf.NetIds.TryGetValue(id, out var val)) enabled = val;
                     else tf.NetIds[id] = enabled;
 
-                    var row = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, FormatToggle(enabled, GetNetIdLabel(id)), new Vector2(64f, 0f), new Vector2(-6f, 0f), true, 0f);
+                    var row = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, "", new Vector2(64f, 0f), new Vector2(-6f, 0f), true, 0f);
+                    StyleToggleButton(row, enabled, GetNetIdLabel(id), false);
                     rows[id] = row;
                     AttachScrollHandlers(row.gameObject, _lineScroll);
 
@@ -607,7 +906,7 @@ namespace Subtitle.Config
                             {
                                 tf.GeneralOnly = false;
                                 RestoreNetIds(tf, ids);
-                                generalOnlyBtn.GetComponentInChildren<Text>(true).text = FormatToggle(false, "仅使用全局默认台词");
+                                StyleToggleButton(generalOnlyBtn, false, "仅使用全局默认台词", false);
                             }
                             bool cur = tf.NetIds.ContainsKey(capturedId) ? tf.NetIds[capturedId] : true;
                             bool next = !cur;
@@ -628,7 +927,9 @@ namespace Subtitle.Config
                             }
 
                             tf.NetIds[capturedId] = next;
+                            SyncTriggerToEditScope(voiceKey, trigger, tf);
                             refreshRows();
+                            MarkDirty();
                         });
                     }
                     else
@@ -639,7 +940,7 @@ namespace Subtitle.Config
                             {
                                 tf.GeneralOnly = false;
                                 RestoreNetIds(tf, ids);
-                                generalOnlyBtn.GetComponentInChildren<Text>(true).text = FormatToggle(false, "仅使用全局默认台词");
+                                StyleToggleButton(generalOnlyBtn, false, "仅使用全局默认台词", false);
                                 restoredFromGeneralOnly = true;
                             }
                             bool cur = tf.NetIds.ContainsKey(capturedId) ? tf.NetIds[capturedId] : true;
@@ -662,8 +963,10 @@ namespace Subtitle.Config
                                 if (restoredFromGeneralOnly)
                                     refreshRows();
                                 else
-                                    row.GetComponentInChildren<Text>(true).text = FormatToggle(tf.NetIds[capturedId], GetNetIdLabel(capturedId));
+                                    StyleToggleButton(row, tf.NetIds[capturedId], GetNetIdLabel(capturedId), false);
                             }
+                            SyncTriggerToEditScope(voiceKey, trigger, tf);
+                            MarkDirty();
                         });
                     }
                     AttachTooltip(row, delegate {
@@ -672,6 +975,316 @@ namespace Subtitle.Config
                 }}
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_lineContent);
+            Canvas.ForceUpdateCanvases();
+            Vector2 savedLinePos;
+            if (_lineScrollPositions.TryGetValue(GetLineScrollKey(PhraseFilterManager.CurrentChannel, voiceKey), out savedLinePos))
+                StartCoroutine(RestoreScrollPositionNextFrame(_lineScroll, savedLinePos));
+        }
+
+        private Button CreateRightAnchoredButton(RectTransform parent, string name, string label,
+            float left, float right, Color color, int fontSize)
+        {
+            var button = UiWidgets.CreateButton(parent, name, label,
+                new Vector2(1f, 0.15f), new Vector2(1f, 0.85f), color, fontSize, true);
+            var rt = (RectTransform)button.transform;
+            rt.offsetMin = new Vector2(left, 0f);
+            rt.offsetMax = new Vector2(right, 0f);
+            return button;
+        }
+
+        private Button CreateFixedButton(RectTransform parent, string name, string label,
+            float left, float right, Color color, int fontSize)
+        {
+            var button = UiWidgets.CreateButton(parent, name, label,
+                new Vector2(0f, 0.15f), new Vector2(0f, 0.85f), color, fontSize, true);
+            var rt = (RectTransform)button.transform;
+            rt.offsetMin = new Vector2(left, 0f);
+            rt.offsetMax = new Vector2(right, 0f);
+            return button;
+        }
+
+        private Button CreateBottomRightButton(RectTransform parent, string name, string label, float left, float right)
+        {
+            var button = UiWidgets.CreateButton(parent, name, label,
+                new Vector2(1f, 0f), new Vector2(1f, 0f), ButtonNormal, 11, false);
+            var rt = (RectTransform)button.transform;
+            rt.offsetMin = new Vector2(left, 6f);
+            rt.offsetMax = new Vector2(right, 34f);
+            return button;
+        }
+
+        private InputField CreateSearchInput(RectTransform parent, Vector2 offsetMin, Vector2 offsetMax)
+        {
+            var rt = UiWidgets.CreateRect(parent, "VoiceSearch",
+                new Vector2(0f, 0f), new Vector2(1f, 0f), offsetMin, offsetMax);
+            var bg = rt.gameObject.AddComponent<Image>();
+            bg.color = new Color(0.08f, 0.08f, 0.08f, 1f);
+
+            var input = rt.gameObject.AddComponent<InputField>();
+            input.targetGraphic = bg;
+            input.lineType = InputField.LineType.SingleLine;
+            input.characterLimit = 80;
+
+            var text = UiWidgets.CreateText(rt, "Text", "", 12, TextAnchor.MiddleLeft,
+                new Vector2(8f, 0f), new Vector2(-8f, 0f));
+            text.supportRichText = false;
+            input.textComponent = text;
+
+            var placeholder = UiWidgets.CreateText(rt, "Placeholder", "搜索角色或声线", 12, TextAnchor.MiddleLeft,
+                new Vector2(8f, 0f), new Vector2(-8f, 0f));
+            placeholder.color = MutedText;
+            input.placeholder = placeholder;
+
+            var colors = input.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
+            colors.selectedColor = Color.white;
+            input.colors = colors;
+            return input;
+        }
+
+        private void SetVoiceListFilter(VoiceListFilter filter)
+        {
+            if (_voiceListFilter == filter) return;
+            _voiceListFilter = filter;
+            UpdateVoiceFilterButtons();
+            RefreshVoiceList(true, true);
+        }
+
+        private void UpdateVoiceFilterButtons()
+        {
+            Color accent = GetChannelAccent(PhraseFilterManager.CurrentChannel);
+            SetButtonBg(_btnFilterAll, _voiceListFilter == VoiceListFilter.All ? accent : ButtonNormal);
+            SetButtonBg(_btnFilterEnabled, _voiceListFilter == VoiceListFilter.Enabled ? accent : ButtonNormal);
+            SetButtonBg(_btnFilterDisabled, _voiceListFilter == VoiceListFilter.Disabled ? accent : ButtonNormal);
+        }
+
+        private void SetAllTriggersExpanded(bool expanded)
+        {
+            if (string.IsNullOrEmpty(_currentVoiceKey)) return;
+            SaveCurrentScrollPositions(PhraseFilterManager.CurrentChannel, _currentVoiceKey);
+            var map = PhraseFilterManager.LoadVoiceTriggerNetIds(_currentVoiceKey);
+            foreach (var kv in map)
+            {
+                string key = PhraseFilterManager.CurrentChannel + "|" + _currentVoiceKey + "|" + kv.Key;
+                _triggerExpanded[key] = expanded;
+            }
+            RefreshLinesForVoice(_currentVoiceKey);
+        }
+
+        private void SetVoiceEnabledForEditScope(string voiceKey, bool enabled)
+        {
+            if (_editAllChannels)
+            {
+                var channels = PhraseFilterManager.Channels;
+                for (int i = 0; i < channels.Count; i++)
+                    PhraseFilterManager.GetOrCreateVoice(channels[i], voiceKey).Enabled = enabled;
+                return;
+            }
+
+            PhraseFilterManager.GetOrCreateVoice(PhraseFilterManager.CurrentChannel, voiceKey).Enabled = enabled;
+        }
+
+        private void SetTriggerEnabledForEditScope(string voiceKey, string trigger, bool enabled)
+        {
+            if (_editAllChannels)
+            {
+                var channels = PhraseFilterManager.Channels;
+                for (int i = 0; i < channels.Count; i++)
+                    PhraseFilterManager.GetOrCreateTrigger(channels[i], voiceKey, trigger).Enabled = enabled;
+                return;
+            }
+
+            PhraseFilterManager.GetOrCreateTrigger(PhraseFilterManager.CurrentChannel, voiceKey, trigger).Enabled = enabled;
+        }
+
+        // 触发器细项存在互斥和备份状态，联动时按一次完整状态复制，避免三个频道内部状态不一致。
+        private void SyncTriggerToEditScope(string voiceKey, string trigger, TriggerFilter source)
+        {
+            if (!_editAllChannels || source == null) return;
+            var channels = PhraseFilterManager.Channels;
+            for (int i = 0; i < channels.Count; i++)
+            {
+                if (string.Equals(channels[i], PhraseFilterManager.CurrentChannel, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                TriggerFilter target = PhraseFilterManager.GetOrCreateTrigger(channels[i], voiceKey, trigger);
+                target.Enabled = source.Enabled;
+                target.DefaultAllow = source.DefaultAllow;
+                target.GeneralOnly = source.GeneralOnly;
+                target.NetIds = CloneToggleMap(source.NetIds);
+                target.NetIdsBackup = source.NetIdsBackup == null ? null : CloneToggleMap(source.NetIdsBackup);
+            }
+        }
+
+        private static Dictionary<string, bool> CloneToggleMap(Dictionary<string, bool> source)
+        {
+            var result = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            if (source == null) return result;
+            foreach (var kv in source) result[kv.Key] = kv.Value;
+            return result;
+        }
+
+        private void MarkDirty()
+        {
+            string channel = PhraseFilterManager.CurrentChannel;
+            if (_editAllChannels)
+            {
+                var channels = PhraseFilterManager.Channels;
+                for (int i = 0; i < channels.Count; i++)
+                    _dirtyChannels.Add(channels[i]);
+            }
+            else if (!string.IsNullOrEmpty(channel))
+            {
+                _dirtyChannels.Add(channel);
+            }
+            _pendingChangeCount++;
+            _refreshArmedAt = -999f;
+            if (_refreshLabel != null) _refreshLabel.text = I18n.Text("PhraseFilter.Refresh", "刷新");
+            UpdateChannelButtonsVisual(channel);
+        }
+
+        private void SetTemporaryStatus(string text, float duration)
+        {
+            _temporaryStatus = text;
+            _temporaryStatusUntil = Time.unscaledTime + Mathf.Max(0.1f, duration);
+            UpdateStatus();
+        }
+
+        private void UpdateStatus()
+        {
+            if (_statusText == null) return;
+            Color accent = GetChannelAccent(PhraseFilterManager.CurrentChannel);
+            _statusText.color = accent;
+            if (!string.IsNullOrEmpty(_temporaryStatus) && Time.unscaledTime <= _temporaryStatusUntil)
+            {
+                _statusText.text = _temporaryStatus;
+                return;
+            }
+
+            string status = "当前编辑：" + GetChannelDisplayName(PhraseFilterManager.CurrentChannel);
+            status += _editAllChannels ? "  ·  同步三种类型" : "  ·  仅当前类型";
+            if (!string.IsNullOrEmpty(_currentVoiceKey))
+                status += "  ·  " + GetVoiceDisplayName(_currentVoiceKey);
+            status += _dirtyChannels.Count > 0
+                ? "  ·  未保存修改 " + _pendingChangeCount + " 项"
+                : "  ·  已保存";
+            _statusText.text = status;
+        }
+
+        private void ApplyVoiceButtonVisual(Button button, bool enabled, bool selected)
+        {
+            if (button == null) return;
+            Color color;
+            if (selected)
+                color = Color.Lerp(VoiceRowSelected, GetChannelAccent(PhraseFilterManager.CurrentChannel), 0.30f);
+            else
+                color = enabled ? VoiceRowNormal : VoiceRowDisabled;
+            SetButtonBg(button, color);
+            var label = button.GetComponentInChildren<Text>(true);
+            if (label != null) label.color = enabled || selected ? Color.white : MutedText;
+        }
+
+        private void StyleToggleButton(Button button, bool enabled, string label, bool emphasize)
+        {
+            if (button == null) return;
+            Color color = enabled ? VoiceRowNormal : VoiceRowDisabled;
+            if (enabled && emphasize)
+                color = Color.Lerp(VoiceRowNormal, GetChannelAccent(PhraseFilterManager.CurrentChannel), 0.20f);
+            SetButtonBg(button, color);
+            var text = button.GetComponentInChildren<Text>(true);
+            if (text != null)
+            {
+                text.text = FormatToggle(enabled, label);
+                text.color = enabled ? Color.white : MutedText;
+            }
+        }
+
+        private static void SetButtonLabel(Button button, string label)
+        {
+            if (button == null) return;
+            var text = button.GetComponentInChildren<Text>(true);
+            if (text != null) text.text = label;
+        }
+
+        private static string GetChannelDisplayName(string channel)
+        {
+            if (string.Equals(channel, "Danmaku", StringComparison.OrdinalIgnoreCase)) return "弹幕";
+            if (string.Equals(channel, "World3D", StringComparison.OrdinalIgnoreCase)) return "3D气泡";
+            return "字幕";
+        }
+
+        private static Color GetChannelAccent(string channel)
+        {
+            if (string.Equals(channel, "Danmaku", StringComparison.OrdinalIgnoreCase)) return DanmakuAccent;
+            if (string.Equals(channel, "World3D", StringComparison.OrdinalIgnoreCase)) return World3DAccent;
+            return SubtitleAccent;
+        }
+
+        private void ShowRightEmptyState(string message)
+        {
+            if (_lineContent == null) return;
+            UiWidgets.ClearChildren(_lineContent);
+            UiWidgets.AddInfoRow(_lineContent, message, true, MutedText);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_lineContent);
+            UpdateTitle();
+        }
+
+        private void SaveCurrentScrollPositions(string channel, string voiceKey)
+        {
+            if (string.IsNullOrEmpty(channel)) return;
+            if (_voiceScroll != null && _voiceScroll.content != null)
+                _voiceScrollPositions[channel] = _voiceScroll.content.anchoredPosition;
+            if (!string.IsNullOrEmpty(voiceKey) && _lineScroll != null && _lineScroll.content != null)
+                _lineScrollPositions[GetLineScrollKey(channel, voiceKey)] = _lineScroll.content.anchoredPosition;
+        }
+
+        private static string GetLineScrollKey(string channel, string voiceKey)
+        {
+            return (channel ?? string.Empty) + "|" + (voiceKey ?? string.Empty);
+        }
+
+        private void AttachWindowDrag(GameObject titleBar)
+        {
+            if (titleBar == null) return;
+            var trigger = titleBar.AddComponent<EventTrigger>();
+            var drag = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
+            drag.callback.AddListener(delegate(BaseEventData data)
+            {
+                var ped = data as PointerEventData;
+                if (ped == null || _windowRt == null || _canvas == null) return;
+                float scale = _canvas.scaleFactor <= 0f ? 1f : _canvas.scaleFactor;
+                _windowRt.anchoredPosition += ped.delta / scale;
+            });
+            trigger.triggers.Add(drag);
+        }
+
+        private void BuildResizeHandle(Transform parent)
+        {
+            var grip = UiWidgets.CreateRect(parent, "ResizeGrip",
+                new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-24f, 2f), new Vector2(-2f, 24f));
+            var gripImg = grip.gameObject.AddComponent<Image>();
+            gripImg.color = new Color(0.20f, 0.20f, 0.20f, 0.9f);
+            var hint = UiWidgets.CreateText(grip, "Hint", "◢", 14, TextAnchor.LowerRight,
+                Vector2.zero, new Vector2(-3f, 1f));
+            hint.color = MutedText;
+            hint.raycastTarget = false;
+
+            var trigger = grip.gameObject.AddComponent<EventTrigger>();
+            var drag = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
+            drag.callback.AddListener(delegate(BaseEventData data)
+            {
+                var ped = data as PointerEventData;
+                if (ped == null || _windowRt == null || _canvas == null) return;
+                float scale = _canvas.scaleFactor <= 0f ? 1f : _canvas.scaleFactor;
+                Vector2 delta = ped.delta / scale;
+                Vector2 maxSize = new Vector2(Screen.width / scale, Screen.height / scale);
+                Vector2 size = _windowRt.sizeDelta + new Vector2(delta.x, -delta.y);
+                size.x = Mathf.Clamp(size.x, MinWindowSize.x, maxSize.x);
+                size.y = Mathf.Clamp(size.y, MinWindowSize.y, maxSize.y);
+                _windowRt.sizeDelta = size;
+            });
+            trigger.triggers.Add(drag);
         }
 
         // ---------- UI helpers ----------
@@ -686,7 +1299,7 @@ namespace Subtitle.Config
         {
             if (string.IsNullOrEmpty(voiceKey)) return voiceKey;
             if (string.Equals(voiceKey, PhraseFilterManager.DefaultVoiceKey, StringComparison.OrdinalIgnoreCase))
-                return "全局台词";
+                return "全局默认台词";
             if (s_voiceNameMap.TryGetValue(voiceKey, out var mapped) && !string.IsNullOrEmpty(mapped))
                 return mapped + " - " + voiceKey;
             return voiceKey;
@@ -911,11 +1524,14 @@ namespace Subtitle.Config
             _tooltipGo = new GameObject("Tooltip");
             _tooltipGo.transform.SetParent(parent, false);
             _tooltipRt = _tooltipGo.AddComponent<RectTransform>();
+            _tooltipRt.anchorMin = Vector2.zero;
+            _tooltipRt.anchorMax = Vector2.zero;
             _tooltipRt.pivot = new Vector2(0f, 1f);
-            _tooltipRt.sizeDelta = new Vector2(360f, 100f);
+            _tooltipRt.sizeDelta = new Vector2(TooltipMaxWidth, 100f);
 
             var bg = _tooltipGo.AddComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.85f);
+            bg.color = new Color(0f, 0f, 0f, 0.92f);
+            bg.raycastTarget = false;
 
             var textGo = new GameObject("Text");
             textGo.transform.SetParent(_tooltipGo.transform, false);
@@ -926,6 +1542,7 @@ namespace Subtitle.Config
             _tooltipText.alignment = TextAnchor.UpperLeft;
             _tooltipText.horizontalOverflow = HorizontalWrapMode.Wrap;
             _tooltipText.verticalOverflow = VerticalWrapMode.Overflow;
+            _tooltipText.raycastTarget = false;
 
             var textRt = _tooltipText.rectTransform;
             textRt.anchorMin = new Vector2(0f, 0f);
@@ -1011,7 +1628,15 @@ namespace Subtitle.Config
             if (_tooltipGo == null || _tooltipText == null || _tooltipRt == null) return;
             string display = string.IsNullOrEmpty(text) ? "（空）" : text;
             _tooltipText.text = display;
-            _tooltipRt.sizeDelta = new Vector2(360f, Mathf.Clamp(_tooltipText.preferredHeight + 12f, 40f, 320f));
+
+            var widthSettings = _tooltipText.GetGenerationSettings(new Vector2(TooltipMaxWidth, 0f));
+            float preferredWidth = _tooltipText.cachedTextGeneratorForLayout.GetPreferredWidth(display, widthSettings) /
+                _tooltipText.pixelsPerUnit;
+            float textWidth = Mathf.Min(Mathf.Ceil(preferredWidth), TooltipMaxWidth);
+            var heightSettings = _tooltipText.GetGenerationSettings(new Vector2(textWidth, 0f));
+            float preferredHeight = _tooltipText.cachedTextGeneratorForLayout.GetPreferredHeight(display, heightSettings) /
+                _tooltipText.pixelsPerUnit;
+            _tooltipRt.sizeDelta = new Vector2(textWidth + 16f, Mathf.Clamp(Mathf.Ceil(preferredHeight) + 12f, 40f, 360f));
             _tooltipGo.SetActive(true);
             UpdateTooltipPosition();
         }
@@ -1023,9 +1648,23 @@ namespace Subtitle.Config
 
         private void UpdateTooltipPosition()
         {
-            if (_tooltipRt == null) return;
-            Vector3 pos = Input.mousePosition;
-            _tooltipRt.position = pos + new Vector3(16f, -16f, 0f);
+            if (_tooltipRt == null || _canvas == null) return;
+            float scale = _canvas.scaleFactor <= 0f ? 1f : _canvas.scaleFactor;
+            Vector2 mouse = (Vector2)Input.mousePosition / scale;
+            Vector2 size = _tooltipRt.sizeDelta;
+            float screenWidth = Screen.width / scale;
+            float screenHeight = Screen.height / scale;
+
+            float x = mouse.x + TooltipOffset.x;
+            float y = mouse.y + TooltipOffset.y;
+            if (x + size.x > screenWidth - 4f)
+                x = mouse.x - TooltipOffset.x - size.x;
+            if (y - size.y < 4f)
+                y = mouse.y - TooltipOffset.y + size.y;
+
+            x = Mathf.Clamp(x, 4f, Mathf.Max(4f, screenWidth - size.x - 4f));
+            y = Mathf.Clamp(y, size.y + 4f, Mathf.Max(size.y + 4f, screenHeight - 4f));
+            _tooltipRt.anchoredPosition = new Vector2(x, y);
         }
     }
 }

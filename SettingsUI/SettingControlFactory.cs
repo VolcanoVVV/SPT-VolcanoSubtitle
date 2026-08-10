@@ -285,9 +285,9 @@ namespace Subtitle.SettingsUI
                     BuildLanguageRow(parent, setHint);
                     BuildPresetPickerRow(parent, setHint, requestRebuild);
                     BuildSavePresetRow(parent, setHint, requestRebuild);
-                    BuildActionRow(parent, I18n.Text("PhraseFilterPanel.Label", "台词显示控制面板"),
+                    BuildActionRow(parent, I18n.Text("PhraseFilterPanel.Label", "台词过滤面板"),
                         I18n.Text("PhraseFilterPanel.Button", "打开面板"),
-                        I18n.Text("PhraseFilterPanel.Tooltip", "打开台词显示控制面板，用于选择声线/触发器/NetId 的显示规则。"), setHint,
+                        I18n.Text("PhraseFilterPanel.Tooltip", "打开台词过滤面板，用于选择声线/触发器/NetId 的显示规则。"), setHint,
                         delegate { try { PhraseFilterPanel.ToggleVisible(); } catch { } });
                     BuildActionRow(parent, I18n.Text("TestSubtitle.Label", "随机测试字幕"),
                         I18n.Text("TestSubtitle.Button", "▶ 发送"),

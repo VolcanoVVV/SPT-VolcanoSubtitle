@@ -19,6 +19,7 @@ namespace Subtitle.SettingsUI
         private static SettingsWindow s_instance;
 
         private Canvas _canvas;
+        private CanvasScaler _canvasScaler;
         private GameObject _windowRoot;
         private RectTransform _windowRt;
         // 整窗透明度（含全屏暗背景）：对应 Settings.SettingsWindowOpacity，仅视觉透明，不影响射线拦截
@@ -34,6 +35,7 @@ namespace Subtitle.SettingsUI
         private Text _hintText;
         private Text _titleText;
         private Text _closeLabel;
+        private Text _currentCategoryTitle;
 
         // 跟随鼠标的浮动说明框：作为 Canvas 直接子节点（不挂在 _windowRoot/CanvasGroup 下），
         // 因此不受“设置界面 不透明度”影响；且在 BuildUI 最后创建，同级顺序最高，渲染在窗口之上
@@ -69,6 +71,7 @@ namespace Subtitle.SettingsUI
             public string Section;
             public string DisplayName;
             public List<ConfigEntryBase> Entries;
+            public int SortOrder;
         }
         private readonly List<Category> _categories = new List<Category>();
         private int _currentCategory = -1;
@@ -211,7 +214,10 @@ namespace Subtitle.SettingsUI
                 var entry = entries[i];
                 if (SettingControlFactory.ShouldSkip(entry)) continue;
 
-                string section = entry.Definition.Section;
+                // 旧版“不透明度”配置键仍留在测试 section，GUI 中虚拟归入界面板块以保持 cfg 兼容。
+                string section = ReferenceEquals(entry, Settings.SettingsWindowOpacity)
+                    ? Settings.InterfaceSection
+                    : entry.Definition.Section;
                 Category cat;
                 if (!bySection.TryGetValue(section, out cat))
                 {
@@ -220,7 +226,8 @@ namespace Subtitle.SettingsUI
                         Section = section,
                         // 显示名走 I18n；语言表缺失时回落到原 FormatSectionName（去数字前缀 + 调试区特判）
                         DisplayName = I18n.Category(section, FormatSectionName(section)),
-                        Entries = new List<ConfigEntryBase>()
+                        Entries = new List<ConfigEntryBase>(),
+                        SortOrder = GetCategorySortOrder(section)
                     };
                     bySection.Add(section, cat);
                     _categories.Add(cat); // 首见顺序即显示顺序
@@ -229,6 +236,35 @@ namespace Subtitle.SettingsUI
             }
             // 过滤后没有可见条目的分类不显示（例如某分类的条目全部被 ShouldSkip 跳过）
             _categories.RemoveAll(c => c.Entries == null || c.Entries.Count == 0);
+            _categories.Sort(delegate(Category a, Category b)
+            {
+                int byOrder = a.SortOrder.CompareTo(b.SortOrder);
+                return byOrder != 0 ? byOrder : string.Compare(a.Section, b.Section, StringComparison.Ordinal);
+            });
+        }
+
+        private static int GetCategorySortOrder(string section)
+        {
+            if (string.Equals(section, "1. 通用", StringComparison.Ordinal)) return 100;
+            if (string.Equals(section, Settings.InterfaceSection, StringComparison.Ordinal)) return 110;
+
+            if (string.Equals(section, "2 字幕 - 通用", StringComparison.Ordinal)) return 200;
+            if (string.Equals(section, "2.1 字幕 - 进阶", StringComparison.Ordinal)) return 210;
+            if (string.Equals(section, "2.2 字幕 - 角色颜色", StringComparison.Ordinal)) return 220;
+            if (string.Equals(section, "2.3 字幕 - 角色文本颜色", StringComparison.Ordinal)) return 230;
+
+            if (string.Equals(section, "3 弹幕 - 通用", StringComparison.Ordinal)) return 300;
+            if (string.Equals(section, "3.1 弹幕 - 进阶", StringComparison.Ordinal)) return 310;
+            if (string.Equals(section, "3.2 弹幕 - 角色颜色", StringComparison.Ordinal)) return 320;
+            if (string.Equals(section, "3.3 弹幕 - 角色文本颜色", StringComparison.Ordinal)) return 330;
+
+            if (string.Equals(section, "4 3D气泡 - 通用", StringComparison.Ordinal)) return 400;
+            if (string.Equals(section, "4.1 3D气泡 - 进阶", StringComparison.Ordinal)) return 410;
+            if (string.Equals(section, "4.2 3D气泡 - 角色颜色", StringComparison.Ordinal)) return 420;
+            if (string.Equals(section, "4.3 3D气泡 - 角色文本颜色", StringComparison.Ordinal)) return 430;
+
+            if (string.Equals(section, "99. 测试", StringComparison.Ordinal)) return 9900;
+            return 9000;
         }
 
         private static string FormatSectionName(string section)
@@ -265,6 +301,8 @@ namespace Subtitle.SettingsUI
             _currentCategory = index;
             for (int i = 0; i < _catButtons.Count; i++)
                 SetButtonBg(_catButtons[i], i == index ? CatSelected : CatNormal);
+            if (_currentCategoryTitle != null)
+                _currentCategoryTitle.text = _categories[index].DisplayName;
             RebuildCenter(_categories[index]);
             SetHint(null);
         }
@@ -316,15 +354,13 @@ namespace Subtitle.SettingsUI
         private void ResetCurrentCategoryEntries()
         {
             if (_currentCategory < 0 || _currentCategory >= _categories.Count) return;
-            string section = _categories[_currentCategory].Section;
-            var entries = Settings.ConfigEntries;
+            var entries = _categories[_currentCategory].Entries;
             if (entries != null)
             {
                 for (int i = 0; i < entries.Count; i++)
                 {
                     var e = entries[i];
                     if (e == null || e.Definition == null) continue;
-                    if (!string.Equals(e.Definition.Section, section, StringComparison.Ordinal)) continue;
                     if (!Settings.IsResettable(e)) continue;
                     Settings.ResetEntryToDefault(e);
                 }
@@ -371,11 +407,45 @@ namespace Subtitle.SettingsUI
             s_instance.ApplyOpacityInstance();
         }
 
+        public static void ApplyScale()
+        {
+            if (s_instance == null) return;
+            s_instance.ApplyScaleInstance();
+        }
+
         private void ApplyOpacityInstance()
         {
             if (_windowCanvasGroup == null || Settings.SettingsWindowOpacity == null) return;
             // 再钳一次（防御 cfg 手改越界值）；blocksRaycasts 不动 —— 只是视觉透明
             _windowCanvasGroup.alpha = Mathf.Clamp(Settings.SettingsWindowOpacity.Value, 0.2f, 1.0f);
+        }
+
+        private void ApplyScaleInstance()
+        {
+            if (_canvasScaler == null) return;
+            float scale = Settings.InterfaceScale == null ? 1f : Mathf.Clamp(Settings.InterfaceScale.Value, 0.75f, 1.30f);
+            _canvasScaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
+            Canvas.ForceUpdateCanvases();
+            ClampWindowToScreen();
+        }
+
+        private void ClampWindowToScreen()
+        {
+            if (_windowRt == null || _canvas == null) return;
+            float scale = _canvas.scaleFactor <= 0f ? 1f : _canvas.scaleFactor;
+            float screenW = Screen.width / scale;
+            float screenH = Screen.height / scale;
+            Vector2 size = _windowRt.sizeDelta;
+            size.x = Mathf.Min(size.x, screenW);
+            size.y = Mathf.Min(size.y, screenH);
+            _windowRt.sizeDelta = size;
+
+            float maxX = Mathf.Max(0f, (screenW - size.x) * 0.5f);
+            float maxY = Mathf.Max(0f, (screenH - size.y) * 0.5f);
+            Vector2 pos = _windowRt.anchoredPosition;
+            pos.x = Mathf.Clamp(pos.x, -maxX, maxX);
+            pos.y = Mathf.Clamp(pos.y, -maxY, maxY);
+            _windowRt.anchoredPosition = pos;
         }
 
         private void RebuildAllInstance()
@@ -500,6 +570,8 @@ namespace Subtitle.SettingsUI
             // 两个重置按钮的文案也随语言重刷，并顺带解除可能挂着的二次确认状态
             if (_resetAllLabel != null) { _resetAllArmedAt = -999f; _resetAllLabel.text = ResetAllText; }
             if (_resetCatLabel != null) { _resetCatArmedAt = -999f; _resetCatLabel.text = ResetCategoryText; }
+            if (_currentCategoryTitle != null && _currentCategory >= 0 && _currentCategory < _categories.Count)
+                _currentCategoryTitle.text = _categories[_currentCategory].DisplayName;
             SetHint(null);
         }
 
@@ -507,16 +579,18 @@ namespace Subtitle.SettingsUI
 
         private void BuildUI()
         {
-            // 独立 Canvas：ScreenSpaceOverlay，排序高于现有面板（PhraseFilterPanel 用 5001）
+            // 独立 Canvas：ScreenSpaceOverlay；台词控制面板使用 5003，可从本窗口上层打开。
             var goCanvas = new GameObject("SettingsWindowCanvas");
             goCanvas.transform.SetParent(transform, false);
             _canvas = goCanvas.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             _canvas.sortingOrder = 5002;
-            var scaler = goCanvas.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
+            _canvas.pixelPerfect = true;
+            _canvasScaler = goCanvas.AddComponent<CanvasScaler>();
+            _canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            _canvasScaler.referenceResolution = new Vector2(1920f, 1080f);
+            _canvasScaler.matchWidthOrHeight = 0.5f;
+            ApplyScaleInstance();
             goCanvas.AddComponent<GraphicRaycaster>();
 
             // 全屏暗背景
@@ -551,6 +625,7 @@ namespace Subtitle.SettingsUI
             BuildCategoryList();
             // 浮动说明框最后创建：Canvas 直接子节点 + 同级顺序最高 → 始终渲染在窗口之上且不受整窗透明度影响
             BuildFloatingHint(goCanvas.transform);
+            ApplyScaleInstance();
         }
 
         private void BuildTitleBar(Transform parent)
@@ -672,6 +747,9 @@ namespace Subtitle.SettingsUI
                 new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(2f, -32f), new Vector2(-2f, -2f));
             var headImg = centerHead.gameObject.AddComponent<Image>();
             headImg.color = new Color(0.15f, 0.15f, 0.15f, 1f);
+
+            _currentCategoryTitle = UiWidgets.CreateText(centerHead, "CurrentCategory", "", 14,
+                TextAnchor.MiddleCenter, new Vector2(10f, 0f), new Vector2(-114f, 0f));
 
             var catReset = UiWidgets.CreateButton(centerHead, "ResetCategory", ResetCategoryText,
                 new Vector2(1f, 0.1f), new Vector2(1f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 12, false);

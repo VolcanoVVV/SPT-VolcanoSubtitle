@@ -331,6 +331,9 @@ namespace Subtitle.Config
         internal static List<string> ListVoiceKeys()
         {
             List<string> list = LoadVoiceKeysFromDisk();
+            string defaultVoicePath = ResolveLocaleFile(DefaultVoiceKey + PresetFileExtension);
+            if (File.Exists(defaultVoicePath) && !ListContainsIgnoreCase(list, DefaultVoiceKey))
+                list.Add(DefaultVoiceKey);
             if (list.Count == 0 && s_cachedVoiceNames.Count > 0)
             {
                 List<string> cached = new List<string>(s_cachedVoiceNames);
@@ -525,7 +528,9 @@ namespace Subtitle.Config
             string path;
             if (!s_voicePathCache.TryGetValue(voiceKey, out path) || string.IsNullOrEmpty(path))
             {
-                path = ResolveVoiceFile(voiceKey);
+                path = string.Equals(voiceKey, DefaultVoiceKey, StringComparison.OrdinalIgnoreCase)
+                    ? ResolveLocaleFile(DefaultVoiceKey + PresetFileExtension)
+                    : ResolveVoiceFile(voiceKey);
                 if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
                 s_voicePathCache[voiceKey] = path;
             }
