@@ -40,6 +40,8 @@ namespace Subtitle.Config
         private static bool s_PresetListLoaded = false;
         private static Dictionary<string, string> s_UserRoleMapExact;
         private static List<KeyValuePair<string, string>> s_UserRoleMapPrefix; // 前缀匹配（小写）
+        private static Dictionary<string, RoleKind> s_UserRoleKindMapExact;
+        private static List<KeyValuePair<string, RoleKind>> s_UserRoleKindMapPrefix;
         private static List<string> s_AllAiTypeKeysCache;
         private static bool s_RoleTypeLoaded;
 

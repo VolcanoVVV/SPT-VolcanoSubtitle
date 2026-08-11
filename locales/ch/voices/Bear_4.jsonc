@@ -1,0 +1,294 @@
+{
+  "Look": {
+    "General": ["快看！"]
+  },
+  "CoverMe": {
+    "General": ["掩护我！"]
+  },
+  "Fire": {
+    "General": ["随时开火！", "随时自由开火！"]
+    
+  },
+  "FollowMe": {
+    "General": ["跟着我。", "跟随我！"]
+    
+  },
+  "GetBack": {
+    "General": ["撤退。"]
+    
+  },
+  "GetInCover": {
+    "General": ["找掩护。"]
+    
+  },
+  "GoForward": {
+    "General": ["前进。"]
+    
+  },
+  "Gogogo": {
+    "General": ["上！"]
+    
+  },
+  "GoLoot": {
+    "General": ["去搜刮。"]
+    
+  },
+  "HoldFire": {
+    "General": ["停火。"]
+    
+  },
+  "HoldPosition": {
+    "General": ["原地驻守！"]
+    
+  },
+  "KnifesOnly": {
+    "General": ["用刀。"]
+    
+  },
+  "OnYourOwn": {
+    "General": ["独狼行动。"]
+  },
+  "OpenDoor": {
+    "General": ["开门。"]
+  },
+  "Regroup": {
+    "General": ["重新集合。"]
+  },
+  "Silence": {
+    "General": ["安静。"]
+  },
+  "Spreadout": {
+    "General": ["分散。"]
+  },
+  "Stop": {
+    "General": ["停。"]
+  },
+  "Suppress": {
+    "General": ["压制。"]
+  },
+  "InTheFront": {
+    "General": ["在前方。"]
+  },
+  "LeftFlank": {
+    "General": ["左侧。"]
+  },
+  "OnSix": {
+    "General": ["后面。"]
+  },
+  "RightFlank": {
+    "General": ["右侧。"]
+  },
+  "Scav": {
+    "General": ["发现Scav。"]
+  },
+  "SniperPhrase": {
+    "General": ["小心狙击手。"]
+  },
+  "EnemyDown": {
+    "General": ["击毙敌方。"]
+  },
+  "EnemyHit": {
+    "General": ["命中。"]
+  },
+  "KnifeKill": {
+    "General": ["刀了。"]
+  },
+  "LostVisual": {
+    "General": ["不见了。"]
+  },
+  "NoisePhrase": {
+    "General": ["有动静。"]
+  },
+  "ScavDown": {
+    "General": ["Scav死了。"]
+  },
+  "OnFight": {
+    "General": ["来吧！怕你了？", "来！咱俩练练！", "我要把你崩飞！"]
+  },
+  "OnMutter": {
+    "General": ["(喃喃自语...)"]
+  },
+  "OnAgony": {
+    "General": ["(痛苦呻吟...)"]
+  },
+  "OnBeingHurt": {
+    "General": ["(疼痛声...)"]
+  },
+  "OnBeingHurtDissapoinment": {
+    "General": ["我中弹了。"]
+  },
+  "OnBreath": {
+    "General": ["(喘息咳嗽声)"]
+  },
+  "OnDeath": {
+    "General": ["(濒死状态)"]
+  },
+  "OnEnemyConversation": {
+    "General": ["来，咱俩练练。"]
+  },
+  "OnEnemyDown": {
+    "General": ["击毙目标。"]
+  },
+  "OnEnemyGrenade": {
+    "General": ["小心，是手雷！"]
+  },
+  "OnEnemyShot": {
+    "General": ["命中目标。"]
+  },
+  "OnFirstContact": {
+    "General": ["发现目标。"]
+  },
+  "OnFriendlyDown": {
+    "General": ["队友倒了。"]
+  },
+  "OnGoodWork": {
+    "General": ["干得好。"]
+  },
+  "OnGrenade": {
+    "General": ["手雷。"]
+  },
+  "OnLostVisual": {
+    "General": ["他不见了。"]
+  },
+  "OnOutOfAmmo": {
+    "General": ["没子弹了。"]
+  },
+  "OnRepeatedContact": {
+    "General": ["发现目标。"]
+  },
+  "OnWeaponReload": {
+    "General": ["我在换弹！"]
+  },
+  "Bleeding": {
+    "General": ["需要治疗。"]
+  },
+  "HandBroken": {
+    "General": ["手断了。"]
+  },
+  "LegBroken": {
+    "General": ["腿断了。"]
+  },
+  "Dehydrated": {
+    "General": ["口渴了。"]
+  },
+  "Exhausted": {
+    "General": ["太累了。"]
+  },
+  "HurtHeavy": {
+    "General": ["我严重受伤了。"]
+  },
+  "HurtLight": {
+    "General": ["我轻微受伤。"]
+  },
+  "HurtMedium": {
+    "General": ["我中度受伤。"]
+  },
+  "HurtNearDeath": {
+    "General": ["我快死了。"]
+  },
+  "NeedAmmo": {
+    "General": ["我需要弹药！", "谁有多的弹药！", "没子弹了！"]
+  },
+  "NeedFrag": {
+    "General": ["需要手雷。"]
+  },
+  "NeedHelp": {
+    "General": ["需要帮助。"]
+  },
+  "NeedMedkit": {
+    "General": ["我需要急救。"]
+  },
+  "NeedSniper": {
+    "General": ["需要狙击手。"]
+  },
+  "NeedWeapon": {
+    "General": ["我需要把武器。"]
+  },
+  "BadWork": {
+    "General": ["真烂。"]
+  },
+  "Clear": {
+    "General": ["安全。"]
+  },
+  "Covering": {
+    "General": ["掩护中。"]
+  },
+  "DontKnow": {
+    "General": ["不知道。"]
+  },
+  "Going": {
+    "General": ["正在前往。"]
+  },
+  "GoodWork": {
+    "General": ["漂亮！"]
+  },
+  "Negative": {
+    "General": ["拒绝。"]
+  },
+  "OnLoot": {
+    "General": ["正在搜刮。"]
+  },
+  "OnPosition": {
+    "General": ["已就位。"]
+  },
+  "Ready": {
+    "General": ["我准备好了。"]
+  },
+  "Repeat": {
+    "General": ["需要重复。"]
+  },
+  "Roger": {
+    "General": ["收到。"]
+  },
+  "CheckHim": {
+    "General": ["检查一下他。"]
+  },
+   "Cooperation": {
+    "General": ["要一起合作吗？"]
+  },
+  "ExitLocated": {
+    "General": ["标记撤离点。"]
+  },
+  "LockedDoor": {
+    "General": ["门上锁了。"]
+  },
+  "LootBody": {
+    "General": ["这有尸体。"]
+  },
+  "LootContainer": {
+    "General": ["搜箱子。"]
+  },
+  "LootGeneric": {
+    "General": ["搜刮一下。"]
+  },
+  "LootKey": {
+    "General": ["搜刮钥匙。"]
+  },
+  "LootMoney": {
+    "General": ["搜刮钱。"]
+  },
+  "LootNothing": {
+    "General": ["没东西搜。"]
+  },
+  "LootWeapon": {
+    "General": ["搜刮武器。"]
+  },
+  "WeaponBroken": {
+    "General": ["武器坏了。"]
+  },
+  "OnWeaponJammed": {
+    "General": ["武器卡壳了。"]
+  },
+  "Down": {
+    "General": ["队友倒了。"]
+  },
+  "FriendlyFire": {
+    "General": ["友伤。"]
+  },
+  "Hit": {
+    "General": ["队友死了。"]
+  },
+  "Rat": {
+    "General": ["叛徒！"]
+  }
+}

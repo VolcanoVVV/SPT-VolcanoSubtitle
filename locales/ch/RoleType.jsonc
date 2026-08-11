@@ -1,0 +1,111 @@
+{
+  // === 说明 ===
+  // 键：游戏内的 AI 类型（WildSpawnType / 角色代号等），大小写不敏感；
+  // 值：要显示的“角色名称”。
+  // 支持“前缀匹配”：在键结尾加 * ，表示“以该前缀开头的都匹配”，例如：
+  //   "followerGluhar*": "Glukhar小弟"
+  // 第三方角色可使用对象写法，同时指定显示名和颜色类别：
+  //   "myCustomBoss*": { "Name": "自定义Boss", "Kind": "Bosses" }
+  // Kind 可用：Scav / Raider / Rogue / Cultist / BossFollower / Zombie / Goons /
+  //             Bosses / PmcBear / PmcUsec / Player / Teammate。
+  // 若同一个键同时在这里和内置字典里出现，以这里为准。
+
+  // —— 特殊 ——
+  "LabAnnouncer":"实验室广播",  // 实验室拉闸的人声播报 
+
+  // —— 角色声线 ——
+  "_default":"Player",    // 默认声线名称
+  "Usec_1":"Michael",
+  "Usec_2":"Chris",
+  "Usec_3":"Josh",
+  "Usec_4":"Brent",
+  "Usec_5":"Patrick",
+  "Usec_6":"Charlie",
+  "Usec_7":"Bob",   // 转生奖励
+  "Bear_1":"Alex",
+  "Bear_2":"Mikhail",
+  "Bear_3":"Sergei",
+  "Bear_4":"Vitaly",  // 转生奖励
+  "Bear_1_Eng":"Alex",
+  "Bear_2_Eng":"Sergei",
+  
+
+  // —— PMC ——
+  "pmcUSEC": "Usec",
+  "pmcBEAR": "Bear",
+
+  // —— Boss ——
+  "bossTest": "测试Boss",
+  "sectantOni": "Oni",
+  "sectantPredvestnik": "Predvestnik",
+  "sectantPrizrak": "Ghost",
+  "infectedtagilla": "丧尸Tagilla",
+  "peacefullZryachiyEvent": "友善Zryachiy",
+  "ravangeZryachiyEvent": "复仇Zryachiy",
+  "bossTagillaAgro": "米诺陶洛斯",
+  "bossKillaAgro": "迷宫Killa",
+
+  "followerBigPipe": "Big Pipe", 
+  "followerBirdEye": "Brideye", 
+  "bossGluhar": "Glukhar", 
+  "bossBoar": "Kaban",    
+  "bossKilla": "Killa",   
+  "bossKnight": "Knight",   
+  "bossKolontay": "Kolontay",   
+  "bossPartisan": "Partisan",  
+  "bossBully": "Reshala",  
+  "bossSanitar": "Sanitar",
+  "bossKojaniy": "Sturman",    
+  "bossTagilla": "Tagilla",
+  "bossZryachiy": "Zryachiy",
+  "blackDivision": "黑狐",    // 后续内容预备
+
+  // —— Scav ——
+  "assaultGroup": "Scav",
+  "assault": "Scav",
+  "marksman": { "Name": "狙击Scav", "Kind": "Scav" },
+  "test": "测试AI",
+  "cursedAssault": "诅咒Scav",
+  "crazyAssaultEvent": "强化Scav",
+  "gifter": "圣诞老人",
+  "arenaFighter": "竞技场战士",
+  "shooterBTR": "BTR射手",
+  "spiritWinter": "冬季精灵",
+  "spiritSpring": "春季精灵",
+  "skier": "南瓜头",
+  "infectedpmc": "丧尸PMC",
+  "infectedlaborant": "丧尸研究员",
+  "infectedassault": "丧尸Scav",
+  "infectedcivil": "丧尸平民",
+
+  // —— 精英AI ——
+  "followerTest": "测试随从",
+  "followerBoarClose1": "Boar",
+  "sectantPriest": "邪教徒",
+  "sectantWarrior": "邪教徒",
+  "followerGluharAssault": "Glukhar小弟(突击)",
+  "followerGluharScout": "Glukhar小弟(侦察)",
+  "followerGluharSecurity": "Glukhar小弟(守卫)",
+  "followerGluharSnipe": "Glukhar小弟(狙击)",
+  "followerBoarClose2": "Gus",
+  "followerBoar": "Kaban小弟",
+  "bossBoarSniper": "Kaban小弟(狙击)",
+  "followerKolontayAssault": "Kolontay小弟(突击)",
+  "followerKolontaySecurity": "Kolontay小弟(守卫)",
+  "PmcBot": "Raider",
+  "followerBully": "Reshala小弟",
+  "ExUsec": "Rogue",
+  "arenafighterevent": "寻血猎犬",
+  "followerSanitar": "Sanitar小弟",
+  "followerKojaniy": "Shturman小弟",
+  "followerZryachiy": "Zryachiy小弟",
+  "followerTagilla": "Tagilla小弟",
+  "sectactPriestEvent": "邪教徒",
+  "peacemaker": "维和部队",
+  "tagillaHelperAgro": "迷宫守卫"
+  
+  // 后续添加示例，注意格式！记得最后一行不要逗号结尾！
+  // "bossKillaAgro": "迷宫Killa",
+  // "bossTagillaAgro": "米诺陶洛斯",
+  // ...
+}

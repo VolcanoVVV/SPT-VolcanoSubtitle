@@ -1,0 +1,40 @@
+{
+  // 注意⚠️！
+  // 请不要修改Clips里面的顺序，这是固定且唯一的。
+  
+  // 电梯类
+  //医疗区电梯 拉闸点广播
+  "announcer_elevators_O": "工作人员注意，O区电梯投入使用。",
+  //主电梯 拉闸点广播
+  "announcer_elevators_R": "工作人员注意，R区电梯投入使用。",
+
+  // 组合序列
+  "sequences": [
+    {
+      //机库大门 拉闸点广播
+      "clips": [
+        "announcer_composite_1_security3",
+        "announcer_composite_2_B",
+        "announcer_composite_3_11"
+      ],
+      "text": "安全部门注意，B11区域有未经授权的活动。"
+    },
+    {
+      //停车场大门 拉闸点广播
+      "clips": [
+        "announcer_composite_1_security3",
+        "announcer_composite_2_Y",
+        "announcer_composite_3_11"
+      ],
+      "text": "安全部门注意，Y11区域有未经授权的活动。"
+    },
+    {
+      //运货电梯 拉闸点广播
+      "clips": [
+        "announcer_composite_1_security",
+        "announcer_composite_2_G"
+      ],
+      "text": "各警卫注意，请前往G区进行防御。"
+    }
+  ]
+}

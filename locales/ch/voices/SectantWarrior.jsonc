@@ -1,0 +1,17 @@
+{
+  "CheckHim": {
+    "General":"(嘀咕声)"
+  },
+  "OnFight": {
+    "General":"(嘀咕声)"
+  },
+  "KnifeKill": {
+    "General":"(嘀咕声)"
+  },
+  "OnBeingHurt": {
+    "General":"(嘀咕声)"
+  },
+  "OnDeath": {
+    "General":"(嘀咕声)"
+  }
+}

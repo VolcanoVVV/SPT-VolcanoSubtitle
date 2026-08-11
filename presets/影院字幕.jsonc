@@ -1,0 +1,657 @@
+{
+  "Setting": {
+    "EnableSubtitle": true,
+    "EnableDanmaku": true,
+    "EnableWorld3D": true,
+    "SubtitleShowRoleTag": true,
+    "SubtitleShowPmcName": true,
+    "SubtitleShowScavName": false,
+    "SubtitlePlayerSelfPronoun": "玩家名",
+    "SubtitleTeammateSelfPronoun": "玩家名",
+    "SubtitleMaxDistanceMeters": 70.0,
+    "SubtitleShowDistance": true,
+    "SubtitleDisplayDelaySec": 0.5,
+    "EnableMapBroadcastSubtitle": true,
+    "SubtitleZombieEnabled": true,
+    "SubtitleZombieCooldownSec": 10,
+    "SubtitleFontBundleName": "",
+    "SubtitleFontFamilyCsv": [
+      "SimSun",
+      "NSimSun",
+      "KaiTi",
+      "Microsoft YaHei",
+      "game:MainUIFontCN"
+    ],
+    "SubtitleFontSize": 30,
+    "SubtitleFontBold": false,
+    "SubtitleFontItalic": false,
+    "SubtitleAlignment": "MiddleCenter",
+    "SubtitleWrap": true,
+    "SubtitleWrapLength": 0,
+    "SubtitleMaxLineChars": 40,
+    "SubtitleMarqueeEnabled": true,
+    "SubtitleOutlineEnabled": false,
+    "SubtitleOutlineColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.9490196108818054
+    ],
+    "SubtitleOutlineDistX": 1.5,
+    "SubtitleOutlineDistY": 1.5,
+    "SubtitleShadowEnabled": true,
+    "SubtitleShadowColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.7
+    ],
+    "SubtitleShadowDistX": 1.5,
+    "SubtitleShadowDistY": -1.5,
+    "SubtitleShadowUseGraphicAlpha": true,
+    "SubtitleBgEnabled": true,
+    "SubtitleBgFit": "text",
+    "SubtitleBgColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.55
+    ],
+    "SubtitleBgPaddingX": 20.0,
+    "SubtitleBgPaddingY": 10.0,
+    "SubtitleBgMarginY": 8.0,
+    "SubtitleBgSprite": "",
+    "SubtitleBgShadowEnabled": false,
+    "SubtitleBgShadowColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.45098039507865906
+    ],
+    "SubtitleBgShadowDistX": 2.0,
+    "SubtitleBgShadowDistY": 2.0,
+    "SubtitleBgShadowUseGraphicAlpha": true,
+    "SubtitleLayoutAnchor": "LowerCenter",
+    "SubtitleLayoutOffsetX": 0.0,
+    "SubtitleLayoutOffsetY": 0.0,
+    "SubtitleLayoutSafeArea": true,
+    "SubtitleLayoutMaxWidthPercent": 0.8999999761581421,
+    "SubtitleLayoutLineSpacing": 8.0,
+    "SubtitleLayoutOverrideAlign": "MiddleCenter",
+    "SubtitleLayoutStackOffsetPercent": 0.11999999731779099,
+    "DanmakuShowRoleTag": true,
+    "DanmakuShowPmcName": true,
+    "DanmakuShowScavName": false,
+    "DanmakuPlayerSelfPronoun": "玩家名",
+    "DanmakuTeammateSelfPronoun": "玩家名",
+    "DanmakuMaxDistanceMeters": 100.0,
+    "DanmakuShowDistance": true,
+    "EnableMapBroadcastDanmaku": true,
+    "DanmakuZombieEnabled": true,
+    "DanmakuZombieCooldownSec": 5,
+    "DanmakuFontBundleName": "",
+    "DanmakuFontFamilyCsv": [
+      "SimSun",
+      "NSimSun",
+      "KaiTi",
+      "Microsoft YaHei",
+      "game:MainUIFontCN"
+    ],
+    "DanmakuFontSize": 24,
+    "DanmakuFontBold": false,
+    "DanmakuFontItalic": false,
+    "DanmakuOutlineEnabled": false,
+    "DanmakuOutlineColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.8784313797950745
+    ],
+    "DanmakuOutlineDistX": 1.2000000476837158,
+    "DanmakuOutlineDistY": 1.2000000476837158,
+    "DanmakuShadowEnabled": true,
+    "DanmakuShadowColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.65
+    ],
+    "DanmakuShadowDistX": 1.5,
+    "DanmakuShadowDistY": -1.5,
+    "DanmakuShadowUseGraphicAlpha": true,
+    "DanmakuLanes": 8,
+    "DanmakuSpeed": 180.0,
+    "DanmakuMinGapPx": 40,
+    "DanmakuSpawnDelaySec": 0.20000000298023224,
+    "DanmakuTopOffsetPercent": 0.10000000149011612,
+    "DanmakuAreaMaxPercent": 0.3499999940395355,
+    "World3DShowRoleTag": true,
+    "World3DShowPmcName": false,
+    "World3DShowScavName": false,
+    "World3DPlayerSelfPronoun": "玩家名",
+    "World3DTeammateSelfPronoun": "玩家名",
+    "World3DMaxDistanceMeters": 30.0,
+    "World3DShowDistance": true,
+    "World3DDisplayDelaySec": 0.5,
+    "World3DShowSelf": false,
+    "World3DZombieEnabled": true,
+    "World3DZombieCooldownSec": 10,
+    "World3DVerticalOffsetY": 0.2,
+    "World3DFacePlayer": true,
+    "World3DBGEnabled": true,
+    "World3DBGColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.5
+    ],
+    "World3DFontBundleName": "",
+    "World3DFontFamilyCsv": [
+      "SimSun",
+      "NSimSun",
+      "KaiTi",
+      "Microsoft YaHei",
+      "game:MainUIFontCN"
+    ],
+    "World3DFontSize": 26,
+    "World3DFontBold": false,
+    "World3DFontItalic": false,
+    "World3DAlignment": "MiddleCenter",
+    "World3DWrap": true,
+    "World3DWrapLength": 0,
+    "World3DOutlineEnabled": false,
+    "World3DOutlineColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.95
+    ],
+    "World3DOutlineDistX": 1.5,
+    "World3DOutlineDistY": 1.5,
+    "World3DShadowEnabled": true,
+    "World3DShadowColor": [
+      0.0,
+      0.0,
+      0.0,
+      0.65
+    ],
+    "World3DShadowDistX": 1.5,
+    "World3DShadowDistY": -1.5,
+    "World3DShadowUseGraphicAlpha": true,
+    "World3DWorldScale": 0.01,
+    "World3DDynamicPixelsPerUnit": 20.0,
+    "World3DFaceUpdateIntervalSec": 0.0,
+    "World3DStackMaxLines": 3,
+    "World3DStackOffsetY": 0.18,
+    "World3DFadeInSec": 0.15,
+    "World3DFadeOutSec": 0.25,
+    "SubRole_Player": [
+      0.95,
+      0.85,
+      0.5,
+      1.0
+    ],
+    "SubRole_Teammate": [
+      0.6,
+      0.75,
+      1.0,
+      1.0
+    ],
+    "SubRole_PmcBear": [
+      0.9,
+      0.3,
+      0.25,
+      1.0
+    ],
+    "SubRole_PmcUsec": [
+      0.45,
+      0.6,
+      0.95,
+      1.0
+    ],
+    "SubRole_Scav": [
+      0.85,
+      0.75,
+      0.55,
+      1.0
+    ],
+    "SubRole_Raider": [
+      0.95,
+      0.6,
+      0.25,
+      1.0
+    ],
+    "SubRole_Rogue": [
+      0.95,
+      0.68,
+      0.3,
+      1.0
+    ],
+    "SubRole_Cultist": [
+      0.65,
+      0.72,
+      0.4,
+      1.0
+    ],
+    "SubRole_BossFollower": [
+      0.92,
+      0.5,
+      0.2,
+      1.0
+    ],
+    "SubRole_Zombie": [
+      0.68,
+      0.74,
+      0.62,
+      1.0
+    ],
+    "SubRole_Goons": [
+      0.8,
+      0.25,
+      0.25,
+      1.0
+    ],
+    "SubRole_Bosses": [
+      0.9,
+      0.2,
+      0.2,
+      1.0
+    ],
+    "SubRole_LabAnnouncer": [
+      0.95,
+      0.8,
+      0.4,
+      1.0
+    ],
+    "SubText_Player": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_Teammate": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_PmcBear": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_PmcUsec": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_Scav": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_Raider": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_Rogue": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_Cultist": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_BossFollower": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_Zombie": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_Goons": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_Bosses": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "SubText_LabAnnouncer": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmRole_Player": [
+      0.95,
+      0.85,
+      0.5,
+      1.0
+    ],
+    "DmRole_Teammate": [
+      0.6,
+      0.75,
+      1.0,
+      1.0
+    ],
+    "DmRole_PmcBear": [
+      0.9,
+      0.3,
+      0.25,
+      1.0
+    ],
+    "DmRole_PmcUsec": [
+      0.45,
+      0.6,
+      0.95,
+      1.0
+    ],
+    "DmRole_Scav": [
+      0.85,
+      0.75,
+      0.55,
+      1.0
+    ],
+    "DmRole_Raider": [
+      0.95,
+      0.6,
+      0.25,
+      1.0
+    ],
+    "DmRole_Rogue": [
+      0.95,
+      0.68,
+      0.3,
+      1.0
+    ],
+    "DmRole_Cultist": [
+      0.65,
+      0.72,
+      0.4,
+      1.0
+    ],
+    "DmRole_BossFollower": [
+      0.92,
+      0.5,
+      0.2,
+      1.0
+    ],
+    "DmRole_Zombie": [
+      0.68,
+      0.74,
+      0.62,
+      1.0
+    ],
+    "DmRole_Goons": [
+      0.8,
+      0.25,
+      0.25,
+      1.0
+    ],
+    "DmRole_Bosses": [
+      0.9,
+      0.2,
+      0.2,
+      1.0
+    ],
+    "DmRole_LabAnnouncer": [
+      0.95,
+      0.8,
+      0.4,
+      1.0
+    ],
+    "DmText_Player": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_Teammate": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_PmcBear": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_PmcUsec": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_Scav": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_Raider": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_Rogue": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_Cultist": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_BossFollower": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_Zombie": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_Goons": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_Bosses": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "DmText_LabAnnouncer": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dRole_Player": [
+      0.95,
+      0.85,
+      0.5,
+      1.0
+    ],
+    "W3dRole_Teammate": [
+      0.6,
+      0.75,
+      1.0,
+      1.0
+    ],
+    "W3dRole_PmcBear": [
+      0.9,
+      0.3,
+      0.25,
+      1.0
+    ],
+    "W3dRole_PmcUsec": [
+      0.45,
+      0.6,
+      0.95,
+      1.0
+    ],
+    "W3dRole_Scav": [
+      0.85,
+      0.75,
+      0.55,
+      1.0
+    ],
+    "W3dRole_Raider": [
+      0.95,
+      0.6,
+      0.25,
+      1.0
+    ],
+    "W3dRole_Rogue": [
+      0.95,
+      0.68,
+      0.3,
+      1.0
+    ],
+    "W3dRole_Cultist": [
+      0.65,
+      0.72,
+      0.4,
+      1.0
+    ],
+    "W3dRole_BossFollower": [
+      0.92,
+      0.5,
+      0.2,
+      1.0
+    ],
+    "W3dRole_Zombie": [
+      0.68,
+      0.74,
+      0.62,
+      1.0
+    ],
+    "W3dRole_Goons": [
+      0.8,
+      0.25,
+      0.25,
+      1.0
+    ],
+    "W3dRole_Bosses": [
+      0.9,
+      0.2,
+      0.2,
+      1.0
+    ],
+    "W3dRole_LabAnnouncer": [
+      0.95,
+      0.8,
+      0.4,
+      1.0
+    ],
+    "W3dText_Player": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_Teammate": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_PmcBear": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_PmcUsec": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_Scav": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_Raider": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_Rogue": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_Cultist": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_BossFollower": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_Zombie": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_Goons": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_Bosses": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ],
+    "W3dText_LabAnnouncer": [
+      0.98,
+      0.96,
+      0.88,
+      1.0
+    ]
+  }
+}

@@ -936,15 +936,24 @@ namespace Subtitle.Config
         private static readonly string[] kRaiderAliasesLC = { "pmcbot" };
         private static readonly string[] kScavAliasesLC = {
         "assault",
+        "marksman",
+        "test",
+        "assaultgroup",
         "cursedassault",
         "crazyassaultevent",
         "skier",
         "peacemaker",
+        "gifter",
+        "arenafighter",
+        "shooterbtr",
+        "spiritwinter",
+        "spiritspring",
         "arenafighterevent"
     };
         private static readonly string[] kCultistAliasesLC = {
         "sectantpriest",
-        "sectantwarrior"
+        "sectantwarrior",
+        "sectactpriestevent"
     };
         private static readonly string[] kGoonsAliasesLC = {
         "followerbigpipe",
@@ -956,9 +965,11 @@ namespace Subtitle.Config
     };
         private static readonly string[] kBossFollowerAliasesLC = {
         "followerboarclose1",
+        "followertest",
         "followergluharassault",
         "followergluharscout",
         "followergluharsecurity",
+        "followergluharsnipe",
         "followerboarclose2",
         "followerboar",
         "bossboarsniper",
@@ -968,8 +979,9 @@ namespace Subtitle.Config
         "followersanitar",
         "followerkojaniy",
         "followerzryachiy",
+        "followertagilla",
         "tagillahelperagro",
-        "blackDivision"
+        "blackdivision"
     };
         private static readonly string[] kZombieAliasesLC = {
         "infectedpmc",
@@ -978,6 +990,7 @@ namespace Subtitle.Config
         "infectedcivil"
     };
         private static readonly string[] kBossAliasesLC = {
+        "bosstest",
         "sectantprizrak",
         "bossgluhar",
         "bossboar",
@@ -994,6 +1007,7 @@ namespace Subtitle.Config
         "bosskillaagro",
         "infectedtagilla",
         "bosszryachiy",
+        "peacefullzryachiyevent",
         "ravangezryachiyevent"
     };
 
@@ -1024,12 +1038,50 @@ namespace Subtitle.Config
             }
         }
 
+        private static bool TryParseRoleKind(string value, out RoleKind kind)
+        {
+            kind = RoleKind.Scav;
+            if (string.IsNullOrEmpty(value)) return false;
+            string normalized = value.Trim();
+            if (string.Equals(normalized, "Boss", StringComparison.OrdinalIgnoreCase)) normalized = "Bosses";
+            if (string.Equals(normalized, "Follower", StringComparison.OrdinalIgnoreCase)) normalized = "BossFollower";
+            return Enum.TryParse(normalized, true, out kind);
+        }
+
+        private static bool TryGetUserRoleKind(string aiTypeLower, out RoleKind kind)
+        {
+            kind = RoleKind.Scav;
+            if (string.IsNullOrEmpty(aiTypeLower)) return false;
+            EnsureUserRoleMapLoaded();
+
+            if (s_UserRoleKindMapExact != null && s_UserRoleKindMapExact.TryGetValue(aiTypeLower, out kind))
+                return true;
+
+            if (s_UserRoleKindMapPrefix != null)
+            {
+                for (int i = 0; i < s_UserRoleKindMapPrefix.Count; i++)
+                {
+                    var kv = s_UserRoleKindMapPrefix[i];
+                    if (aiTypeLower.StartsWith(kv.Key))
+                    {
+                        kind = kv.Value;
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         public static RoleKind GuessRoleKindFromAiType(string aiType)
         {
             try
             {
-                if (string.IsNullOrEmpty(aiType)) return RoleKind.Player;
+                if (string.IsNullOrEmpty(aiType)) return RoleKind.Scav;
                 var t = aiType.ToLowerInvariant();
+
+                // RoleType.jsonc 的对象写法可覆盖内置颜色类别，供第三方角色无代码扩展。
+                RoleKind userKind;
+                if (TryGetUserRoleKind(t, out userKind)) return userKind;
 
                 // 先查别名表（字典 O(1)，替代原来的 8 次数组线性扫描）
                 RoleKind aliased;
@@ -1048,7 +1100,8 @@ namespace Subtitle.Config
                 if (t.Contains("boss")) return RoleKind.Bosses;
             }
             catch { }
-            return RoleKind.Player;
+            // 只有补丁层明确判定为玩家/队友时才覆盖对应类别；未知 AI 按约定归入 Scav。
+            return RoleKind.Scav;
         }
 
         // ===================== 构建：字体/布局/背景 =====================
@@ -1295,6 +1348,8 @@ namespace Subtitle.Config
             s_RoleTypeLoaded = true;
             s_UserRoleMapExact = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             s_UserRoleMapPrefix = new List<KeyValuePair<string, string>>();
+            s_UserRoleKindMapExact = new Dictionary<string, RoleKind>(StringComparer.OrdinalIgnoreCase);
+            s_UserRoleKindMapPrefix = new List<KeyValuePair<string, RoleKind>>();
 
             try
             {
@@ -1306,21 +1361,46 @@ namespace Subtitle.Config
                 foreach (var p in root.Properties())
                 {
                     var key = (p.Name ?? "").Trim();
-                    var val = (p.Value?.ToString() ?? "").Trim();
                     if (string.IsNullOrEmpty(key)) continue;
+
+                    string val = null;
+                    string kindText = null;
+                    var definition = p.Value as JObject;
+                    if (definition != null)
+                    {
+                        val = (definition.Value<string>("Name") ?? definition.Value<string>("Label") ?? "").Trim();
+                        kindText = (definition.Value<string>("Kind") ?? definition.Value<string>("RoleKind") ?? "").Trim();
+                    }
+                    else
+                    {
+                        val = (p.Value != null ? p.Value.ToString() : "").Trim();
+                    }
+
+                    RoleKind configuredKind;
+                    bool hasKind = TryParseRoleKind(kindText, out configuredKind);
+                    if (!string.IsNullOrEmpty(kindText) && !hasKind)
+                        s_Log.LogWarning("[Settings] RoleType.jsonc 未知 Kind：" + kindText + "（" + key + "）");
 
                     if (key.EndsWith("*", StringComparison.Ordinal))
                     {
                         string prefix = key.Substring(0, key.Length - 1).Trim();
                         if (!string.IsNullOrEmpty(prefix))
-                            s_UserRoleMapPrefix.Add(new KeyValuePair<string, string>(prefix.ToLowerInvariant(), val));
+                        {
+                            string lowerPrefix = prefix.ToLowerInvariant();
+                            if (!string.IsNullOrEmpty(val))
+                                s_UserRoleMapPrefix.Add(new KeyValuePair<string, string>(lowerPrefix, val));
+                            if (hasKind)
+                                s_UserRoleKindMapPrefix.Add(new KeyValuePair<string, RoleKind>(lowerPrefix, configuredKind));
+                        }
                     }
                     else
                     {
-                        s_UserRoleMapExact[key] = val;
+                        if (!string.IsNullOrEmpty(val)) s_UserRoleMapExact[key] = val;
+                        if (hasKind) s_UserRoleKindMapExact[key] = configuredKind;
                     }
                 }
                 s_UserRoleMapPrefix.Sort((a, b) => b.Key.Length.CompareTo(a.Key.Length));
+                s_UserRoleKindMapPrefix.Sort((a, b) => b.Key.Length.CompareTo(a.Key.Length));
             }
             catch (Exception e)
             {
@@ -1369,6 +1449,8 @@ namespace Subtitle.Config
             s_RoleTypeLoaded = false;
             s_UserRoleMapExact = null;
             s_UserRoleMapPrefix = null;
+            s_UserRoleKindMapExact = null;
+            s_UserRoleKindMapPrefix = null;
             s_AllAiTypeKeysCache = null;
         }
 
@@ -1400,6 +1482,14 @@ namespace Subtitle.Config
                 if (s_UserRoleMapExact != null)
                 {
                     foreach (var k in s_UserRoleMapExact.Keys) if (!string.IsNullOrEmpty(k)) s_AllAiTypeKeysCache.Add(k);
+                }
+                if (s_UserRoleKindMapExact != null)
+                {
+                    foreach (var k in s_UserRoleKindMapExact.Keys)
+                    {
+                        if (!string.IsNullOrEmpty(k) && !s_AllAiTypeKeysCache.Contains(k, StringComparer.OrdinalIgnoreCase))
+                            s_AllAiTypeKeysCache.Add(k);
+                    }
                 }
                 foreach (var k in Subtitle.Utils.SubtitleEnum.DEFAULT_AI_TYPE_LABELS.Keys)
                 {
