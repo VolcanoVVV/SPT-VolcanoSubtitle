@@ -1,0 +1,48 @@
+// Streamer mode masking list
+// - One entry per line in this JSON string array; entries may be added or removed freely
+// - Changes take effect after starting a new raid or restarting the game
+// - Matching is case-insensitive substring matching
+// - Entry order does not matter; the engine matches longer entries first
+// - Avoid very short entries such as "ass", which would also match ordinary words such as "class"
+[
+    "son of a bitch",
+    "piece of shit",
+    "motherfuckers",
+    "motherfucking",
+    "motherfucker",
+    "cocksucker",
+    "fucking",
+    "fuckers",
+    "fucker",
+    "fucked",
+    "fuck",
+    "horseshit",
+    "bullshit",
+    "shithead",
+    "dipshit",
+    "shitty",
+    "shit",
+    "dickhead",
+    "dumbass",
+    "jackass",
+    "asshole",
+    "bastard",
+    "bitches",
+    "bitch",
+    "cock",
+    "dick",
+    "pussy",
+    "cunt",
+    "whores",
+    "whore",
+    "sluts",
+    "slut",
+    "goddamn",
+    "dammit",
+    "damn",
+    "retarded",
+    "retard",
+    "faggot",
+    "nigger",
+    "nigga"
+]

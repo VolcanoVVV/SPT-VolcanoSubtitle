@@ -547,6 +547,7 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes
                     {
                         CustomDrawer = DrawSettingsWindowButton,
+                        HideSettingName = true,
                         HideDefaultButton = true
                     })));
 
@@ -2036,6 +2037,7 @@ namespace Subtitle.Config
 
             // 加载界面语言文件（ locales/<语言>/UI.jsonc ）；缺失/损坏时所有显示回落到上面的中文原文
             I18n.Init(UiLanguage.Value);
+            ApplySlimConfigurationManagerLocalization();
         }
 
         /// <summary>纯动作条目（按钮/折叠开关）没有有意义的值，重置时跳过；其余条目均可重置。</summary>

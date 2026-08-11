@@ -410,6 +410,18 @@ namespace Subtitle.Config
             TryRefreshConfigurationManager();
         }
 
+        private static void ApplySlimConfigurationManagerLocalization()
+        {
+            var hotkeyAttrs = GetCmAttributes(SettingsWindowHotkey);
+            if (hotkeyAttrs != null)
+            {
+                hotkeyAttrs.DispName = I18n.Text("F12.SettingsHotkey.Name", "设置界面 打开热键");
+                hotkeyAttrs.Description = I18n.Text("F12.SettingsHotkey.Desc",
+                    "打开/关闭 图形化设置界面 的热键（默认 F9）。也可点界面右上角“关闭”退出。");
+            }
+            TryRefreshConfigurationManager();
+        }
+
         private static ConfigurationManagerAttributes GetCmAttributes(ConfigEntryBase entry)
         {
             if (entry == null) return null;
@@ -924,7 +936,7 @@ namespace Subtitle.Config
         {
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("打开图形化设置界面", GUILayout.Height(24), GUILayout.Width(260)))
+            if (GUILayout.Button(I18n.Text("F12.SettingsWindow.Open", "打开图形化设置界面"), GUILayout.Height(24), GUILayout.Width(260)))
             {
                 try { Subtitle.SettingsUI.SettingsWindow.ToggleVisible(); } catch { }
             }
@@ -1461,8 +1473,11 @@ namespace Subtitle.Config
             SubtitleSystem.PhraseSubtitle.InvalidateCache();
             Subtitle.Utils.StreamerFilter.InvalidateCache();
             I18n.Reload(language);
+            ApplySlimConfigurationManagerLocalization();
             Subtitle.LabRadioPatch.ReloadLocaleResources();
             SettingsUI.SettingsWindow.RebuildAll();
+            PhraseFilterPanel.RefreshLocalization();
+            Subtitle.DebugTools.DebugPhrasePanel.RefreshLocalization();
         }
 
         private static string GetRandomAiTypeForTest(string voiceKey)

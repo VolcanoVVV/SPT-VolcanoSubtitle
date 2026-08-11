@@ -23,6 +23,7 @@ namespace Subtitle.Config
         private Image _channelAccent;
         private Image _rightHeaderBg;
         private Text _currentChannelText;
+        private Text _editScopeLabel;
         private Text _voiceHeaderText;
         private Text _rightHeaderText;
         private Text _statusText;
@@ -132,6 +133,11 @@ namespace Subtitle.Config
         public static void ApplyScale()
         {
             if (s_instance != null) s_instance.ApplyScaleInstance();
+        }
+
+        public static void RefreshLocalization()
+        {
+            if (s_instance != null) s_instance.RefreshLocalizationInstance();
         }
 
         private void Awake()
@@ -301,23 +307,23 @@ namespace Subtitle.Config
             currentChannelRt.offsetMin = new Vector2(12f, 0f);
             currentChannelRt.offsetMax = new Vector2(160f, 0f);
 
-            _btnChSubtitle = CreateFixedButton(toolbar, "ChSubtitle", "字幕", 170f, 294f, ButtonNormal, 13);
-            _btnChDanmaku = CreateFixedButton(toolbar, "ChDanmaku", "弹幕", 298f, 422f, ButtonNormal, 13);
-            _btnChWorld3D = CreateFixedButton(toolbar, "ChWorld3D", "3D气泡", 426f, 566f, ButtonNormal, 13);
+            _btnChSubtitle = CreateFixedButton(toolbar, "ChSubtitle", GetChannelDisplayName("Subtitle"), 170f, 294f, ButtonNormal, 13);
+            _btnChDanmaku = CreateFixedButton(toolbar, "ChDanmaku", GetChannelDisplayName("Danmaku"), 298f, 422f, ButtonNormal, 13);
+            _btnChWorld3D = CreateFixedButton(toolbar, "ChWorld3D", GetChannelDisplayName("World3D"), 426f, 566f, ButtonNormal, 13);
 
             _btnChSubtitle.onClick.AddListener(delegate { OnClickChannel("Subtitle"); });
             _btnChDanmaku.onClick.AddListener(delegate { OnClickChannel("Danmaku"); });
             _btnChWorld3D.onClick.AddListener(delegate { OnClickChannel("World3D"); });
 
-            var scopeLabel = UiWidgets.CreateText(toolbar, "EditScopeLabel", "编辑范围：", 13, TextAnchor.MiddleLeft,
+            _editScopeLabel = UiWidgets.CreateText(toolbar, "EditScopeLabel", I18n.Text("PhraseFilter.EditScope", "编辑范围："), 13, TextAnchor.MiddleLeft,
                 Vector2.zero, Vector2.zero);
-            var scopeLabelRt = scopeLabel.rectTransform;
+            var scopeLabelRt = _editScopeLabel.rectTransform;
             scopeLabelRt.anchorMin = new Vector2(0f, 0f);
             scopeLabelRt.anchorMax = new Vector2(0f, 1f);
             scopeLabelRt.offsetMin = new Vector2(602f, 0f);
             scopeLabelRt.offsetMax = new Vector2(680f, 0f);
-            _btnScopeCurrent = CreateFixedButton(toolbar, "ScopeCurrent", "当前类型", 684f, 800f, ButtonNormal, 12);
-            _btnScopeAll = CreateFixedButton(toolbar, "ScopeAll", "三种类型", 804f, 924f, ButtonNormal, 12);
+            _btnScopeCurrent = CreateFixedButton(toolbar, "ScopeCurrent", I18n.Text("PhraseFilter.ScopeCurrent", "当前类型"), 684f, 800f, ButtonNormal, 12);
+            _btnScopeAll = CreateFixedButton(toolbar, "ScopeAll", I18n.Text("PhraseFilter.ScopeAll", "三种类型"), 804f, 924f, ButtonNormal, 12);
             _btnScopeCurrent.onClick.AddListener(delegate { SetEditScope(false); });
             _btnScopeAll.onClick.AddListener(delegate { SetEditScope(true); });
 
@@ -340,14 +346,14 @@ namespace Subtitle.Config
                 new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(2f, -74f), new Vector2(-2f, -2f));
             var leftHeadImg = leftHead.gameObject.AddComponent<Image>();
             leftHeadImg.color = HeaderBg;
-            _voiceHeaderText = UiWidgets.CreateText(leftHead, "Title", "角色与声线", 14, TextAnchor.MiddleLeft,
+            _voiceHeaderText = UiWidgets.CreateText(leftHead, "Title", I18n.Text("PhraseFilter.Voices", "角色与声线"), 14, TextAnchor.MiddleLeft,
                 new Vector2(8f, 38f), new Vector2(-8f, 0f));
 
             _voiceSearch = CreateSearchInput(leftHead, new Vector2(8f, 6f), new Vector2(-184f, 34f));
             _voiceSearch.onValueChanged.AddListener(delegate { RefreshVoiceList(true, true); });
-            _btnFilterAll = CreateBottomRightButton(leftHead, "FilterAll", "全部", -178f, -122f);
-            _btnFilterEnabled = CreateBottomRightButton(leftHead, "FilterEnabled", "启用", -118f, -62f);
-            _btnFilterDisabled = CreateBottomRightButton(leftHead, "FilterDisabled", "停用", -58f, -4f);
+            _btnFilterAll = CreateBottomRightButton(leftHead, "FilterAll", I18n.Text("PhraseFilter.FilterAll", "全部"), -178f, -122f);
+            _btnFilterEnabled = CreateBottomRightButton(leftHead, "FilterEnabled", I18n.Text("PhraseFilter.FilterEnabled", "启用"), -118f, -62f);
+            _btnFilterDisabled = CreateBottomRightButton(leftHead, "FilterDisabled", I18n.Text("PhraseFilter.FilterDisabled", "停用"), -58f, -4f);
             _btnFilterAll.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.All); });
             _btnFilterEnabled.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.Enabled); });
             _btnFilterDisabled.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.Disabled); });
@@ -369,8 +375,8 @@ namespace Subtitle.Config
             _rightHeaderBg = rightHead.gameObject.AddComponent<Image>();
             _rightHeaderText = UiWidgets.CreateText(rightHead, "Context", "", 14, TextAnchor.MiddleLeft,
                 new Vector2(10f, 0f), new Vector2(-220f, 0f));
-            _btnExpandAll = CreateRightAnchoredButton(rightHead, "ExpandAll", "全部展开", -208f, -108f, ButtonNormal, 12);
-            _btnCollapseAll = CreateRightAnchoredButton(rightHead, "CollapseAll", "全部收起", -104f, -4f, ButtonNormal, 12);
+            _btnExpandAll = CreateRightAnchoredButton(rightHead, "ExpandAll", I18n.Text("PhraseFilter.ExpandAll", "全部展开"), -208f, -108f, ButtonNormal, 12);
+            _btnCollapseAll = CreateRightAnchoredButton(rightHead, "CollapseAll", I18n.Text("PhraseFilter.CollapseAll", "全部收起"), -104f, -4f, ButtonNormal, 12);
             _btnExpandAll.onClick.AddListener(delegate { SetAllTriggersExpanded(true); });
             _btnCollapseAll.onClick.AddListener(delegate { SetAllTriggersExpanded(false); });
 
@@ -404,6 +410,38 @@ namespace Subtitle.Config
             _canvasScaler.referenceResolution = new Vector2(1920f / scale, 1080f / scale);
             Canvas.ForceUpdateCanvases();
             ClampWindowToScreen();
+        }
+
+        private void RefreshLocalizationInstance()
+        {
+            if (_title != null) _title.text = I18n.Text("PhraseFilter.Title", "台词过滤面板");
+            if (_editScopeLabel != null) _editScopeLabel.text = I18n.Text("PhraseFilter.EditScope", "编辑范围：");
+            SetButtonLabel(_btnClose, I18n.Text("Close", "关闭"));
+            SetButtonLabel(_btnScopeCurrent, I18n.Text("PhraseFilter.ScopeCurrent", "当前类型"));
+            SetButtonLabel(_btnScopeAll, I18n.Text("PhraseFilter.ScopeAll", "三种类型"));
+            SetButtonLabel(_btnFilterAll, I18n.Text("PhraseFilter.FilterAll", "全部"));
+            SetButtonLabel(_btnFilterEnabled, I18n.Text("PhraseFilter.FilterEnabled", "启用"));
+            SetButtonLabel(_btnFilterDisabled, I18n.Text("PhraseFilter.FilterDisabled", "停用"));
+            SetButtonLabel(_btnExpandAll, I18n.Text("PhraseFilter.ExpandAll", "全部展开"));
+            SetButtonLabel(_btnCollapseAll, I18n.Text("PhraseFilter.CollapseAll", "全部收起"));
+            if (_voiceSearch != null && _voiceSearch.placeholder != null)
+            {
+                var placeholder = _voiceSearch.placeholder as Text;
+                if (placeholder != null)
+                    placeholder.text = I18n.Text("PhraseFilter.SearchPlaceholder", "搜索角色或声线");
+            }
+
+            UpdateChannelButtonsVisual(PhraseFilterManager.CurrentChannel);
+            if (_panelBg != null && _panelBg.activeSelf)
+            {
+                RefreshVoiceList(true, false, false);
+                if (!string.IsNullOrEmpty(_currentVoiceKey))
+                    RefreshLinesForVoice(_currentVoiceKey);
+            }
+            else
+            {
+                UpdateTitle();
+            }
         }
 
         private void ClampWindowToScreen()
@@ -561,9 +599,10 @@ namespace Subtitle.Config
 
             if (voices.Count == 0)
             {
-                UiWidgets.AddInfoRow(_voiceContent, "未加载声线资源，稍后重试。", true, Color.white);
+                UiWidgets.AddInfoRow(_voiceContent, I18n.Text("PhraseFilter.NoVoices", "未加载声线资源，稍后重试。"), true, Color.white);
                 LayoutRebuilder.ForceRebuildLayoutImmediate(_voiceContent);
-                if (_voiceHeaderText != null) _voiceHeaderText.text = "角色与声线 · 0";
+                if (_voiceHeaderText != null)
+                    _voiceHeaderText.text = string.Format(I18n.Text("PhraseFilter.VoiceCount", "角色与声线 · {0}/{1}"), 0, 0);
                 ShowRightEmptyState(I18n.Text("PhraseFilter.NoVoices", "未加载声线资源，稍后重试。"));
                 return;
             }
@@ -607,10 +646,10 @@ namespace Subtitle.Config
             }
 
             if (visibleCount == 0)
-                UiWidgets.AddInfoRow(_voiceContent, "没有符合当前搜索或筛选条件的声线。", true, MutedText);
+                UiWidgets.AddInfoRow(_voiceContent, I18n.Text("PhraseFilter.NoMatchingVoices", "没有符合当前搜索或筛选条件的声线。"), true, MutedText);
 
             if (_voiceHeaderText != null)
-                _voiceHeaderText.text = "角色与声线 · " + visibleCount + "/" + voices.Count;
+                _voiceHeaderText.text = string.Format(I18n.Text("PhraseFilter.VoiceCount", "角色与声线 · {0}/{1}"), visibleCount, voices.Count);
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_voiceContent);
             Canvas.ForceUpdateCanvases();
@@ -642,11 +681,12 @@ namespace Subtitle.Config
             string channel = PhraseFilterManager.CurrentChannel;
             string channelName = GetChannelDisplayName(channel);
             if (_title != null) _title.text = I18n.Text("PhraseFilter.Title", "台词过滤面板");
-            if (_currentChannelText != null) _currentChannelText.text = "当前编辑：" + channelName;
+            if (_currentChannelText != null)
+                _currentChannelText.text = string.Format(I18n.Text("PhraseFilter.CurrentEdit", "当前编辑：{0}"), channelName);
             if (_rightHeaderText != null)
             {
                 _rightHeaderText.text = string.IsNullOrEmpty(_currentVoiceKey)
-                    ? channelName + " / 未选择声线"
+                    ? channelName + " / " + I18n.Text("PhraseFilter.NoSelection", "未选择声线")
                     : channelName + " / " + GetVoiceDisplayName(_currentVoiceKey);
             }
             UpdateStatus();
@@ -673,11 +713,11 @@ namespace Subtitle.Config
             if (_channelAccent != null) _channelAccent.color = accent;
             if (_rightHeaderBg != null) _rightHeaderBg.color = Color.Lerp(HeaderBg, accent, 0.16f);
 
-            SetButtonLabel(_btnChSubtitle, "字幕" + (_dirtyChannels.Contains("Subtitle") ? "  •" : string.Empty));
-            SetButtonLabel(_btnChDanmaku, "弹幕" + (_dirtyChannels.Contains("Danmaku") ? "  •" : string.Empty));
-            SetButtonLabel(_btnChWorld3D, "3D气泡" + (_dirtyChannels.Contains("World3D") ? "  •" : string.Empty));
+            SetButtonLabel(_btnChSubtitle, GetChannelDisplayName("Subtitle") + (_dirtyChannels.Contains("Subtitle") ? "  •" : string.Empty));
+            SetButtonLabel(_btnChDanmaku, GetChannelDisplayName("Danmaku") + (_dirtyChannels.Contains("Danmaku") ? "  •" : string.Empty));
+            SetButtonLabel(_btnChWorld3D, GetChannelDisplayName("World3D") + (_dirtyChannels.Contains("World3D") ? "  •" : string.Empty));
             if (_applyLabel != null)
-                _applyLabel.text = _dirtyChannels.Count > 0 ? "保存  •" : I18n.Text("PhraseFilter.Save", "保存");
+                _applyLabel.text = I18n.Text("PhraseFilter.Save", "保存") + (_dirtyChannels.Count > 0 ? "  •" : string.Empty);
             UpdateVoiceFilterButtons();
             UpdateTitle();
         }
@@ -703,11 +743,11 @@ namespace Subtitle.Config
             var vf = PhraseFilterManager.GetOrCreateVoice(PhraseFilterManager.CurrentChannel, voiceKey);
 
             var voiceToggle = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, "", new Vector2(12f, 0f), new Vector2(-6f, 0f), true, 0f);
-            StyleToggleButton(voiceToggle, vf.Enabled, "声线启用", true);
+            StyleToggleButton(voiceToggle, vf.Enabled, I18n.Text("PhraseFilter.VoiceEnabled", "声线启用"), true);
             AttachScrollHandlers(voiceToggle.gameObject, _lineScroll);
             voiceToggle.onClick.AddListener(delegate {
                 SetVoiceEnabledForEditScope(voiceKey, !vf.Enabled);
-                StyleToggleButton(voiceToggle, vf.Enabled, "声线启用", true);
+                StyleToggleButton(voiceToggle, vf.Enabled, I18n.Text("PhraseFilter.VoiceEnabled", "声线启用"), true);
                 MarkDirty();
 
                 RefreshVoiceList(true);
@@ -717,7 +757,7 @@ namespace Subtitle.Config
             var map = PhraseFilterManager.LoadVoiceTriggerNetIds(voiceKey);
             if (map.Count == 0)
             {
-                UiWidgets.AddInfoRow(_lineContent, "未找到该声线的触发器。", true, Color.white);
+                UiWidgets.AddInfoRow(_lineContent, I18n.Text("PhraseFilter.NoTriggers", "未找到该声线的触发器。"), true, Color.white);
                 LayoutRebuilder.ForceRebuildLayoutImmediate(_lineContent);
                 return;
             }
@@ -778,7 +818,7 @@ namespace Subtitle.Config
                         StartCoroutine(RestoreScrollPositionNextFrame(_lineScroll, prevPos));
                 });
 
-                var triggerLabel = "语音事件：" + FormatTriggerLabel(trigger);
+                var triggerLabel = I18n.Text("PhraseFilter.TriggerPrefix", "语音事件：") + FormatTriggerLabel(trigger);
                 var header = UiWidgets.InstantiateButton(_lineBtnTpl, triggerRt, "", new Vector2(16f, 0f), new Vector2(-6f, 0f), true, 0f);
                 var headerLe = header.GetComponent<LayoutElement>();
                 if (headerLe != null) headerLe.flexibleWidth = 1f;
@@ -862,7 +902,7 @@ namespace Subtitle.Config
                     continue;
 
                 var generalOnlyBtn = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, "", new Vector2(48f, 0f), new Vector2(-6f, 0f), true, 0f);
-                StyleToggleButton(generalOnlyBtn, tf.GeneralOnly, "仅使用全局默认台词", false);
+                StyleToggleButton(generalOnlyBtn, tf.GeneralOnly, I18n.Text("PhraseFilter.GeneralOnly", "仅使用全局默认台词"), false);
                 AttachScrollHandlers(generalOnlyBtn.gameObject, _lineScroll);
                 generalOnlyBtn.onClick.AddListener(delegate {
                     tf.GeneralOnly = !tf.GeneralOnly;
@@ -877,7 +917,7 @@ namespace Subtitle.Config
                         RestoreNetIds(tf, ids);
                     }
                     SyncTriggerToEditScope(voiceKey, trigger, tf);
-                    StyleToggleButton(generalOnlyBtn, tf.GeneralOnly, "仅使用全局默认台词", false);
+                    StyleToggleButton(generalOnlyBtn, tf.GeneralOnly, I18n.Text("PhraseFilter.GeneralOnly", "仅使用全局默认台词"), false);
                     refreshRows();
                     MarkDirty();
                 });
@@ -906,7 +946,7 @@ namespace Subtitle.Config
                             {
                                 tf.GeneralOnly = false;
                                 RestoreNetIds(tf, ids);
-                                StyleToggleButton(generalOnlyBtn, false, "仅使用全局默认台词", false);
+                                StyleToggleButton(generalOnlyBtn, false, I18n.Text("PhraseFilter.GeneralOnly", "仅使用全局默认台词"), false);
                             }
                             bool cur = tf.NetIds.ContainsKey(capturedId) ? tf.NetIds[capturedId] : true;
                             bool next = !cur;
@@ -940,7 +980,7 @@ namespace Subtitle.Config
                             {
                                 tf.GeneralOnly = false;
                                 RestoreNetIds(tf, ids);
-                                StyleToggleButton(generalOnlyBtn, false, "仅使用全局默认台词", false);
+                                StyleToggleButton(generalOnlyBtn, false, I18n.Text("PhraseFilter.GeneralOnly", "仅使用全局默认台词"), false);
                                 restoredFromGeneralOnly = true;
                             }
                             bool cur = tf.NetIds.ContainsKey(capturedId) ? tf.NetIds[capturedId] : true;
@@ -1030,7 +1070,7 @@ namespace Subtitle.Config
             text.supportRichText = false;
             input.textComponent = text;
 
-            var placeholder = UiWidgets.CreateText(rt, "Placeholder", "搜索角色或声线", 12, TextAnchor.MiddleLeft,
+            var placeholder = UiWidgets.CreateText(rt, "Placeholder", I18n.Text("PhraseFilter.SearchPlaceholder", "搜索角色或声线"), 12, TextAnchor.MiddleLeft,
                 new Vector2(8f, 0f), new Vector2(-8f, 0f));
             placeholder.color = MutedText;
             input.placeholder = placeholder;
@@ -1162,13 +1202,16 @@ namespace Subtitle.Config
                 return;
             }
 
-            string status = "当前编辑：" + GetChannelDisplayName(PhraseFilterManager.CurrentChannel);
-            status += _editAllChannels ? "  ·  同步三种类型" : "  ·  仅当前类型";
+            string status = string.Format(I18n.Text("PhraseFilter.CurrentEdit", "当前编辑：{0}"),
+                GetChannelDisplayName(PhraseFilterManager.CurrentChannel));
+            status += _editAllChannels
+                ? "  ·  " + I18n.Text("PhraseFilter.StatusAllChannels", "同步三种类型")
+                : "  ·  " + I18n.Text("PhraseFilter.StatusCurrentChannel", "仅当前类型");
             if (!string.IsNullOrEmpty(_currentVoiceKey))
                 status += "  ·  " + GetVoiceDisplayName(_currentVoiceKey);
             status += _dirtyChannels.Count > 0
-                ? "  ·  未保存修改 " + _pendingChangeCount + " 项"
-                : "  ·  已保存";
+                ? "  ·  " + string.Format(I18n.Text("PhraseFilter.StatusUnsaved", "未保存修改 {0} 项"), _pendingChangeCount)
+                : "  ·  " + I18n.Text("PhraseFilter.StatusSaved", "已保存");
             _statusText.text = status;
         }
 
@@ -1209,9 +1252,11 @@ namespace Subtitle.Config
 
         private static string GetChannelDisplayName(string channel)
         {
-            if (string.Equals(channel, "Danmaku", StringComparison.OrdinalIgnoreCase)) return "弹幕";
-            if (string.Equals(channel, "World3D", StringComparison.OrdinalIgnoreCase)) return "3D气泡";
-            return "字幕";
+            if (string.Equals(channel, "Danmaku", StringComparison.OrdinalIgnoreCase))
+                return I18n.Text("PhraseFilter.Channel.Danmaku", "弹幕");
+            if (string.Equals(channel, "World3D", StringComparison.OrdinalIgnoreCase))
+                return I18n.Text("PhraseFilter.Channel.World3D", "3D气泡");
+            return I18n.Text("PhraseFilter.Channel.Subtitle", "字幕");
         }
 
         private static Color GetChannelAccent(string channel)
@@ -1299,7 +1344,7 @@ namespace Subtitle.Config
         {
             if (string.IsNullOrEmpty(voiceKey)) return voiceKey;
             if (string.Equals(voiceKey, PhraseFilterManager.DefaultVoiceKey, StringComparison.OrdinalIgnoreCase))
-                return "全局默认台词";
+                return I18n.Text("PhraseFilter.DefaultVoice", "全局默认台词");
             if (s_voiceNameMap.TryGetValue(voiceKey, out var mapped) && !string.IsNullOrEmpty(mapped))
                 return mapped + " - " + voiceKey;
             return voiceKey;
@@ -1308,7 +1353,7 @@ namespace Subtitle.Config
         private static string GetNetIdLabel(string id)
         {
             if (string.Equals(id, "General", StringComparison.OrdinalIgnoreCase))
-                return "默认台词";
+                return I18n.Text("PhraseFilter.DefaultLine", "默认台词");
             return "NetId: " + id;
         }
 
@@ -1478,7 +1523,7 @@ namespace Subtitle.Config
         {
             if (string.IsNullOrEmpty(trigger)) return trigger;
             if (s_triggerNameMap.TryGetValue(trigger, out var mapped) && !string.IsNullOrEmpty(mapped))
-                return trigger + " - " + mapped;
+                return trigger + " - " + I18n.Text("PhraseFilter.Trigger." + trigger, mapped);
             return trigger;
         }
 
@@ -1626,7 +1671,7 @@ namespace Subtitle.Config
         private void ShowTooltip(string text)
         {
             if (_tooltipGo == null || _tooltipText == null || _tooltipRt == null) return;
-            string display = string.IsNullOrEmpty(text) ? "（空）" : text;
+            string display = string.IsNullOrEmpty(text) ? I18n.Text("PhraseFilter.TooltipEmpty", "（空）") : text;
             _tooltipText.text = display;
 
             var widthSettings = _tooltipText.GetGenerationSettings(new Vector2(TooltipMaxWidth, 0f));

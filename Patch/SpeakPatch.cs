@@ -913,21 +913,21 @@ public static class SubtitlePatch
     private static string GetRoleTagFromPlayer(IPlayer p, Settings.Channel ch, SpeakerClass spk,
         string aiTypeRaw, string displayName, string voiceKey, bool isFriend)
     {
-        if (p == null) return "未知";
+        if (p == null) return I18n.Text("Speaker.Unknown", "未知");
 
         if (p.IsYourPlayer)
         {
             var opt = GetSelfPronounOption(ch, false);
 
-            if (opt == SelfPronounOption.略称) return "你";
+            if (opt == SelfPronounOption.略称) return I18n.Text("Speaker.Self", "你");
             if (opt == SelfPronounOption.玩家名)
             {
-                return string.IsNullOrEmpty(displayName) ? "你" : displayName;
+                return string.IsNullOrEmpty(displayName) ? I18n.Text("Speaker.Self", "你") : displayName;
             }
             if (opt == SelfPronounOption.声线名)
             {
                 var label = MapVoiceKeyLabel(voiceKey);
-                return string.IsNullOrEmpty(label) ? "你" : label;
+                return string.IsNullOrEmpty(label) ? I18n.Text("Speaker.Self", "你") : label;
             }
         }
 
@@ -939,16 +939,16 @@ public static class SubtitlePatch
             if (optTm == SelfPronounOption.略称)
             {
                 // 在队友语境下，“你”按需求展示为“队友”
-                return "队友";
+                return I18n.Text("Speaker.Teammate", "队友");
             }
             if (optTm == SelfPronounOption.玩家名)
             {
-                return string.IsNullOrEmpty(displayName) ? "队友" : displayName;
+                return string.IsNullOrEmpty(displayName) ? I18n.Text("Speaker.Teammate", "队友") : displayName;
             }
             if (optTm == SelfPronounOption.声线名)
             {
                 var label = MapVoiceKeyLabel(voiceKey);
-                return string.IsNullOrEmpty(label) ? "队友" : label;
+                return string.IsNullOrEmpty(label) ? I18n.Text("Speaker.Teammate", "队友") : label;
             }
         }
 
@@ -963,7 +963,7 @@ public static class SubtitlePatch
             case EPlayerSide.Bear: return "BEAR";
             case EPlayerSide.Usec: return "USEC";
             case EPlayerSide.Savage: return "Scav";
-            default: return "未知";
+            default: return I18n.Text("Speaker.Unknown", "未知");
         }
     }
 

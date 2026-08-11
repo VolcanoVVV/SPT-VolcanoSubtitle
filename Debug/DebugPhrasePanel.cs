@@ -20,6 +20,7 @@ namespace Subtitle.DebugTools
 {
     public class DebugPhrasePanel : MonoBehaviour
     {
+        private static DebugPhrasePanel s_Instance;
         private static readonly ManualLogSource s_Log =
         BepInEx.Logging.Logger.CreateLogSource("Subtitle.PhraseDebug");
 
@@ -61,8 +62,22 @@ namespace Subtitle.DebugTools
                 return;
             }
 
+            s_Instance = this;
             BuildUI();
             Hide();
+        }
+
+        void OnDestroy()
+        {
+            if (s_Instance == this) s_Instance = null;
+        }
+
+        public static void RefreshLocalization()
+        {
+            if (s_Instance == null) return;
+            s_Instance.RefreshLocalizationInstance();
+            if (s_Instance._panelBg != null && s_Instance._panelBg.activeSelf)
+                s_Instance.RefreshVoiceKeys();
         }
 
         public void ToggleVisible()
@@ -75,6 +90,7 @@ namespace Subtitle.DebugTools
             if (_panelBg != null) _panelBg.SetActive(!_panelBg.activeSelf);
             if (_panelBg != null && _panelBg.activeSelf)
             {
+                RefreshLocalizationInstance();
                 RefreshVoiceKeys();
             }
         }
@@ -124,24 +140,24 @@ namespace Subtitle.DebugTools
             var topImg = top.gameObject.AddComponent<Image>();
             topImg.color = new Color(0.15f, 0.15f, 0.15f, 1f);
 
-            _title = UiWidgets.CreateText(top, "Title", "Phrase Debug (2D)", 18, TextAnchor.MiddleLeft, new Vector2(8f, 4f), new Vector2(-8f, -4f));
+            _title = UiWidgets.CreateText(top, "Title", I18n.Text("Debug.Title", "Phrase Debug (2D)"), 18, TextAnchor.MiddleLeft, new Vector2(8f, 4f), new Vector2(-8f, -4f));
             var titleRT = _title.rectTransform;
             titleRT.anchorMin = new Vector2(0f, 0f);
             titleRT.anchorMax = new Vector2(0.6f, 1f);
             titleRT.offsetMin = new Vector2(10f, 0f);
             titleRT.offsetMax = new Vector2(-10f, 0f);
 
-            _btnRefresh = UiWidgets.CreateButton(top, "Refresh", "刷新", new Vector2(0.7f, 0.1f), new Vector2(0.8f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
+            _btnRefresh = UiWidgets.CreateButton(top, "Refresh", I18n.Text("BtnRefresh", "刷新"), new Vector2(0.7f, 0.1f), new Vector2(0.8f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
             _btnRefresh.onClick.AddListener(new UnityEngine.Events.UnityAction(RefreshVoiceKeys));
 
-            _btnClose = UiWidgets.CreateButton(top, "Close", "关闭", new Vector2(0.85f, 0.1f), new Vector2(0.95f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
+            _btnClose = UiWidgets.CreateButton(top, "Close", I18n.Text("Close", "关闭"), new Vector2(0.85f, 0.1f), new Vector2(0.95f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
             _btnClose.onClick.AddListener(new UnityEngine.Events.UnityAction(Hide));
 
             // 底部提示
             var bottom = UiWidgets.CreateRect(panel.transform, "BottomBar", new Vector2(0f, 0f), new Vector2(1f, 0.08f), new Vector2(8f, 8f), new Vector2(-8f, -8f));
             var bottomImg = bottom.gameObject.AddComponent<Image>();
             bottomImg.color = new Color(0.15f, 0.15f, 0.15f, 1f);
-            _hint = UiWidgets.CreateText(bottom, "Hint", "选择一个 VoiceKey（跨声线） → 右侧选择 trigger/netId → 点击播放", 14, TextAnchor.MiddleLeft, new Vector2(8f, 4f), new Vector2(-8f, -4f));
+            _hint = UiWidgets.CreateText(bottom, "Hint", I18n.Text("Debug.Hint", "选择一个 VoiceKey（跨声线） → 右侧选择 trigger/netId → 点击播放"), 14, TextAnchor.MiddleLeft, new Vector2(8f, 4f), new Vector2(-8f, -4f));
             _hint.rectTransform.offsetMin = new Vector2(10f, 0f);
 
             // 左：VoiceKey 列表
@@ -170,6 +186,25 @@ namespace Subtitle.DebugTools
             _src2D.volume = 1f;
         }
 
+        private void RefreshLocalizationInstance()
+        {
+            if (_title != null)
+                _title.text = string.IsNullOrEmpty(_currentVoiceKey)
+                    ? I18n.Text("Debug.Title", "Phrase Debug (2D)")
+                    : I18n.Text("Debug.Title", "Phrase Debug (2D)") + "  -  " + _currentVoiceKey;
+            SetButtonText(_btnRefresh, I18n.Text("BtnRefresh", "刷新"));
+            SetButtonText(_btnClose, I18n.Text("Close", "关闭"));
+            if (_hint != null)
+                _hint.text = I18n.Text("Debug.Hint", "选择一个 VoiceKey（跨声线） → 右侧选择 trigger/netId → 点击播放");
+        }
+
+        private static void SetButtonText(Button button, string text)
+        {
+            if (button == null) return;
+            var label = button.GetComponentInChildren<Text>(true);
+            if (label != null) label.text = text;
+        }
+
         // ===== 数据刷新 =====
 
         private void RefreshVoiceKeys()
@@ -195,13 +230,13 @@ namespace Subtitle.DebugTools
                     var capturedName = name;
                     btn.onClick.AddListener(delegate { OnSelectVoiceKey(capturedName); });
                 }
-                if (count == 0) UiWidgets.AddInfoRow(_voiceContent, "PhraseSounds.Voices 为空。", false, new Color(0.9f, 0.9f, 0.9f, 1f));
+                if (count == 0) UiWidgets.AddInfoRow(_voiceContent, I18n.Text("Debug.EmptyVoices", "PhraseSounds.Voices 为空。"), false, new Color(0.9f, 0.9f, 0.9f, 1f));
                 UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(_voiceContent);
                 return;
             }
 
             // —— 没有 PhraseSounds：退回“Speaker 模式” —— //
-            AddHeaderRow(_voiceContent, "当前场景说话者（Speaker）");
+            AddHeaderRow(_voiceContent, I18n.Text("Debug.SceneSpeakers", "当前场景说话者（Speaker）"));
 
             int sc = 0;
             SpeakerClass first = null;
@@ -232,7 +267,7 @@ namespace Subtitle.DebugTools
                     _currentSpeakerBtn = btn;
                     _currentSpeakerBtn.targetGraphic.color = new Color(0.35f, 0.35f, 0.35f, 1f);
 
-                    _title.text = "Phrase Debug (2D)  -  " + label;
+                    _title.text = I18n.Text("Debug.Title", "Phrase Debug (2D)") + "  -  " + label;
                     RefreshClipsForSpeaker(sp);
                 });
 
@@ -242,11 +277,11 @@ namespace Subtitle.DebugTools
 
             if (sc == 0)
             {
-                UiWidgets.AddInfoRow(_voiceContent, "未找到 PhraseSounds；且当前没有可用的 Speaker。请进入藏身处/离线局。", false, new Color(0.9f, 0.9f, 0.9f, 1f));
+                UiWidgets.AddInfoRow(_voiceContent, I18n.Text("Debug.NoSpeakers", "未找到 PhraseSounds；且当前没有可用的 Speaker。请进入藏身处/离线局。"), false, new Color(0.9f, 0.9f, 0.9f, 1f));
             }
             else
             {
-                UiWidgets.AddInfoRow(_voiceContent, "发现 Speaker 数量: " + sc, false, new Color(0.9f, 0.9f, 0.9f, 1f));
+                UiWidgets.AddInfoRow(_voiceContent, string.Format(I18n.Text("Debug.SpeakerCount", "发现 Speaker 数量: {0}"), sc), false, new Color(0.9f, 0.9f, 0.9f, 1f));
                 if (first != null) RefreshClipsForSpeaker(first);
                 UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(_voiceContent);
             }
@@ -469,14 +504,14 @@ namespace Subtitle.DebugTools
             UiWidgets.ClearChildren(_clipContent);
             if (speaker == null)
             {
-                UiWidgets.AddInfoRow(_clipContent, "无效的 Speaker。", false, new Color(0.9f, 0.9f, 0.9f, 1f));
+                UiWidgets.AddInfoRow(_clipContent, I18n.Text("Debug.InvalidSpeaker", "无效的 Speaker。"), false, new Color(0.9f, 0.9f, 0.9f, 1f));
                 return;
             }
 
             var map = GetTriggerBankMap(speaker);
             if (map == null)
             {
-                UiWidgets.AddInfoRow(_clipContent, "未能读取该 Speaker 的短句映射。", false, new Color(0.9f, 0.9f, 0.9f, 1f));
+                UiWidgets.AddInfoRow(_clipContent, I18n.Text("Debug.NoSpeakerMap", "未能读取该 Speaker 的短句映射。"), false, new Color(0.9f, 0.9f, 0.9f, 1f));
                 return;
             }
 
@@ -596,7 +631,7 @@ row.onClick.AddListener(delegate {
 
                 if (count == 0)
                 {
-                    var empty = UiWidgets.InstantiateButton(_clipBtnTpl, groupRT, "（此 Trigger 下未找到剪辑）", new Vector2(8f, 2f), new Vector2(-8f, -2f), false, 28f);
+                    var empty = UiWidgets.InstantiateButton(_clipBtnTpl, groupRT, I18n.Text("Debug.NoClipsForTrigger", "（此 Trigger 下未找到剪辑）"), new Vector2(8f, 2f), new Vector2(-8f, -2f), false, 28f);
                     empty.interactable = false;
                     var g = empty.targetGraphic as Graphic;
                     if (g != null) g.color = new Color(0.12f, 0.12f, 0.12f, 1f);
@@ -610,7 +645,7 @@ row.onClick.AddListener(delegate {
         private void OnSelectVoiceKey(string voiceKey)
         {
             _currentVoiceKey = voiceKey;
-            _title.text = "Phrase Debug (2D)  -  " + voiceKey;
+            _title.text = I18n.Text("Debug.Title", "Phrase Debug (2D)") + "  -  " + voiceKey;
             RefreshClipsForVoice(voiceKey);
         }
 
@@ -621,7 +656,7 @@ row.onClick.AddListener(delegate {
             var ps = FindPhraseSounds();
             if (ps == null)
             {
-                UiWidgets.AddInfoRow(_clipContent, "找不到 PhraseSounds（跨声线资源）。", false, new Color(0.9f, 0.9f, 0.9f, 1f));
+                UiWidgets.AddInfoRow(_clipContent, I18n.Text("Debug.NoPhraseSounds", "找不到 PhraseSounds（跨声线资源）。"), false, new Color(0.9f, 0.9f, 0.9f, 1f));
                 return;
             }
 
@@ -630,7 +665,7 @@ row.onClick.AddListener(delegate {
             try { banks = ps.GetVoice(voiceKey, EPlayerSide.Usec); } catch { }
             if (banks == null || banks.Length == 0)
             {
-                UiWidgets.AddInfoRow(_clipContent, "该 VoiceKey 没有可用的 TagBank。", false, new Color(0.9f, 0.9f, 0.9f, 1f));
+                UiWidgets.AddInfoRow(_clipContent, I18n.Text("Debug.NoTagBank", "该 VoiceKey 没有可用的 TagBank。"), false, new Color(0.9f, 0.9f, 0.9f, 1f));
                 return;
             }
 
@@ -666,7 +701,7 @@ row.onClick.AddListener(delegate {
                     var ac = GetAudioClipFromTagged(tagged);
                     if (ac == null)
                     {
-                        UiWidgets.AddInfoRow(_clipContent, "  (无 AudioClip) #" + nid, false, new Color(0.9f, 0.9f, 0.9f, 1f));
+                        UiWidgets.AddInfoRow(_clipContent, string.Format(I18n.Text("Debug.NoAudioClip", "  (无 AudioClip) #{0}"), nid), false, new Color(0.9f, 0.9f, 0.9f, 1f));
                         continue;
                     }
 

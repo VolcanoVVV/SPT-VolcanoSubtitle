@@ -272,7 +272,7 @@ namespace Subtitle.SettingsUI
             // 调试区现在进 GUI，给一个更明确的显示名
             if (string.Equals(section, "99. 测试", StringComparison.Ordinal)) return "测试/调试";
             // 去掉排序用的数字前缀："2.1 字幕 - 进阶" → "字幕 - 进阶"
-            if (string.IsNullOrEmpty(section)) return "其他";
+            if (string.IsNullOrEmpty(section)) return I18n.Text("Category.Other", "其他");
             int i = 0;
             while (i < section.Length && (char.IsDigit(section[i]) || section[i] == '.')) i++;
             while (i < section.Length && section[i] == ' ') i++;

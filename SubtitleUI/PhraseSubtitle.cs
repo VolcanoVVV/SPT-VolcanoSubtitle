@@ -35,7 +35,7 @@ namespace SubtitleSystem
         public static string GetSubtitleForChannel(string channel, string voiceKey, string phrase, string netId)
         {
             if (string.IsNullOrWhiteSpace(phrase))
-                return "(未知语音)";
+                return I18n.Text("Phrase.UnknownVoice", "(未知语音)");
 
             // 归一化：文件名一律用小写
             string vk = string.IsNullOrWhiteSpace(voiceKey) ? DefaultVoice : voiceKey.Trim();
