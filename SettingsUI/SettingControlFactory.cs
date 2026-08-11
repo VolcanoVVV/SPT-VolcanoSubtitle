@@ -343,7 +343,7 @@ namespace Subtitle.SettingsUI
             var entry = Settings.UiLanguage;
             if (entry == null) return;
             RectTransform area;
-            CreateRow(parent, I18n.SettingName(entry.Definition.Key, "界面 语言"),
+            CreateRow(parent, I18n.SettingName(entry.Definition.Key, "语言"),
                 I18n.SettingDesc(entry.Definition.Key, entry.Description != null ? entry.Description.Description : null),
                 30f, setHint, out area);
 

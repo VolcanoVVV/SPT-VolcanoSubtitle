@@ -36,6 +36,8 @@ namespace Subtitle.SettingsUI
         private Text _titleText;
         private Text _closeLabel;
         private Text _currentCategoryTitle;
+        private Text _previewTitleText;
+        private SettingsPreviewPanel _previewPanel;
 
         // 跟随鼠标的浮动说明框：作为 Canvas 直接子节点（不挂在 _windowRoot/CanvasGroup 下），
         // 因此不受“设置界面 不透明度”影响；且在 BuildUI 最后创建，同级顺序最高，渲染在窗口之上
@@ -458,6 +460,7 @@ namespace Subtitle.SettingsUI
                 BuildCategoryList();
                 if (_currentCategory < 0 || _currentCategory >= _categories.Count) _currentCategory = 0;
                 if (_categories.Count > 0) SelectCategory(_currentCategory);
+                if (_previewPanel != null) _previewPanel.RefreshLocalization();
             }
             catch (Exception e)
             {
@@ -567,6 +570,7 @@ namespace Subtitle.SettingsUI
         {
             if (_titleText != null) _titleText.text = I18n.Text("WindowTitle", "火山家的实时字幕 · 设置");
             if (_closeLabel != null) _closeLabel.text = I18n.Text("Close", "关闭");
+            if (_previewTitleText != null) _previewTitleText.text = I18n.Text("PreviewTitle", "预览");
             // 两个重置按钮的文案也随语言重刷，并顺带解除可能挂着的二次确认状态
             if (_resetAllLabel != null) { _resetAllArmedAt = -999f; _resetAllLabel.text = ResetAllText; }
             if (_resetCatLabel != null) { _resetCatArmedAt = -999f; _resetCatLabel.text = ResetCategoryText; }
@@ -791,9 +795,9 @@ namespace Subtitle.SettingsUI
             var rightImg = right.gameObject.AddComponent<Image>();
             rightImg.color = new Color(0.12f, 0.12f, 0.12f, 1f);
 
-            var prevTitle = UiWidgets.CreateText(right, "PreviewTitle", I18n.Text("PreviewTitle", "预览"), 16, TextAnchor.MiddleLeft,
+            _previewTitleText = UiWidgets.CreateText(right, "PreviewTitle", I18n.Text("PreviewTitle", "预览"), 16, TextAnchor.MiddleLeft,
                 new Vector2(10f, -32f), new Vector2(-10f, -2f));
-            var prevTitleRt = prevTitle.rectTransform;
+            var prevTitleRt = _previewTitleText.rectTransform;
             prevTitleRt.anchorMin = new Vector2(0f, 1f);
             prevTitleRt.anchorMax = new Vector2(1f, 1f);
 
@@ -808,7 +812,7 @@ namespace Subtitle.SettingsUI
             previewRt.offsetMin = new Vector2(10f, 10f);
             previewRt.offsetMax = new Vector2(-10f, -40f);
             previewGo.AddComponent<RectMask2D>();
-            previewGo.AddComponent<SettingsPreviewPanel>();
+            _previewPanel = previewGo.AddComponent<SettingsPreviewPanel>();
         }
     }
 }

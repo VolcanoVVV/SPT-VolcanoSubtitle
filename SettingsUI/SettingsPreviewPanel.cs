@@ -34,18 +34,26 @@ namespace Subtitle.SettingsUI
 
         // —— 底部控制行 ——
         private Text _kindBtnLabel;
+        private Text _roleLabel;
+        private Text _lineLabel;
+        private Text _linePlaceholder;
+        private Text _randomButtonLabel;
+        private Text _noteText;
 
         // —— 字幕样例 ——
+        private Text _subCaption;
         private RectTransform _subStage;
         private RectTransform _subRowRt;
         private Text _subText;
         private Image _subBg; // 懒创建（对应真实实现里的 "BG" 子节点）
 
         // —— 弹幕样例 ——
+        private Text _dmCaption;
         private RectTransform _dmStage;
         private Text _dmText;
 
         // —— 3D气泡样例 ——
+        private Text _w3dCaption;
         private RectTransform _w3dStage;
         private RectTransform _w3dBubbleRt;
         private Image _w3dBg;
@@ -86,7 +94,7 @@ namespace Subtitle.SettingsUI
         private void OnEnable()
         {
             Subscribe();
-            RefreshAll();
+            RefreshLocalization();
         }
 
         private void OnDisable()
@@ -123,12 +131,28 @@ namespace Subtitle.SettingsUI
             RefreshAll();
         }
 
+        internal void RefreshLocalization()
+        {
+            if (_subCaption != null) _subCaption.text = I18n.Text("Preview.CaptionSubtitle", "字幕");
+            if (_dmCaption != null) _dmCaption.text = I18n.Text("Preview.CaptionDanmaku", "弹幕");
+            if (_w3dCaption != null) _w3dCaption.text = I18n.Text("Preview.CaptionWorld3D", "3D气泡");
+            if (_noteText != null)
+                _noteText.text = I18n.Text("Preview.Note", "注：锚点/偏移/安全区等屏幕定位项不在预览中体现；样例文本含敏感词，用于演示主播模式打码。");
+            if (_roleLabel != null) _roleLabel.text = I18n.Text("Preview.Role", "角色");
+            if (_lineLabel != null) _lineLabel.text = I18n.Text("Preview.Line", "台词");
+            if (_linePlaceholder != null)
+                _linePlaceholder.text = I18n.Text("Preview.LinePlaceholder", "留空使用默认样例");
+            if (_randomButtonLabel != null) _randomButtonLabel.text = I18n.Text("Preview.Random", "随机");
+            UpdateKindButtonLabel();
+            RefreshAll();
+        }
+
         // ---------- 一次性构建（之后只改文本/样式/尺寸，不重建 GameObject） ----------
 
         private void BuildSamples()
         {
             // 字幕：舞台 → 行（居中）→ BG(懒) + Text
-            CreateCaption(_pane, "SubCaption", I18n.Text("Preview.CaptionSubtitle", "字幕"));
+            _subCaption = CreateCaption(_pane, "SubCaption", I18n.Text("Preview.CaptionSubtitle", "字幕"));
             _subStage = CreateStage(_pane, "SubStage");
             _subRowRt = CreateCenteredChild(_subStage, "SubRow");
             _subText = CreateSampleText(_subRowRt, "Text");
@@ -136,7 +160,7 @@ namespace Subtitle.SettingsUI
             _subText.verticalOverflow = VerticalWrapMode.Overflow; // 与真实渲染一致：不硬截断台词
 
             // 弹幕：舞台 → 单条静态文本（真实弹幕从右往左滚动，预览只做静态样式样例）
-            CreateCaption(_pane, "DmCaption", I18n.Text("Preview.CaptionDanmaku", "弹幕"));
+            _dmCaption = CreateCaption(_pane, "DmCaption", I18n.Text("Preview.CaptionDanmaku", "弹幕"));
             _dmStage = CreateStage(_pane, "DmStage");
             _dmText = CreateSampleText(_dmStage, "DmText");
             _dmText.supportRichText = true;
@@ -145,7 +169,7 @@ namespace Subtitle.SettingsUI
             _dmText.verticalOverflow = VerticalWrapMode.Overflow;
 
             // 3D气泡：舞台 → 气泡(背景 Image) → Text（World3D 的 2D 近似）
-            CreateCaption(_pane, "W3dCaption", I18n.Text("Preview.CaptionWorld3D", "3D气泡"));
+            _w3dCaption = CreateCaption(_pane, "W3dCaption", I18n.Text("Preview.CaptionWorld3D", "3D气泡"));
             _w3dStage = CreateStage(_pane, "W3dStage");
             _w3dBubbleRt = CreateCenteredChild(_w3dStage, "Bubble");
             _w3dBg = _w3dBubbleRt.gameObject.AddComponent<Image>();
@@ -159,13 +183,13 @@ namespace Subtitle.SettingsUI
 
         private void BuildNote()
         {
-            var note = UiWidgets.CreateText(_pane, "Note",
+            _noteText = UiWidgets.CreateText(_pane, "Note",
                 I18n.Text("Preview.Note", "注：锚点/偏移/安全区等屏幕定位项不在预览中体现；样例文本含敏感词，用于演示主播模式打码。"),
                 11, TextAnchor.UpperLeft, Vector2.zero, Vector2.zero);
-            note.color = NoteColor;
-            note.horizontalOverflow = HorizontalWrapMode.Wrap;
-            note.verticalOverflow = VerticalWrapMode.Truncate;
-            var rt = note.rectTransform;
+            _noteText.color = NoteColor;
+            _noteText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _noteText.verticalOverflow = VerticalWrapMode.Truncate;
+            var rt = _noteText.rectTransform;
             rt.anchorMin = new Vector2(0f, 0f);
             rt.anchorMax = new Vector2(1f, 0f);
             rt.pivot = new Vector2(0.5f, 0f);
@@ -190,9 +214,9 @@ namespace Subtitle.SettingsUI
             var row = UiWidgets.CreateRect(_pane, "ControlRow",
                 new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 32f), new Vector2(0f, 58f));
 
-            var lblRole = UiWidgets.CreateText(row, "RoleLabel", I18n.Text("Preview.Role", "角色"), 12, TextAnchor.MiddleLeft, Vector2.zero, Vector2.zero);
-            lblRole.color = CaptionColor;
-            PlaceFixed(lblRole.rectTransform, 2f, 28f);
+            _roleLabel = UiWidgets.CreateText(row, "RoleLabel", I18n.Text("Preview.Role", "角色"), 12, TextAnchor.MiddleLeft, Vector2.zero, Vector2.zero);
+            _roleLabel.color = CaptionColor;
+            PlaceFixed(_roleLabel.rectTransform, 2f, 28f);
 
             // 角色循环按钮：点击切到下一类别，驱动三个样例的标签与颜色
             var kindBtn = UiWidgets.CreateButton(row, "KindBtn", KindDisplayName(_kind),
@@ -210,9 +234,9 @@ namespace Subtitle.SettingsUI
                 RefreshAll();
             });
 
-            var lblLine = UiWidgets.CreateText(row, "LineLabel", I18n.Text("Preview.Line", "台词"), 12, TextAnchor.MiddleLeft, Vector2.zero, Vector2.zero);
-            lblLine.color = CaptionColor;
-            PlaceFixed(lblLine.rectTransform, 140f, 28f);
+            _lineLabel = UiWidgets.CreateText(row, "LineLabel", I18n.Text("Preview.Line", "台词"), 12, TextAnchor.MiddleLeft, Vector2.zero, Vector2.zero);
+            _lineLabel.color = CaptionColor;
+            PlaceFixed(_lineLabel.rectTransform, 140f, 28f);
 
             // 自定义台词输入框：留空 = 回退默认样例（默认样例含“操”，用于演示主播模式打码）
             var inputGo = new GameObject("LineInput", typeof(RectTransform), typeof(Image), typeof(InputField));
@@ -226,10 +250,10 @@ namespace Subtitle.SettingsUI
             inputGo.GetComponent<Image>().color = new Color(0.18f, 0.18f, 0.18f, 1f);
             var input = inputGo.GetComponent<InputField>();
 
-            var ph = UiWidgets.CreateText(inputRt, "Placeholder", I18n.Text("Preview.LinePlaceholder", "留空使用默认样例"), 12, TextAnchor.MiddleLeft,
+            _linePlaceholder = UiWidgets.CreateText(inputRt, "Placeholder", I18n.Text("Preview.LinePlaceholder", "留空使用默认样例"), 12, TextAnchor.MiddleLeft,
                 new Vector2(6f, 0f), new Vector2(-6f, 0f));
-            ph.color = new Color(0.5f, 0.5f, 0.5f, 1f);
-            ph.fontStyle = FontStyle.Italic;
+            _linePlaceholder.color = new Color(0.5f, 0.5f, 0.5f, 1f);
+            _linePlaceholder.fontStyle = FontStyle.Italic;
 
             var inputText = UiWidgets.CreateText(inputRt, "Text", "", 12, TextAnchor.MiddleLeft,
                 new Vector2(6f, 0f), new Vector2(-6f, 0f));
@@ -237,7 +261,7 @@ namespace Subtitle.SettingsUI
             inputText.supportRichText = false; // 输入框里原文显示，不解析富文本标签
 
             input.textComponent = inputText;
-            input.placeholder = ph;
+            input.placeholder = _linePlaceholder;
             input.onValueChanged.AddListener(delegate (string v)
             {
                 _customText = v;
@@ -251,6 +275,7 @@ namespace Subtitle.SettingsUI
             randBtnRt.pivot = new Vector2(1f, 0.5f);
             randBtnRt.sizeDelta = new Vector2(52f, 22f);
             randBtnRt.anchoredPosition = new Vector2(-2f, 0f);
+            _randomButtonLabel = randBtn.GetComponentInChildren<Text>(true);
             randBtn.onClick.AddListener(delegate
             {
                 string aiType, line;
@@ -420,7 +445,7 @@ namespace Subtitle.SettingsUI
             string line = ComposePreviewLine(
                 _kind, Settings.Channel.Subtitle,
                 aiType, fallbackLabel, nameForShow,
-                GetSampleLine("操，接敌！两点钟方向，找掩护！"),
+                GetSampleLine(I18n.Text("Preview.SampleSubtitle", "操，接敌！两点钟方向，找掩护！")),
                 Settings.SubtitleShowRoleTag, Settings.SubtitleShowPmcName, Settings.SubtitleShowDistance);
 
             // 2) 样式：与 CreateSubtitleLine 同一入口
@@ -597,7 +622,7 @@ namespace Subtitle.SettingsUI
             string line = ComposePreviewLine(
                 _kind, Settings.Channel.Danmaku,
                 aiType, fallbackLabel, nameForShow,
-                GetSampleLine("有人吗？操，脚步声就在隔壁！"),
+                GetSampleLine(I18n.Text("Preview.SampleDanmaku", "有人吗？操，脚步声就在隔壁！")),
                 Settings.DanmakuShowRoleTag, Settings.DanmakuShowScavName, Settings.DanmakuShowDistance);
 
             // 与 SubtitleDanmaku.Spawn 同一入口（对齐/溢出在构建时已按真实实现固定）
@@ -629,7 +654,7 @@ namespace Subtitle.SettingsUI
             string line = ComposePreviewLine(
                 _kind, Settings.Channel.World3D,
                 aiType, fallbackLabel, nameForShow,
-                GetSampleLine("这片区域是我的地盘，滚！"),
+                GetSampleLine(I18n.Text("Preview.SampleWorld3D", "这片区域是我的地盘，滚！")),
                 Settings.World3DShowRoleTag, null, Settings.World3DShowDistance);
 
             // 与 SubtitleWorld3D 同一入口（字体/对齐/换行/描边/投影）

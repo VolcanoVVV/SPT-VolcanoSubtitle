@@ -226,6 +226,9 @@
     "Preview.Line": "Phrase",
     "Preview.LinePlaceholder": "Leave blank to use the default sample",
     "Preview.Random": "Random",
+    "Preview.SampleSubtitle": "Fuck, contact! Two o'clock, find cover!",
+    "Preview.SampleDanmaku": "Anyone there? Shit, footsteps next door!",
+    "Preview.SampleWorld3D": "This area is mine. Get the fuck out!",
     "Preview.Kind.Player": "Player",
     "Preview.Kind.Teammate": "Teammate",
     "Preview.Kind.PmcBear": "PMC - BEAR",
@@ -276,7 +279,7 @@
 
   "Settings": {
     "文本样式预设": { "Name": "Text style preset", "Desc": "Loads all .jsonc presets from the presets folder. Apply imports every option included in the selected preset." },
-    "界面 语言": { "Name": "Interface language", "Desc": "Language folder under locales used by the interface and localized resources. Changes apply immediately; missing files fall back to ch." },
+    "界面 语言": { "Name": "Language", "Desc": "Language folder under locales used by the interface and localized resources. Changes apply immediately; missing files fall back to ch." },
     "字幕启用": { "Name": "Enable subtitles", "Desc": "Enable the standard subtitle channel." },
     "弹幕启动": { "Name": "Enable danmaku", "Desc": "Enable scrolling danmaku subtitles." },
     "3D气泡启用": { "Name": "Enable 3D bubbles", "Desc": "Enable world-space 3D speech bubbles." },

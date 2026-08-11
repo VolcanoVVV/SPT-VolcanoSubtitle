@@ -7,7 +7,7 @@
 //      - Common 的 id（如 "WindowTitle"）由代码引用；
 //      - Categories 的键是 cfg 里的 section 原名；
 //      - Settings 的键是 cfg 里的配置键（必须与 .cfg 完全一致，含空格与标点）。
-//   3. 在设置界面「通用 → 界面 语言」里切换到新语言（可选值 = locales 下的目录名）。
+//   3. 在设置界面「通用 → 语言」里切换到新语言（可选值 = locales 下的目录名）。
 //
 // 说明：
 //   - 本文件只做“显示层”映射，配置键本身永远保持中文，不影响 .cfg 兼容性；
@@ -70,6 +70,9 @@
     "Preview.Line": "台词",
     "Preview.LinePlaceholder": "留空使用默认样例",
     "Preview.Random": "随机",
+    "Preview.SampleSubtitle": "操，接敌！两点钟方向，找掩护！",
+    "Preview.SampleDanmaku": "有人吗？操，脚步声就在隔壁！",
+    "Preview.SampleWorld3D": "这片区域是我的地盘，滚！",
     "Preview.Kind.Player": "玩家",
     "Preview.Kind.Teammate": "队友",
     "Preview.Kind.PmcBear": "PMC·BEAR",
@@ -123,7 +126,7 @@
 
     // —— 1. 通用 ——
     "文本样式预设": { "Name": "文本样式预设", "Desc": "从 presets 文件夹读取所有 .jsonc预设文件。点击“应用”后，会将预设中所有包含选项一次性导入本配置。" },
-    "界面 语言": { "Name": "界面 语言", "Desc": "界面与字幕资源使用的语言（locales 下的语言目录名，如 ch）。\n切换后立即重载界面、台词、角色名、广播与主播词表；缺失文件回退 ch。" },
+    "界面 语言": { "Name": "语言", "Desc": "界面与字幕资源使用的语言（locales 下的语言目录名，如 ch）。\n切换后立即重载界面、台词、角色名、广播与主播词表；缺失文件回退 ch。" },
     "字幕启用": { "Name": "字幕启用", "Desc": "是否启用字幕功能。" },
     "弹幕启动": { "Name": "弹幕启动", "Desc": "启用弹幕显示。" },
     "3D气泡启用": { "Name": "3D气泡启用", "Desc": "启用 3D 气泡显示。" },
