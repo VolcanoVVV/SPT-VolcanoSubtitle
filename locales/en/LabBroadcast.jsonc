@@ -1,0 +1,40 @@
+{
+  // Warning!
+  // Do not change the order of entries in Clips. Their order is fixed and unique.
+  
+  // Elevators
+  // Medical block elevator lever announcement
+  "announcer_elevators_O": "Attention, personnel. The elevator in Sector O is now operational.",
+  // Main elevator lever announcement
+  "announcer_elevators_R": "Attention, personnel. The elevator in Sector R is now operational.",
+
+  // Composite sequences
+  "sequences": [
+    {
+      // Hangar gate lever announcement
+      "clips": [
+        "announcer_composite_1_security3",
+        "announcer_composite_2_B",
+        "announcer_composite_3_11"
+      ],
+      "text": "Attention, security. Unauthorized activity has been detected in Sector B11."
+    },
+    {
+      // Parking garage gate lever announcement
+      "clips": [
+        "announcer_composite_1_security3",
+        "announcer_composite_2_Y",
+        "announcer_composite_3_11"
+      ],
+      "text": "Attention, security. Unauthorized activity has been detected in Sector Y11."
+    },
+    {
+      // Cargo elevator lever announcement
+      "clips": [
+        "announcer_composite_1_security",
+        "announcer_composite_2_G"
+      ],
+      "text": "Attention, all guards. Proceed to Sector G and establish a defensive position."
+    }
+  ]
+}

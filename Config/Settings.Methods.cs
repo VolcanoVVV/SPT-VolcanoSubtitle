@@ -1,5 +1,8 @@
 // 文件：Subtitle/Config/Settings.Methods.cs
 using BepInEx.Configuration;
+using BepInEx.Bootstrap;
+using Comfort.Common;
+using EFT;
 using Newtonsoft.Json.Linq;
 using Subtitle.Utils;
 using System;
@@ -22,6 +25,9 @@ namespace Subtitle.Config
             new Dictionary<ConfigEntryBase, int>();
         private static readonly Dictionary<ConfigEntryBase, string> s_FontBundleSelectionValue =
             new Dictionary<ConfigEntryBase, string>();
+        private const string DefaultTextPresetName = "default";
+        private const string DefaultTextPresetBaseName = "塔科夫战术";
+        private const string FontReplacePluginGuid = "hiddenhiragi.Volcano.fontreplace";
 
         // —— 批量应用预设时的刷新抑制：批量期间只记录受影响子系统，结束后每个子系统只刷新一次 ——
         private static bool s_BatchApplying;
@@ -289,14 +295,14 @@ namespace Subtitle.Config
                 if (string.IsNullOrEmpty(s_PresetsDir))
                     s_PresetsDir = Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "presets");
 
-                const string fallbackPreset = "default";
-                var pick = string.IsNullOrEmpty(name) ? fallbackPreset : name;
-                var path = Path.Combine(s_PresetsDir, pick + ".jsonc");
+                var fallbackPreset = DefaultTextPresetName;
+                var pick = string.IsNullOrWhiteSpace(name) ? fallbackPreset : name.Trim();
+                var path = GetTextPresetPath(pick);
                 if (!File.Exists(path))
                 {
                     s_Log.LogWarning("[Settings] Preset file not found: " + path + ", fallback to " + fallbackPreset + ".");
                     pick = fallbackPreset;
-                    path = Path.Combine(s_PresetsDir, fallbackPreset + ".jsonc");
+                    path = GetTextPresetPath(fallbackPreset);
                 }
 
                 var preset = SubtitleSystem.SubtitleTextPreset.LoadFromFile(path);
@@ -342,15 +348,16 @@ namespace Subtitle.Config
                             list.Add(n);
                     }
                 }
-                if (!list.Exists(n => string.Equals(n, "default", StringComparison.OrdinalIgnoreCase)))
-                    list.Insert(0, "default");
+                list.Sort(StringComparer.OrdinalIgnoreCase);
+                if (!list.Exists(n => string.Equals(n, DefaultTextPresetName, StringComparison.OrdinalIgnoreCase)))
+                    list.Insert(0, DefaultTextPresetName);
 
                 s_PresetNames = list;
                 s_PresetListLoaded = true;
 
                 if (resetSelectionToCurrent)
                 {
-                    var cur = TextPresetName != null ? (TextPresetName.Value ?? "default") : "default";
+                    var cur = TextPresetName != null ? (TextPresetName.Value ?? DefaultTextPresetName) : DefaultTextPresetName;
                     int idx = s_PresetNames.FindIndex(n => string.Equals(n, cur, StringComparison.OrdinalIgnoreCase));
                     s_SelectedPresetIndex = idx >= 0 ? idx : 0;
                 }
@@ -358,7 +365,7 @@ namespace Subtitle.Config
             catch (Exception e)
             {
                 s_Log.LogWarning("[Settings] ScanPresets failed: " + e);
-                s_PresetNames = new List<string> { "default" };
+                s_PresetNames = new List<string> { DefaultTextPresetName };
                 s_SelectedPresetIndex = 0;
                 s_PresetListLoaded = true;
             }
@@ -412,9 +419,42 @@ namespace Subtitle.Config
 
         private static void ApplySlimConfigurationManagerLocalization()
         {
+            string pluginTitle = string.Equals(I18n.CurrentLanguage, "ch", StringComparison.OrdinalIgnoreCase)
+                ? "Volcano-Subtitle 火山家的实时字幕"
+                : "Volcano-subtitle";
+            string category = I18n.Category(GeneralSection, "通用");
+
+            // ConfigurationManager 的插件标题读取 BepInEx 运行时元数据，而不是配置项 DispName。
+            // 在语言切换后更新 Metadata.Name 并重建列表，F12 标题即可同步变化。
+            try
+            {
+                if (Chainloader.PluginInfos != null &&
+                    Chainloader.PluginInfos.ContainsKey("Volcano.Subtitle"))
+                {
+                    var info = Chainloader.PluginInfos["Volcano.Subtitle"];
+                    if (info != null && info.Metadata != null)
+                    {
+                        var nameProperty = info.Metadata.GetType().GetProperty("Name",
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        var setter = nameProperty != null ? nameProperty.GetSetMethod(true) : null;
+                        if (setter != null) setter.Invoke(info.Metadata, new object[] { pluginTitle });
+                        else
+                        {
+                            var nameField = info.Metadata.GetType().GetField("<Name>k__BackingField",
+                                BindingFlags.Instance | BindingFlags.NonPublic);
+                            if (nameField != null) nameField.SetValue(info.Metadata, pluginTitle);
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            var buttonAttrs = GetCmAttributes(SettingsWindowButton);
+            if (buttonAttrs != null) buttonAttrs.Category = category;
             var hotkeyAttrs = GetCmAttributes(SettingsWindowHotkey);
             if (hotkeyAttrs != null)
             {
+                hotkeyAttrs.Category = category;
                 hotkeyAttrs.DispName = I18n.Text("F12.SettingsHotkey.Name", "设置界面 打开热键");
                 hotkeyAttrs.Description = I18n.Text("F12.SettingsHotkey.Desc",
                     "打开/关闭 图形化设置界面 的热键（默认 F9）。也可点界面右上角“关闭”退出。");
@@ -631,9 +671,19 @@ namespace Subtitle.Config
         internal static void SyncPresetSelectionToCurrent()
         {
             if (!s_PresetListLoaded) { ScanPresets(true); return; }
-            var cur = TextPresetName != null ? (TextPresetName.Value ?? "default") : "default";
+            var cur = TextPresetName != null ? (TextPresetName.Value ?? DefaultTextPresetName) : DefaultTextPresetName;
             int idx = s_PresetNames.FindIndex(n => string.Equals(n, cur, StringComparison.OrdinalIgnoreCase));
             s_SelectedPresetIndex = idx >= 0 ? idx : 0;
+        }
+
+        private static string GetTextPresetPath(string name)
+        {
+            if (string.IsNullOrEmpty(s_PresetsDir))
+                s_PresetsDir = Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "presets");
+            string fileName = string.Equals(name, DefaultTextPresetName, StringComparison.OrdinalIgnoreCase)
+                ? DefaultTextPresetBaseName
+                : name;
+            return Path.Combine(s_PresetsDir, fileName + ".jsonc");
         }
 
         internal static int RefreshPresetList()
@@ -806,7 +856,75 @@ namespace Subtitle.Config
 
         internal static string FormatFontBundleLabel(string name)
         {
-            return string.IsNullOrEmpty(name) ? "(不覆盖)" : name;
+            return string.IsNullOrEmpty(name) ? I18n.Text("FontBundle.NoOverride", "(不覆盖)") : name;
+        }
+
+        internal static void SendRandomTestWorld3D()
+        {
+            try
+            {
+                var world = Singleton<GameWorld>.Instance;
+                IPlayer player = world != null ? world.MainPlayer as IPlayer : null;
+                var mgr = Subtitle.Plugin.Instance != null
+                    ? Subtitle.Plugin.Instance.GetOrCreateSubtitleManagerAnyScene()
+                    : null;
+                if (mgr == null || player == null)
+                {
+                    PushClientToast(I18n.Text("Debug.World3DUnavailable", "3D 气泡测试需要进入藏身处或战局。"));
+                    return;
+                }
+
+                string voiceKey, line;
+                if (!TryPickRandomAllowedLine("World3D", out voiceKey, out line))
+                    line = I18n.Text("Debug.World3DPlaceholder", "这是一条 3D 气泡测试。 ");
+                line = Subtitle.Utils.StreamerFilter.Apply(line);
+                mgr.AddWorld3D(player, line, Color.white, 4f);
+            }
+            catch (Exception e)
+            {
+                s_Log.LogWarning("[Subtitle] TestWorld3D random failed: " + e);
+            }
+        }
+
+        internal static void OpenVoiceDebugPanel()
+        {
+            try
+            {
+                if (EnableDebugTools != null && !EnableDebugTools.Value)
+                    EnableDebugTools.Value = true;
+                if (Subtitle.Plugin.Instance == null || !Subtitle.Plugin.Instance.OpenVoiceDebugPanel())
+                    PushClientToast(I18n.Text("Debug.RequiresGameWorld", "语音浏览需要进入藏身处或战局。"));
+            }
+            catch { }
+        }
+
+        internal static void OpenDiagnosticsPanel()
+        {
+            try
+            {
+                if (EnableDebugTools != null && !EnableDebugTools.Value)
+                    EnableDebugTools.Value = true;
+                Subtitle.DebugTools.DebugDiagnosticsPanel.ToggleVisible();
+            }
+            catch (Exception e) { s_Log.LogWarning("[Debug] Open diagnostics failed: " + e); }
+        }
+
+        internal static void ReloadCurrentLocaleResources()
+        {
+            string language = UiLanguage != null ? UiLanguage.Value : I18n.CurrentLanguage;
+            ReloadLocalizedResources(language);
+            Subtitle.DebugTools.DebugDiagnostics.RecordSystem(
+                I18n.Text("Debug.LocaleReloaded", "已重新加载当前语言资源。"));
+            PushClientToast(I18n.Text("Debug.LocaleReloaded", "已重新加载当前语言资源。"));
+        }
+
+        internal static bool IsFontReplaceInstalled()
+        {
+            try
+            {
+                return Chainloader.PluginInfos != null && Chainloader.PluginInfos.ContainsKey(FontReplacePluginGuid);
+            }
+            catch { return false; }
         }
 
         private static int GetFontBundleIndex(string name)

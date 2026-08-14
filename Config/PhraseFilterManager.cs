@@ -674,6 +674,31 @@ namespace Subtitle.Config
             return Path.Combine(GetVoicesDir(), name + ".jsonc");
         }
 
+        // 游戏内字幕只能读取当前语言的角色台词。若当前语言没有该角色文件，调用方应回退到
+        // 当前语言的 Default_Voice，而不能继续读取 ch/voices，否则会在英文等语言下混入中文字幕。
+        internal static string ResolveCurrentLocaleVoiceFile(string voiceKey)
+        {
+            if (string.IsNullOrWhiteSpace(voiceKey)) return null;
+            string name = voiceKey.Trim();
+            string dir = GetVoicesDir();
+            if (!Directory.Exists(dir)) return Path.Combine(dir, name + ".jsonc");
+
+            try
+            {
+                string[] files = Directory.GetFiles(dir, name + ".*", SearchOption.TopDirectoryOnly);
+                for (int i = 0; i < files.Length; i++)
+                {
+                    string ext = Path.GetExtension(files[i]);
+                    if (string.Equals(ext, ".jsonc", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(ext, ".json", StringComparison.OrdinalIgnoreCase))
+                        return files[i];
+                }
+            }
+            catch { }
+
+            return Path.Combine(dir, name + ".jsonc");
+        }
+
         private static string GetVoicesDir()
         {
             string baseDir = GetLocalesDir();
@@ -757,6 +782,12 @@ namespace Subtitle.Config
             string fallback = Path.Combine(DefaultLocalesDir, relativePath);
             if (File.Exists(fallback)) return fallback;
             return current;
+        }
+
+        // 与 ResolveLocaleFile 不同，此方法不跨语言回退，供台词查询保证语言一致性。
+        internal static string ResolveCurrentLocaleFile(string relativePath)
+        {
+            return Path.Combine(GetLocalesDir(), relativePath);
         }
 
         private static PhraseFilterPreset ParsePreset(JObject root)

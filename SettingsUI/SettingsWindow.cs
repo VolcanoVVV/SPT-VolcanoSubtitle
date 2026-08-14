@@ -219,6 +219,8 @@ namespace Subtitle.SettingsUI
                 // 旧版“不透明度”配置键仍留在测试 section，GUI 中虚拟归入界面板块以保持 cfg 兼容。
                 string section = ReferenceEquals(entry, Settings.SettingsWindowOpacity)
                     ? Settings.InterfaceSection
+                    : ReferenceEquals(entry, Settings.VoiceDedupWindowSec)
+                    ? Settings.CompatibilitySection
                     : entry.Definition.Section;
                 Category cat;
                 if (!bySection.TryGetValue(section, out cat))
@@ -249,6 +251,7 @@ namespace Subtitle.SettingsUI
         {
             if (string.Equals(section, "1. 通用", StringComparison.Ordinal)) return 100;
             if (string.Equals(section, Settings.InterfaceSection, StringComparison.Ordinal)) return 110;
+            if (string.Equals(section, Settings.CompatibilitySection, StringComparison.Ordinal)) return 120;
 
             if (string.Equals(section, "2 字幕 - 通用", StringComparison.Ordinal)) return 200;
             if (string.Equals(section, "2.1 字幕 - 进阶", StringComparison.Ordinal)) return 210;

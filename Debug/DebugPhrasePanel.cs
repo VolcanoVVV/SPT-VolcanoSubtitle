@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
@@ -42,15 +43,22 @@ namespace Subtitle.DebugTools
 
         // 顶部：标题/关闭/刷新
         private Text _title;
+        private Button _btnExport;
+        private Button _btnStop;
         private Button _btnClose;
         private Button _btnRefresh;
         private Text _hint;
 
         // 播放（2D）
         private AudioSource _src2D;
+        private AudioSource _exportSource;
+        private AudioPcmCapture _exportCapture;
 
         // 当前所选 voiceKey
         private string _currentVoiceKey;
+        private SpeakerClass _currentSpeaker;
+        private Coroutine _exportRoutine;
+        private bool _exportCancelRequested;
 
         void Awake()
         {
@@ -143,14 +151,21 @@ namespace Subtitle.DebugTools
             _title = UiWidgets.CreateText(top, "Title", I18n.Text("Debug.Title", "Phrase Debug (2D)"), 18, TextAnchor.MiddleLeft, new Vector2(8f, 4f), new Vector2(-8f, -4f));
             var titleRT = _title.rectTransform;
             titleRT.anchorMin = new Vector2(0f, 0f);
-            titleRT.anchorMax = new Vector2(0.6f, 1f);
+            titleRT.anchorMax = new Vector2(0.45f, 1f);
             titleRT.offsetMin = new Vector2(10f, 0f);
             titleRT.offsetMax = new Vector2(-10f, 0f);
 
-            _btnRefresh = UiWidgets.CreateButton(top, "Refresh", I18n.Text("BtnRefresh", "刷新"), new Vector2(0.7f, 0.1f), new Vector2(0.8f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
+            _btnExport = UiWidgets.CreateButton(top, "ExportVoice", I18n.Text("Debug.ExportVoice", "导出声线"), new Vector2(0.46f, 0.1f), new Vector2(0.60f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
+            _btnExport.interactable = false;
+            _btnExport.onClick.AddListener(new UnityEngine.Events.UnityAction(ExportSelectedVoice));
+
+            _btnStop = UiWidgets.CreateButton(top, "Stop", I18n.Text("Debug.StopPlayback", "停止播放"), new Vector2(0.61f, 0.1f), new Vector2(0.72f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 13, false);
+            _btnStop.onClick.AddListener(delegate { if (_src2D != null) _src2D.Stop(); });
+
+            _btnRefresh = UiWidgets.CreateButton(top, "Refresh", I18n.Text("BtnRefresh", "刷新"), new Vector2(0.73f, 0.1f), new Vector2(0.84f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
             _btnRefresh.onClick.AddListener(new UnityEngine.Events.UnityAction(RefreshVoiceKeys));
 
-            _btnClose = UiWidgets.CreateButton(top, "Close", I18n.Text("Close", "关闭"), new Vector2(0.85f, 0.1f), new Vector2(0.95f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
+            _btnClose = UiWidgets.CreateButton(top, "Close", I18n.Text("Close", "关闭"), new Vector2(0.85f, 0.1f), new Vector2(0.97f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
             _btnClose.onClick.AddListener(new UnityEngine.Events.UnityAction(Hide));
 
             // 底部提示
@@ -184,6 +199,30 @@ namespace Subtitle.DebugTools
             _src2D.playOnAwake = false;
             _src2D.loop = false;
             _src2D.volume = 1f;
+
+            // 流式 AudioClip 无法调用 GetData；单独建立静音的实时捕获链作为导出兜底。
+            // AudioPcmCapture 在音频线程中复制 PCM 后将输出清零，因此不会把几百条
+            // 导出语音实际播放给用户听。
+            var exportAudio = new GameObject("VoiceExportAudioCapture");
+            exportAudio.transform.SetParent(this.transform, false);
+            _exportSource = exportAudio.AddComponent<AudioSource>();
+            _exportSource.spatialBlend = 0f;
+            _exportSource.playOnAwake = false;
+            _exportSource.loop = false;
+            _exportSource.volume = 1f;
+            _exportSource.ignoreListenerPause = true;
+            _exportSource.bypassEffects = true;
+            _exportSource.bypassListenerEffects = true;
+            _exportSource.bypassReverbZones = true;
+            _exportCapture = exportAudio.AddComponent<AudioPcmCapture>();
+        }
+
+        public void Show()
+        {
+            if (_panelBg == null) return;
+            _panelBg.SetActive(true);
+            RefreshLocalizationInstance();
+            RefreshVoiceKeys();
         }
 
         private void RefreshLocalizationInstance()
@@ -193,6 +232,10 @@ namespace Subtitle.DebugTools
                     ? I18n.Text("Debug.Title", "Phrase Debug (2D)")
                     : I18n.Text("Debug.Title", "Phrase Debug (2D)") + "  -  " + _currentVoiceKey;
             SetButtonText(_btnRefresh, I18n.Text("BtnRefresh", "刷新"));
+            SetButtonText(_btnExport, _exportRoutine != null
+                ? I18n.Text("Debug.CancelExport", "取消导出")
+                : I18n.Text("Debug.ExportVoice", "导出声线"));
+            SetButtonText(_btnStop, I18n.Text("Debug.StopPlayback", "停止播放"));
             SetButtonText(_btnClose, I18n.Text("Close", "关闭"));
             if (_hint != null)
                 _hint.text = I18n.Text("Debug.Hint", "选择一个 VoiceKey（跨声线） → 右侧选择 trigger/netId → 点击播放");
@@ -212,6 +255,8 @@ namespace Subtitle.DebugTools
             UiWidgets.ClearChildren(_voiceContent);
             UiWidgets.ClearChildren(_clipContent);
             _currentVoiceKey = null;
+            _currentSpeaker = null;
+            if (_btnExport != null) _btnExport.interactable = true; // 导出期间按钮改作“取消”
 
             var ps = FindPhraseSounds();
             if (ps != null && ps.Voices != null && ps.Voices.Length > 0)
@@ -262,13 +307,15 @@ namespace Subtitle.DebugTools
                 }
 
                 var btn = UiWidgets.InstantiateButton(_voiceBtnTpl, _voiceContent, label, new Vector2(8f, 2f), new Vector2(-8f, -2f), false, 28f);
+                var capturedSpeaker = sp;
+                var capturedVoiceKey = vk;
+                var capturedLabel = label;
                 btn.onClick.AddListener(delegate {
                     if (_currentSpeakerBtn != null) _currentSpeakerBtn.targetGraphic.color = new Color(0.2f, 0.2f, 0.2f, 1f);
                     _currentSpeakerBtn = btn;
                     _currentSpeakerBtn.targetGraphic.color = new Color(0.35f, 0.35f, 0.35f, 1f);
 
-                    _title.text = I18n.Text("Debug.Title", "Phrase Debug (2D)") + "  -  " + label;
-                    RefreshClipsForSpeaker(sp);
+                    OnSelectSpeaker(capturedSpeaker, capturedVoiceKey, capturedLabel);
                 });
 
                 if (first == null) first = sp;
@@ -645,8 +692,558 @@ row.onClick.AddListener(delegate {
         private void OnSelectVoiceKey(string voiceKey)
         {
             _currentVoiceKey = voiceKey;
+            _currentSpeaker = null;
             _title.text = I18n.Text("Debug.Title", "Phrase Debug (2D)") + "  -  " + voiceKey;
+            if (_btnExport != null && _exportRoutine == null) _btnExport.interactable = true;
             RefreshClipsForVoice(voiceKey);
+        }
+
+        private void OnSelectSpeaker(SpeakerClass speaker, string voiceKey, string label)
+        {
+            _currentSpeaker = speaker;
+            _currentVoiceKey = voiceKey;
+            if (string.IsNullOrEmpty(_currentVoiceKey))
+            {
+                int speakerId = GetSpeakerId(speaker);
+                _currentVoiceKey = speakerId == int.MinValue ? "Speaker" : "Speaker_" + speakerId;
+            }
+
+            _title.text = I18n.Text("Debug.Title", "Phrase Debug (2D)") + "  -  " + label;
+            if (_btnExport != null && _exportRoutine == null) _btnExport.interactable = speaker != null;
+            RefreshClipsForSpeaker(speaker);
+        }
+
+        private sealed class VoiceExportItem
+        {
+            public AudioClip Clip;
+            public string Trigger;
+            public int NetId;
+            public string FilePath;
+        }
+
+        private sealed class AudioPcmCapture : MonoBehaviour
+        {
+            private readonly object _sync = new object();
+            private List<float> _samples = new List<float>();
+            private bool _recording;
+            private int _channels;
+
+            public void Begin(int expectedSampleCount)
+            {
+                lock (_sync)
+                {
+                    _samples = new List<float>(Math.Max(1024, expectedSampleCount));
+                    _channels = 0;
+                    _recording = true;
+                }
+            }
+
+            public float[] End(out int channels)
+            {
+                lock (_sync)
+                {
+                    _recording = false;
+                    channels = _channels;
+                    return _samples.ToArray();
+                }
+            }
+
+            // Unity 在音频线程调用；这里只进行加锁复制，不访问其他 Unity 对象。
+            private void OnAudioFilterRead(float[] data, int channels)
+            {
+                if (data == null || data.Length == 0) return;
+                lock (_sync)
+                {
+                    if (!_recording) return;
+                    if (_channels == 0) _channels = channels;
+                    _samples.AddRange(data);
+
+                    // 捕获用 AudioSource 必须实际进入 DSP 管线，但不应被用户听见。
+                    Array.Clear(data, 0, data.Length);
+                }
+            }
+        }
+
+        private void ExportSelectedVoice()
+        {
+            if (_exportRoutine != null)
+            {
+                _exportCancelRequested = true;
+                if (_hint != null) _hint.text = I18n.Text("Debug.ExportCancelPending", "正在取消导出…");
+                return;
+            }
+            if (string.IsNullOrEmpty(_currentVoiceKey)) return;
+            _exportCancelRequested = false;
+            _exportRoutine = StartCoroutine(ExportVoiceCoroutine(_currentVoiceKey, _currentSpeaker));
+            SetButtonText(_btnExport, I18n.Text("Debug.CancelExport", "取消导出"));
+        }
+
+        private IEnumerator ExportVoiceCoroutine(string voiceKey, SpeakerClass speaker)
+        {
+            // 导出期间这个按钮本身就是“取消导出”，必须保持可点击。
+            if (_btnExport != null) _btnExport.interactable = true;
+
+            // 确保 StartCoroutine 先把句柄写入 _exportRoutine；否则极短/空声线可能
+            // 在首次 yield 前同步结束，随后又被赋回一个非空的已完成句柄。
+            yield return null;
+
+            int exported = 0;
+            int skipped = 0;
+            int failed = 0;
+            bool canceled = false;
+            string outputDir = null;
+            List<VoiceExportItem> items = null;
+
+            try
+            {
+                outputDir = GetVoiceExportDirectory(voiceKey);
+                Directory.CreateDirectory(outputDir);
+                items = speaker != null
+                    ? CollectSpeakerExportItems(speaker, voiceKey, outputDir, ref skipped, ref failed)
+                    : CollectVoiceExportItems(voiceKey, outputDir, ref skipped, ref failed);
+            }
+            catch (Exception e)
+            {
+                failed++;
+                s_Log.LogError("[VoiceExport] 无法准备导出：" + e);
+            }
+
+            int total = items != null ? items.Count : 0;
+            for (int i = 0; i < total; i++)
+            {
+                if (_exportCancelRequested) { canceled = true; break; }
+                var item = items[i];
+                if (item == null || item.Clip == null)
+                {
+                    failed++;
+                    continue;
+                }
+
+                if (File.Exists(item.FilePath))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                // 大部分短句已由 PhraseSounds 加载；未加载时请求加载并分帧等待。
+                try
+                {
+                    if (item.Clip.loadState == AudioDataLoadState.Unloaded)
+                        item.Clip.LoadAudioData();
+                }
+                catch { }
+
+                int waitFrames = 0;
+                while (item.Clip != null &&
+                       item.Clip.loadState == AudioDataLoadState.Loading &&
+                       waitFrames < 600 && !_exportCancelRequested)
+                {
+                    waitFrames++;
+                    yield return null;
+                }
+
+                if (_exportCancelRequested) { canceled = true; break; }
+                string directError;
+                if (TryWritePcm16Wav(item.Clip, item.FilePath, out directError))
+                {
+                    exported++;
+                }
+                else
+                {
+                    // Streaming / CompressedInMemory 等资源可正常播放，但禁止 GetData。
+                    // 让专用 AudioSource 播放一次，并从 OnAudioFilterRead 捕获解码后的 PCM。
+                    if (_hint != null)
+                    {
+                        _hint.text = string.Format(
+                            I18n.Text("Debug.ExportCapture", "正在实时捕获流式音频 {0}/{1}：{2} / {3} / #{4}"),
+                            i + 1, total, voiceKey, item.Trigger, item.NetId);
+                    }
+
+                    bool captureSucceeded = false;
+                    string captureError = null;
+                    yield return CaptureClipToWavCoroutine(item, delegate (bool ok, string err)
+                    {
+                        captureSucceeded = ok;
+                        captureError = err;
+                    });
+
+                    if (_exportCancelRequested)
+                    {
+                        canceled = true;
+                        break;
+                    }
+
+                    if (captureSucceeded)
+                    {
+                        exported++;
+                        s_Log.LogInfo(
+                            "[VoiceExport] 已通过实时捕获导出 " + voiceKey + "/" +
+                            item.Trigger + "/" + item.NetId + " clip=" + item.Clip.name);
+                    }
+                    else
+                    {
+                        failed++;
+                        s_Log.LogWarning(
+                            "[VoiceExport] 导出失败 " + voiceKey + "/" + item.Trigger + "/" + item.NetId +
+                            "：GetData=" + directError + "；实时捕获=" + captureError);
+                    }
+                }
+
+                if (_hint != null)
+                {
+                    _hint.text = string.Format(
+                        I18n.Text("Debug.ExportProgress", "正在导出 {0}：{1}/{2}（已导出 {3}，跳过 {4}，失败 {5}）"),
+                        voiceKey, i + 1, total, exported, skipped, failed);
+                }
+
+                // 分散磁盘写入，避免数百条短句在同一帧完成而冻结界面。
+                if ((i & 3) == 3) yield return null;
+            }
+
+            string summary = string.Format(
+                I18n.Text("Debug.ExportDone", "导出完成：{0}；已导出 {1}，跳过 {2}，失败 {3}\n目录：{4}"),
+                voiceKey, exported, skipped, failed, outputDir ?? "?");
+            if (canceled)
+                summary = I18n.Text("Debug.ExportCanceled", "导出已取消。\n") + summary;
+            if (_hint != null) _hint.text = summary;
+            s_Log.LogInfo("[VoiceExport] " + summary.Replace('\n', ' '));
+
+            try
+            {
+                if (!string.IsNullOrEmpty(outputDir))
+                {
+                    File.WriteAllText(Path.Combine(outputDir, "VoiceExportReport.txt"),
+                        "VoiceKey: " + voiceKey + Environment.NewLine +
+                        "Exported: " + exported + Environment.NewLine +
+                        "Skipped: " + skipped + Environment.NewLine +
+                        "Failed: " + failed + Environment.NewLine +
+                        "Canceled: " + (canceled ? "yes" : "no") + Environment.NewLine,
+                        System.Text.Encoding.UTF8);
+                }
+            }
+            catch (Exception e) { s_Log.LogWarning("[VoiceExport] report write failed: " + e.Message); }
+
+            _exportRoutine = null;
+            _exportCancelRequested = false;
+            SetButtonText(_btnExport, I18n.Text("Debug.ExportVoice", "导出声线"));
+            if (_btnExport != null && !string.IsNullOrEmpty(_currentVoiceKey))
+                _btnExport.interactable = true;
+        }
+
+        private IEnumerator CaptureClipToWavCoroutine(
+            VoiceExportItem item,
+            Action<bool, string> completed)
+        {
+            if (item == null || item.Clip == null || _exportSource == null || _exportCapture == null)
+            {
+                completed(false, "实时捕获组件不可用。");
+                yield break;
+            }
+
+            if (File.Exists(item.FilePath))
+            {
+                completed(true, null);
+                yield break;
+            }
+
+            int outputRate = AudioSettings.outputSampleRate;
+            int estimatedChannels = Math.Max(1, item.Clip.channels);
+            int expectedSamples = Mathf.CeilToInt(
+                Math.Max(0.1f, item.Clip.length) * Math.Max(1, outputRate) * estimatedChannels);
+
+            _exportSource.Stop();
+            _exportSource.clip = item.Clip;
+            _exportCapture.Begin(expectedSamples);
+            _exportSource.Play();
+
+            float timeoutAt = Time.realtimeSinceStartup + Math.Max(5f, item.Clip.length + 5f);
+            // 至少等待一帧，让 Play 请求进入音频线程。
+            yield return null;
+            while (_exportSource != null && _exportSource.isPlaying && Time.realtimeSinceStartup < timeoutAt)
+            {
+                if (_exportCancelRequested)
+                {
+                    _exportSource.Stop();
+                    break;
+                }
+                yield return null;
+            }
+
+            bool timedOut = _exportSource != null && _exportSource.isPlaying;
+            if (_exportSource != null) _exportSource.Stop();
+
+            // 让最后一个 DSP buffer 有机会完成 OnAudioFilterRead。
+            yield return null;
+            int capturedChannels;
+            float[] captured = _exportCapture.End(out capturedChannels);
+            _exportSource.clip = null;
+
+            // 用户主动取消时丢弃本次不完整捕获，避免留下一个看似有效的残缺 WAV。
+            if (_exportCancelRequested)
+            {
+                completed(false, "export canceled");
+                yield break;
+            }
+
+            if (timedOut)
+            {
+                completed(false, "播放超时。捕获样本=" + (captured != null ? captured.Length : 0));
+                yield break;
+            }
+            if (captured == null || captured.Length == 0 || capturedChannels <= 0)
+            {
+                completed(false, "音频回调没有捕获到 PCM 数据。");
+                yield break;
+            }
+
+            string error;
+            bool written = TryWritePcm16Wav(
+                captured, capturedChannels, outputRate, item.FilePath, out error);
+            completed(written, error);
+        }
+
+        private static List<VoiceExportItem> CollectVoiceExportItems(
+            string voiceKey,
+            string outputDir,
+            ref int skipped,
+            ref int failed)
+        {
+            var result = new List<VoiceExportItem>();
+            var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ps = FindPhraseSounds();
+            if (ps == null) throw new InvalidOperationException("找不到 PhraseSounds。");
+
+            TagBank[] banks = null;
+            try { banks = ps.GetVoice(voiceKey, EPlayerSide.Usec); } catch { }
+            if (banks == null || banks.Length == 0)
+                throw new InvalidOperationException("该 VoiceKey 没有可用的 TagBank。");
+
+            string safeVoiceKey = SanitizePathPart(voiceKey, "Voice");
+            for (int i = 0; i < banks.Length; i++)
+            {
+                var bank = banks[i];
+                if (bank == null) continue;
+
+                string trigger = GetTriggerName(bank);
+                if (string.IsNullOrEmpty(trigger)) trigger = "UnknownTrigger";
+                string safeTrigger = SanitizePathPart(trigger, "UnknownTrigger");
+                var clips = GetClipsFromBank(bank);
+                if (clips == null) continue;
+
+                foreach (var tagged in clips)
+                {
+                    if (tagged == null) continue;
+                    var clip = GetAudioClipFromTagged(tagged);
+                    int? netId = GetNetIdRobust(tagged);
+                    if (clip == null || !netId.HasValue)
+                    {
+                        failed++;
+                        s_Log.LogWarning(
+                            "[VoiceExport] 无法收集 voiceKey=" + voiceKey +
+                            " trigger=" + trigger +
+                            " netId=" + (netId.HasValue ? netId.Value.ToString() : "?") +
+                            " reason=" + (clip == null ? "AudioClip引用为空" : "NetId缺失") +
+                            " taggedType=" + tagged.GetType().FullName);
+                        continue;
+                    }
+
+                    string fileName = safeVoiceKey + "_" + safeTrigger + "_" + netId.Value + ".wav";
+                    string filePath = Path.Combine(outputDir, fileName);
+                    if (!seenPaths.Add(filePath) || File.Exists(filePath))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    result.Add(new VoiceExportItem
+                    {
+                        Clip = clip,
+                        Trigger = trigger,
+                        NetId = netId.Value,
+                        FilePath = filePath
+                    });
+                }
+            }
+            return result;
+        }
+
+        private static List<VoiceExportItem> CollectSpeakerExportItems(
+            SpeakerClass speaker,
+            string voiceKey,
+            string outputDir,
+            ref int skipped,
+            ref int failed)
+        {
+            var result = new List<VoiceExportItem>();
+            var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var map = GetTriggerBankMap(speaker);
+            if (map == null) throw new InvalidOperationException("未能读取该 Speaker 的短句映射。");
+
+            string safeVoiceKey = SanitizePathPart(voiceKey, "Voice");
+            foreach (DictionaryEntry entry in map)
+            {
+                if (entry.Key == null || entry.Value == null) continue;
+                string trigger = entry.Key.ToString();
+                if (string.IsNullOrEmpty(trigger)) trigger = "UnknownTrigger";
+                string safeTrigger = SanitizePathPart(trigger, "UnknownTrigger");
+                var clips = ExtractTaggedClips(entry.Value);
+                if (clips == null) continue;
+
+                foreach (var tagged in clips)
+                {
+                    if (tagged == null) continue;
+                    var clip = GetAudioClipFromTagged(tagged);
+                    int? netId = GetNetIdRobust(tagged);
+                    if (clip == null || !netId.HasValue)
+                    {
+                        failed++;
+                        s_Log.LogWarning(
+                            "[VoiceExport] 无法收集 voiceKey=" + voiceKey +
+                            " trigger=" + trigger +
+                            " netId=" + (netId.HasValue ? netId.Value.ToString() : "?") +
+                            " reason=" + (clip == null ? "AudioClip引用为空" : "NetId缺失") +
+                            " taggedType=" + tagged.GetType().FullName);
+                        continue;
+                    }
+
+                    string fileName = safeVoiceKey + "_" + safeTrigger + "_" + netId.Value + ".wav";
+                    string filePath = Path.Combine(outputDir, fileName);
+                    if (!seenPaths.Add(filePath) || File.Exists(filePath))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    result.Add(new VoiceExportItem
+                    {
+                        Clip = clip,
+                        Trigger = trigger,
+                        NetId = netId.Value,
+                        FilePath = filePath
+                    });
+                }
+            }
+            return result;
+        }
+
+        private static string GetVoiceExportDirectory(string voiceKey)
+        {
+            string pluginDir = Path.GetFullPath(Path.Combine(
+                Application.dataPath, "..", "BepInEx", "plugins", "subtitle"));
+            return Path.Combine(pluginDir, "VoiceExports", SanitizePathPart(voiceKey, "Voice"));
+        }
+
+        private static string SanitizePathPart(string value, string fallback)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return fallback;
+            char[] invalid = Path.GetInvalidFileNameChars();
+            var chars = value.Trim().ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                if (Array.IndexOf(invalid, chars[i]) >= 0) chars[i] = '_';
+            }
+            string safe = new string(chars).Trim().TrimEnd('.');
+            return string.IsNullOrEmpty(safe) ? fallback : safe;
+        }
+
+        private static bool TryWritePcm16Wav(AudioClip clip, string destinationPath, out string error)
+        {
+            error = null;
+            if (clip == null)
+            {
+                error = "AudioClip 为空。";
+                return false;
+            }
+            if (clip.loadState != AudioDataLoadState.Loaded)
+            {
+                error = "音频数据未加载，状态=" + clip.loadState;
+                return false;
+            }
+
+            string tempPath = destinationPath + ".tmp";
+            try
+            {
+                if (clip.loadType == AudioClipLoadType.Streaming)
+                    throw new InvalidOperationException("AudioClip 使用 Streaming 加载，GetData 不可用。");
+
+                int channels = clip.channels;
+                int sampleRate = clip.frequency;
+                int sampleCount = checked(clip.samples * channels);
+                if (channels <= 0 || sampleRate <= 0 || sampleCount <= 0)
+                    throw new InvalidDataException("无效的音频参数。");
+
+                var samples = new float[sampleCount];
+                if (!clip.GetData(samples, 0))
+                    throw new InvalidOperationException("AudioClip.GetData 返回失败；该资源可能采用不可读取的流式/压缩加载方式。");
+
+                return TryWritePcm16Wav(samples, channels, sampleRate, destinationPath, out error);
+            }
+            catch (Exception e)
+            {
+                error = e.Message;
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                return false;
+            }
+        }
+
+        private static bool TryWritePcm16Wav(
+            float[] samples,
+            int channels,
+            int sampleRate,
+            string destinationPath,
+            out string error)
+        {
+            error = null;
+            string tempPath = destinationPath + ".tmp";
+            try
+            {
+                if (samples == null || samples.Length == 0)
+                    throw new InvalidDataException("PCM 样本为空。");
+                if (channels <= 0 || sampleRate <= 0)
+                    throw new InvalidDataException("无效的 PCM 参数。");
+                if (File.Exists(destinationPath)) return true;
+
+                using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (var writer = new BinaryWriter(stream))
+                {
+                    int dataLength = checked(samples.Length * 2);
+                    writer.Write(new byte[] { 0x52, 0x49, 0x46, 0x46 }); // RIFF
+                    writer.Write(36 + dataLength);
+                    writer.Write(new byte[] { 0x57, 0x41, 0x56, 0x45 }); // WAVE
+                    writer.Write(new byte[] { 0x66, 0x6D, 0x74, 0x20 }); // fmt
+                    writer.Write(16);
+                    writer.Write((short)1);
+                    writer.Write((short)channels);
+                    writer.Write(sampleRate);
+                    writer.Write(sampleRate * channels * 2);
+                    writer.Write((short)(channels * 2));
+                    writer.Write((short)16);
+                    writer.Write(new byte[] { 0x64, 0x61, 0x74, 0x61 }); // data
+                    writer.Write(dataLength);
+
+                    for (int i = 0; i < samples.Length; i++)
+                    {
+                        float value = samples[i];
+                        if (float.IsNaN(value) || float.IsInfinity(value)) value = 0f;
+                        value = Mathf.Clamp(value, -1f, 1f);
+                        writer.Write((short)Mathf.RoundToInt(value * 32767f));
+                    }
+                }
+
+                if (File.Exists(destinationPath))
+                {
+                    File.Delete(tempPath);
+                    return true;
+                }
+                File.Move(tempPath, destinationPath);
+                return true;
+            }
+            catch (Exception e)
+            {
+                error = e.Message;
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                return false;
+            }
         }
 
         private void RefreshClipsForVoice(string voiceKey)
@@ -794,19 +1391,97 @@ row.onClick.AddListener(delegate {
             if (bank == null) return null;
             const BindingFlags BF = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-            var pi = bank.GetType().GetProperty("Clips", BF);
-            if (pi != null && pi.CanRead)
+            // TagBank 在部分声线中同时保存：
+            //   1) 顶层 Clips；
+            //   2) SpreadGroups[].Clips。
+            // 某些顶层 TaggedClip 只有 NetId 而 Clip 为空，真正的 AudioClip 位于
+            // SpreadGroup 的同 NetId 项中。只返回顶层集合会造成 OnMutter/OnBreath
+            // 等分组出现可见 NetId 却无法导出的情况。
+            var merged = new List<object>();
+            var indexByNetId = new Dictionary<int, int>();
+
+            System.Collections.IEnumerable direct = GetEnumerableMember(
+                bank, BF, "Clips", "_clips", "clips");
+            MergeTaggedClips(direct, merged, indexByNetId);
+
+            System.Collections.IEnumerable spreadGroups = GetEnumerableMember(
+                bank, BF, "SpreadGroups", "_spreadGroups", "spreadGroups");
+            if (spreadGroups != null)
             {
-                try { return pi.GetValue(bank, null) as System.Collections.IEnumerable; } catch { }
+                foreach (object group in spreadGroups)
+                {
+                    if (group == null) continue;
+                    System.Collections.IEnumerable groupClips = GetEnumerableMember(
+                        group, BF, "Clips", "_clips", "clips");
+                    MergeTaggedClips(groupClips, merged, indexByNetId);
+                }
             }
 
-            var fi = bank.GetType().GetField("_clips", BF) ?? bank.GetType().GetField("clips", BF);
-            if (fi != null)
-            {
-                try { return fi.GetValue(bank) as System.Collections.IEnumerable; } catch { }
-            }
+            return merged.Count > 0 ? merged : null;
+        }
 
+        private static System.Collections.IEnumerable GetEnumerableMember(
+            object owner,
+            BindingFlags bindingFlags,
+            params string[] names)
+        {
+            if (owner == null || names == null) return null;
+            var type = owner.GetType();
+            for (int i = 0; i < names.Length; i++)
+            {
+                try
+                {
+                    var property = type.GetProperty(names[i], bindingFlags);
+                    if (property != null && property.CanRead)
+                    {
+                        var value = property.GetValue(owner, null) as System.Collections.IEnumerable;
+                        if (value != null) return value;
+                    }
+
+                    var field = type.GetField(names[i], bindingFlags);
+                    if (field != null)
+                    {
+                        var value = field.GetValue(owner) as System.Collections.IEnumerable;
+                        if (value != null) return value;
+                    }
+                }
+                catch { }
+            }
             return null;
+        }
+
+        private static void MergeTaggedClips(
+            System.Collections.IEnumerable source,
+            List<object> merged,
+            Dictionary<int, int> indexByNetId)
+        {
+            if (source == null || merged == null || indexByNetId == null) return;
+            foreach (object tagged in source)
+            {
+                if (tagged == null) continue;
+                int? netId = GetNetIdRobust(tagged);
+                if (!netId.HasValue)
+                {
+                    if (!merged.Contains(tagged)) merged.Add(tagged);
+                    continue;
+                }
+
+                int existingIndex;
+                if (!indexByNetId.TryGetValue(netId.Value, out existingIndex))
+                {
+                    indexByNetId.Add(netId.Value, merged.Count);
+                    merged.Add(tagged);
+                    continue;
+                }
+
+                // 同 NetId 在顶层和 SpreadGroup 同时出现时，保留真正带音频的版本。
+                object existing = merged[existingIndex];
+                if (GetAudioClipFromTagged(existing) == null &&
+                    GetAudioClipFromTagged(tagged) != null)
+                {
+                    merged[existingIndex] = tagged;
+                }
+            }
         }
 
         private static AudioClip GetAudioClipFromTagged(object taggedClip)
@@ -828,7 +1503,9 @@ row.onClick.AddListener(delegate {
 
             try
             {
-                var f = t.GetField("AudioClip", BF) ?? t.GetField("_audioClip", BF) ?? t.GetField("clip", BF);
+                var f = t.GetField("AudioClip", BF) ?? t.GetField("Clip", BF) ??
+                        t.GetField("_audioClip", BF) ?? t.GetField("_clip", BF) ??
+                        t.GetField("clip", BF);
                 if (f != null)
                 {
                     var v = f.GetValue(taggedClip) as AudioClip;

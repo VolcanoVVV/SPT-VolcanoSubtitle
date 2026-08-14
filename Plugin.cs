@@ -67,6 +67,8 @@ namespace Subtitle
                         Destroy(_debugUiGo);
                         _debugUiGo = null;
                     }
+                    if (!Subtitle.Config.Settings.EnableDebugTools.Value)
+                        Subtitle.DebugTools.DebugDiagnosticsPanel.CloseAndDestroy();
                 };
             }
 
@@ -124,6 +126,22 @@ namespace Subtitle
             {
                 Log.LogError("Failed to attach SubtitleManager to BattleUI.");
             }
+        }
+
+        internal bool OpenVoiceDebugPanel()
+        {
+            if (Singleton<GameWorld>.Instance == null) return false;
+            if (_debugUiGo == null)
+            {
+                _debugUiGo = new GameObject("Subtitle.DebugUI");
+                _debugUiGo.hideFlags = HideFlags.DontSave;
+                DontDestroyOnLoad(_debugUiGo);
+                _debugUiGo.AddComponent<Subtitle.DebugTools.DebugPhrasePanel>();
+            }
+            var panel = _debugUiGo.GetComponent<Subtitle.DebugTools.DebugPhrasePanel>();
+            if (panel == null) return false;
+            panel.Show();
+            return true;
         }
 
         internal void DestroySubtitle()

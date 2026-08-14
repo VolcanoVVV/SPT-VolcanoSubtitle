@@ -32,6 +32,7 @@
   "ravangeZryachiyEvent": "Vengeful Zryachiy",
   "bossTagillaAgro": "Minotaur",
   "bossKillaAgro": "Labyrinth Killa",
+  "bosslegion": { "Name": "Legion", "Kind": "Bosses" },
   "followerBigPipe": "Big Pipe",
   "followerBirdEye": "Birdeye",
   "bossGluhar": "Glukhar",

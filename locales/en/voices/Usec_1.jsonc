@@ -1,0 +1,1143 @@
+{
+  "BadWork": {
+    "General": [
+      "Bad work."
+    ],
+    "0": "What the hell is wrong with you?",
+    "1": "Are you nuts? What the hell?",
+    "2": "Shit, what's your problem, man?",
+    "3": "What the hell is wrong with you?!",
+    "4": "Are you nuts? What the hell?",
+    "5": "Shit, what's your problem, man?"
+  },
+  "Bleeding": {
+    "General": [
+      "I'm bleeding."
+    ],
+    "0": "I need a bandage.",
+    "1": "Need to put a bandage.",
+    "2": "Need to put on a bandage.",
+    "3": "Damn it's cold",
+    "4": "I'm losing blood.",
+    "5": "I'm bleeding.",
+    "6": "Ah, I'm bleeding."
+  },
+  "CheckHim": {
+    "General": [
+      "Check him."
+    ],
+    "0": "Check him.",
+    "1": "Check him.",
+    "2": "Search him.",
+    "3": "Search him."
+  },
+  "Clear": {
+    "General": [
+      "Clear."
+    ],
+    "0": "No one here.",
+    "1": "It's clear.",
+    "2": "SECTOR CLEAR!",
+    "3": "AREA CLEAR!",
+    "4": "Clear!",
+    "5": "examined",
+    "6": "No one here!",
+    "7": "It's clear!",
+    "8": "AREA CLEAR!"
+  },
+  "Cooperation": {
+    "General": [
+      "Let's cooperate."
+    ],
+    "0": "Okay guys, we need to all work together.",
+    "1": "Okay, guys, we need to all work together.",
+    "2": "Want to cooperate?",
+    "3": "Hey, bro, let's unite.",
+    "4": "Hey, bro, let's team up.",
+    "5": "I've got a proposition. Let's work together.",
+    "6": "Wanna party?",
+    "7": "Ha! Want to party?"
+  },
+  "Covering": {
+    "General": [
+      "Covering."
+    ],
+    "0": "Covering.",
+    "1": "Go! Go! I'm covering!",
+    "2": "COVERING",
+    "3": "Go, go, I'm covering!"
+  },
+  "CoverMe": {
+    "General": [
+      "Cover me."
+    ],
+    "0": "COVER ME!",
+    "1": "COVER ME!",
+    "2": "NEED COVERING ASSISTANCE!",
+    "3": "COVERFIRE!"
+  },
+  "Dehydrated": {
+    "General": [
+      "I'm dehydrated."
+    ],
+    "0": "I need some water.",
+    "1": "Damn, I need a drink.",
+    "2": "Water."
+  },
+  "DontKnow": {
+    "General": [
+      "I don't know."
+    ],
+    "0": "Don't know.",
+    "1": "Not sure.",
+    "2": "Ask later.",
+    "3": "DON'T KNOW!",
+    "4": "Not sure."
+  },
+  "Down": {
+    "General": [
+      "Man down."
+    ],
+    "0": "Aw, shit. Buddy's down.",
+    "1": "Our guy's down.",
+    "2": "We have casualties.",
+    "3": "We have casualties.",
+    "4": "Oh fuck teammates down"
+  },
+  "EnemyDown": {
+    "General": [
+      "Enemy down."
+    ],
+    "0": "Threat eliminated.",
+    "1": "One down.",
+    "2": "This one's finished.",
+    "3": "Minus one.",
+    "4": "Scav down.",
+    "5": "Enemy killed.",
+    "6": "Enemy down.",
+    "7": "You sick. Down.",
+    "8": "Tourist finished.",
+    "9": "Threat eliminated.",
+    "10": "One down.",
+    "11": "This one's finished.",
+    "12": "Minus one.",
+    "13": "Scav's down.",
+    "14": "Enemy killed.",
+    "15": "Enemy down.",
+    "16": "You sick. Down.",
+    "17": "Tourist finished."
+  },
+  "EnemyHit": {
+    "General": [
+      "Enemy hit."
+    ],
+    "0": "Got him.",
+    "1": "He's hit.",
+    "2": "Target hit.",
+    "3": "Direct hit!",
+    "4": "I'm sure he's hurt."
+  },
+  "Exhausted": {
+    "General": [
+      "I'm exhausted."
+    ],
+    "0": "Tired of this shit.",
+    "1": "I'm so tired.",
+    "2": "We need to take a break.",
+    "3": "Damn, I'm exhausted.",
+    "4": "I can't go on. Just leave me here."
+  },
+  "ExitLocated": {
+    "General": [
+      "Exit located."
+    ],
+    "0": "EXIT LOCATED",
+    "1": "Time to get out, it's good to go.",
+    "2": "Time to get out. It's good to go.",
+    "3": "Found an exit, time for extract.",
+    "4": "Found an exit. It's time to extract.",
+    "5": "EP located."
+  },
+  "Fire": {
+    "General": [
+      "Fire!"
+    ],
+    "0": "WEAPONS FREAK!",
+    "1": "Weapons ready!",
+    "2": "Weapons ready.",
+    "3": "CLEARED TO FIRE!",
+    "4": "WE'RE GOOD TO FIRE!"
+  },
+  "FollowMe": {
+    "General": [
+      "Follow me."
+    ],
+    "0": "Everybody, on me.",
+    "1": "I'm leading. Let's go.",
+    "2": "FOLLOW ME!",
+    "3": "Everybody on me",
+    "4": "I'm leading. Let's go."
+  },
+  "FriendlyFire": {
+    "General": [
+      "Friendly fire!"
+    ],
+    "0": "Friendly Fire!",
+    "1": "What are you shooting, dammit?",
+    "2": "FF!",
+    "3": "Hey, what you doing?"
+  },
+  "GetBack": {
+    "General": [
+      "Get back."
+    ],
+    "0": "Fall back.",
+    "1": "Get the hell out!",
+    "2": "Get back!",
+    "3": "Fall back!",
+    "4": "GET THE HELL OUT!"
+  },
+  "GetInCover": {
+    "General": [
+      "Get in cover."
+    ],
+    "0": "Take cover.",
+    "1": "Cover up with something.",
+    "2": "In cover, fast."
+  },
+  "GoForward": {
+    "General": [
+      "Move forward."
+    ],
+    "0": "Go forward.",
+    "1": "Go ahead.",
+    "2": "Go forward.",
+    "3": "Go ahead."
+  },
+  "Gogogo": {
+    "General": [
+      "Go, go, go!"
+    ],
+    "0": "GO!",
+    "1": "Let's do it!",
+    "2": "MOVE!",
+    "3": "KEEP UP!",
+    "4": "Go as planned.",
+    "5": "Carry on, guys.",
+    "6": "GO!",
+    "7": "Go, go, go!",
+    "8": "Let's do it!",
+    "9": "MOVE!",
+    "10": "Keep up!",
+    "11": "GO AS PLANNED!",
+    "12": "Carry on, guys!"
+  },
+  "Going": {
+    "General": [
+      "Moving."
+    ],
+    "0": "I'm off.",
+    "1": "Keeping forward!",
+    "2": "I'M OFF!",
+    "3": "Keeping forward!"
+  },
+  "GoLoot": {
+    "General": [
+      "Go loot."
+    ],
+    "0": "You're on loot.",
+    "1": "Go, grab the staff.",
+    "2": "Go on looting. I'll cover.",
+    "3": "Check this.",
+    "4": "Check this.",
+    "5": "Go look for staff.",
+    "6": "Go loot this."
+  },
+  "GoodWork": {
+    "General": [
+      "Good work."
+    ],
+    "0": "Good one!",
+    "1": "Nice work, fella.",
+    "2": "Nice move.",
+    "3": "THAT'S more like it!",
+    "4": "MARVELOUS!",
+    "5": "Good one!",
+    "6": "Nice work, fella.",
+    "7": "Nice move.",
+    "8": "THAT'S MORE LIKE IT!",
+    "9": "MARVELOUS!"
+  },
+  "HandBroken": {
+    "General": [
+      "My arm is broken."
+    ],
+    "0": "Oh, my hand is broken.",
+    "1": "My hand is fractured.",
+    "2": "Damn. Broke my arm.",
+    "3": "Damn, hand is fractured."
+  },
+  "Hit": {
+    "General": [
+      "I'm hit."
+    ],
+    "0": "Teammate down.",
+    "1": "Teammate down.",
+    "2": "Aw, shit! Buddy's down!",
+    "3": "Our guy's down.",
+    "4": "We have casualties."
+  },
+  "HoldFire": {
+    "General": [
+      "Hold fire."
+    ],
+    "0": "Cease fire!",
+    "1": "Hold your fire!"
+  },
+  "HoldPosition": {
+    "General": [
+      "Hold position."
+    ],
+    "0": "Hold position.",
+    "1": "Hold this point!",
+    "2": "Dig in!"
+  },
+  "HurtHeavy": {
+    "General": [
+      "I'm badly hurt."
+    ],
+    "0": "Damn, they really got me bad.",
+    "1": "Damn, they got me really bad.",
+    "2": "Goddamn shit, I'm fucking hurt."
+  },
+  "HurtLight": {
+    "General": [
+      "I'm lightly wounded."
+    ],
+    "0": "I'M HURT!",
+    "1": "Cut a hit!",
+    "2": "I'M HIT!",
+    "3": "Shit! I'm hit!",
+    "4": "Ah! I'm hurt!",
+    "5": "Shit, I'm hit!",
+    "6": "Ah, shit, they got me.",
+    "7": "I'm injured slightly.",
+    "8": "I'm hit all right.",
+    "9": "Damn, they got me really bad."
+  },
+  "HurtMedium": {
+    "General": [
+      "I'm wounded."
+    ],
+    "0": "Ugh, I'm hurt.",
+    "1": "Ugh! I'm hurt!",
+    "2": "Ah, got a hit.",
+    "3": "kind of hits.",
+    "4": "Ah, I'm hits.",
+    "5": "Ah! Shit, I'm hit!"
+  },
+  "HurtNearDeath": {
+    "General": [
+      "I'm dying."
+    ],
+    "0": "Ugh, I'm finished.",
+    "1": "I'm a goner, guys.",
+    "2": "I'm a goner guys",
+    "3": "I'm out. This is the end for me.",
+    "4": "Go without me. I'm done.",
+    "5": "This is the end for me."
+  },
+  "InTheFront": {
+    "General": [
+      "In front."
+    ],
+    "0": "Threat on 12.",
+    "1": "Bad guys front.",
+    "2": "Movement ahead.",
+    "3": "Thread on 12.",
+    "4": "Bad Guys Front",
+    "5": "Movement ahead.",
+    "6": "Thread on 12.",
+    "7": "BAD GUYS FRONT!",
+    "8": "Movement ahead!",
+    "9": "12 o'clock!",
+    "10": "Straight ahead!",
+    "11": "Eyes forward! 12 o'clock!",
+    "12": "RIGHT IN FRONT!"
+  },
+  "KnifeKill": {
+    "General": [
+      "Knife kill."
+    ],
+    "0": "Like a butter.",
+    "1": "Got him cold.",
+    "2": "Stabbed him.",
+    "3": "Yeah, like butter.",
+    "4": "Got him cold."
+  },
+  "KnifesOnly": {
+    "General": [
+      "Knives only."
+    ],
+    "0": "Weapons Hold.",
+    "1": "No firearms.",
+    "2": "Knives ready.",
+    "3": "Knives only.",
+    "4": "Weapons Hold.",
+    "5": "Knives ready.",
+    "6": "Knives only.",
+    "7": "WEAPONS HOLD!",
+    "8": "No firearms!",
+    "9": "Knives ready!",
+    "10": "Knives only!"
+  },
+  "LeftFlank": {
+    "General": [
+      "Left flank."
+    ],
+    "0": "Left flank!",
+    "1": "Left side.",
+    "2": "9 o'clock!",
+    "3": "LEFT FLANK!",
+    "4": "Left side!"
+  },
+  "LegBroken": {
+    "General": [
+      "My leg is broken."
+    ],
+    "0": "Ugh, legs broke and shit.",
+    "1": "Legs broken shit",
+    "2": "Ugh, leg's gone.",
+    "3": "Lex gone.",
+    "4": "I need a fix.",
+    "5": "Ugh, need a fix."
+  },
+  "LockedDoor": {
+    "General": [
+      "The door is locked."
+    ],
+    "0": "It's locked.",
+    "1": "It's locked.",
+    "2": "Locked.",
+    "3": "It's no go.",
+    "4": "It's no go.",
+    "5": "Do you have a multi-tool?",
+    "6": "Need a key.",
+    "7": "Gotta break it somehow.",
+    "8": "Need a key.",
+    "9": "Gotta break it somehow."
+  },
+  "Look": {
+    "General": [
+      "Look out."
+    ],
+    "0": "HEADS UP!",
+    "1": "Eyes open.",
+    "2": "ATTENTION!",
+    "3": "Stay sharp.",
+    "4": "Easy, guys.",
+    "5": "ATTENTION! Stay clear!",
+    "6": "Heads up!",
+    "7": "STAY SHARP, GUYS!",
+    "8": "EYES OPEN!",
+    "9": "",
+    "10": "Stay sharp!",
+    "11": "Easy, guys."
+  },
+  "LootBody": {
+    "General": [
+      "Loot the body."
+    ],
+    "0": "Got a body here.",
+    "1": "Dead body over here.",
+    "2": "There's a corpse.",
+    "3": "Camper over here.",
+    "4": "This one is deadly tired.",
+    "5": "Bad luck for him."
+  },
+  "LootContainer": {
+    "General": [
+      "Loot the container."
+    ],
+    "0": "and place to search.",
+    "1": "Look.",
+    "2": "Need to search this.",
+    "3": "Maybe it contains something useful.",
+    "4": "A place to search.",
+    "5": "Look.",
+    "6": "Need to search this.",
+    "7": "Maybe it contains something useful."
+  },
+  "LootGeneric": {
+    "General": [
+      "Looting."
+    ],
+    "0": "Here's some stuff.",
+    "1": "Here's some loot.",
+    "2": "Found something.",
+    "3": "Here's some stuff.",
+    "4": "Found something."
+  },
+  "LootKey": {
+    "General": [
+      "Found a key."
+    ],
+    "0": "Key with me.",
+    "1": "I got a key."
+  },
+  "LootMoney": {
+    "General": [
+      "Found money."
+    ],
+    "0": "There's money over there.",
+    "1": "I see some money.",
+    "2": "Cash over here."
+  },
+  "LootNothing": {
+    "General": [
+      "Nothing here."
+    ],
+    "0": "Got scavenged already.",
+    "1": "It's scavenged already.",
+    "2": "Empty.",
+    "3": "Nothing here.",
+    "4": "Damn, nothing."
+  },
+  "LootWeapon": {
+    "General": [
+      "Found a weapon."
+    ],
+    "0": "Here's a gun.",
+    "1": "See you later, guys.",
+    "2": "Here's again.",
+    "3": "Guys, I see a laying weapon."
+  },
+  "LostVisual": {
+    "General": [
+      "Lost visual."
+    ],
+    "0": "Where is he?",
+    "1": "Where is he?",
+    "2": "Damn, he's gone.",
+    "3": "What the? He's vanished!",
+    "4": "Where are you?",
+    "5": "Where are you?",
+    "6": "Come out.",
+    "7": "Stop hiding.",
+    "8": "Stop hiding!",
+    "9": "Damn, he's gone.",
+    "10": "What the? He's vanished."
+  },
+  "NeedAmmo": {
+    "General": [
+      "I need ammo."
+    ],
+    "0": "I'm empty.",
+    "1": "Requesting some ordnance.",
+    "2": "Shit, no ammo!",
+    "3": "I'm empty.",
+    "4": "I NEED AMMO!",
+    "5": "I need ammo.",
+    "6": "Ammo, anyone?",
+    "7": "Ammo anyone!",
+    "8": "I need some ammo!",
+    "9": "I'M EMPTY!",
+    "10": "NO AMMO!",
+    "11": "SHIT NO AMMO"
+  },
+  "NeedFrag": {
+    "General": [
+      "I need a grenade."
+    ],
+    "0": "Need a grenade here!",
+    "1": "Blow it up!",
+    "2": "Do you have an ED?"
+  },
+  "NeedHelp": {
+    "General": [
+      "I need help."
+    ],
+    "0": "Need help.",
+    "1": "NEED ASSISTANCE!",
+    "2": "I NEED BACKUP!",
+    "3": "Over here!",
+    "4": "I'm pinned!",
+    "5": "NEED HELP!",
+    "6": "NEED ASSISTANCE!",
+    "7": "I NEED A BACKUP!",
+    "8": "Over here!",
+    "9": "I'M PINNED!"
+  },
+  "NeedMedkit": {
+    "General": [
+      "I need a medkit."
+    ],
+    "0": "I need a med kit.",
+    "1": "Aw, damn! I need to be patched.",
+    "2": "Do you have some meds?",
+    "3": "Do you have some meds?",
+    "4": "Ugh! Damn, I need a doctor!",
+    "5": "Ugh, I feel like shit!",
+    "6": "Call an ambulance!",
+    "7": "Call an ambulance.",
+    "8": "Ah, call 911."
+  },
+  "NeedSniper": {
+    "General": [
+      "We need a sniper."
+    ],
+    "0": "Need sniper support!",
+    "1": "Sniper calling in.",
+    "2": "Angels save us!"
+  },
+  "NeedWeapon": {
+    "General": [
+      "I need a weapon."
+    ],
+    "0": "I need a weapon.",
+    "1": "I need a weapon.",
+    "2": "Need a gun.",
+    "3": "Need a gun."
+  },
+  "Negative": {
+    "General": [
+      "Negative."
+    ],
+    "0": "No way.",
+    "1": "Can't do.",
+    "2": "Negative.",
+    "3": "No way!",
+    "4": "Can't do.",
+    "5": "Negative"
+  },
+  "NoisePhrase": {
+    "General": [
+      "I heard something."
+    ],
+    "0": "I hear noise. Quiet.",
+    "1": "Did you hear that?",
+    "2": "Did you hear that?",
+    "3": "Quiet, what the hell?",
+    "4": "I hear noise. Quiet."
+  },
+  "OnAgony": {
+    "General": [
+      "(agonized groaning...)"
+    ],
+    "0": "(agonized groaning...)",
+    "1": "(agonized groaning...)",
+    "2": "(agonized groaning...)",
+    "3": "(agonized groaning...)"
+  },
+  "OnBeingHurt": {
+    "General": [
+      "(sounds of pain...)"
+    ],
+    "0": "(sounds of pain...)",
+    "1": "(sounds of pain...)",
+    "2": "(sounds of pain...)",
+    "3": "(sounds of pain...)",
+    "4": "(sounds of pain...)",
+    "5": "(sounds of pain...)",
+    "6": "(sounds of pain...)",
+    "7": "(sounds of pain...)",
+    "8": "(sounds of pain...)",
+    "9": "(sounds of pain...)",
+    "10": "(sounds of pain...)",
+    "11": "(sounds of pain...)",
+    "12": "(sounds of pain...)",
+    "13": "(sounds of pain...)",
+    "14": "(sounds of pain...)",
+    "15": "(sounds of pain...)"
+  },
+  "OnBeingHurtDissapoinment": {
+    "General": [
+      "I've been hit."
+    ],
+    "0": "Shit! I'm hit!",
+    "1": "Ah! I'm hurt!",
+    "2": "Ah, shit, they got me.",
+    "3": "I'm injured slightly.",
+    "4": "Damn, they got me really bad.",
+    "5": "I'm hit all right.",
+    "6": "Ah, I'm hits.",
+    "7": "Ugh, I'm hurt.",
+    "8": "kind of hits.",
+    "9": "Ah, got a hit.",
+    "10": "Ah! Shit, I'm hit!",
+    "11": "Ugh! I'm hurt!",
+    "12": "I'm a goner guys",
+    "13": "Ugh, I'm finished.",
+    "14": "I'm a goner, guys.",
+    "15": "I'm out. This is the end for me.",
+    "16": "Go without me. I'm done.",
+    "17": "I'M HURT!",
+    "18": "Cut a hit!",
+    "19": "Shit! I'm hit!",
+    "20": "Shit, I'm hit!",
+    "21": "This is the end for me."
+  },
+  "OnBreath": {
+    "General": [
+      "(heavy breathing and coughing)"
+    ],
+    "0": "(heavy breathing and coughing)",
+    "1": "(heavy breathing and coughing)",
+    "2": "(heavy breathing and coughing)",
+    "3": "(heavy breathing and coughing)"
+  },
+  "OnDeath": {
+    "General": [
+      "(dying sounds)"
+    ],
+    "0": "(dying sounds)",
+    "1": "(dying sounds)",
+    "2": "(dying sounds)",
+    "3": "(dying sounds)",
+    "4": "(dying sounds)",
+    "5": "(dying sounds)",
+    "6": "(dying sounds)",
+    "7": "(dying sounds)"
+  },
+  "OnEnemyConversation": {
+    "General": [
+      "Enemy talking."
+    ],
+    "0": "Yeah, yeah, I keep saying that!",
+    "1": "GIVE UP, YOU'RE PINNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+    "2": "I heard you're empty! Too bad!",
+    "3": "GODDAMN RUSKIES"
+  },
+  "OnEnemyDown": {
+    "General": [
+      "Target down."
+    ],
+    "0": "Threat eliminated.",
+    "1": "Minus one.",
+    "2": "This one's finished.",
+    "3": "Enemy down.",
+    "4": "Tourist finished.",
+    "5": "Enemy killed.",
+    "6": "Scav down.",
+    "7": "One down.",
+    "8": "You sick. Down.",
+    "9": "One down.",
+    "10": "Enemy down.",
+    "11": "Minus one.",
+    "12": "Enemy killed.",
+    "13": "Tourist finished.",
+    "14": "You sick. Down.",
+    "15": "This one's finished.",
+    "16": "Scav's down.",
+    "17": "Threat eliminated."
+  },
+  "OnEnemyGrenade": {
+    "General": [
+      "Enemy grenade!"
+    ],
+    "0": "Get down! Grenade!",
+    "1": "ENEMY FRAG!",
+    "2": "EFD'S NOT OURS!"
+  },
+  "OnEnemyShot": {
+    "General": [
+      "Enemy hit."
+    ],
+    "0": "Target hit.",
+    "1": "Direct hit!",
+    "2": "I'm sure he's hurt.",
+    "3": "Got him.",
+    "4": "He's hit."
+  },
+  "OnFight": {
+    "General": [
+      "Fight!"
+    ],
+    "0": "You motherfucker.",
+    "1": "Asshole",
+    "2": "Goddamn Ruskies.",
+    "3": "Son of a...",
+    "4": "Piece of shit.",
+    "5": "Damn, Ivans.",
+    "6": "Die, scav.",
+    "7": "Bastard",
+    "8": "DAMN! They're still breathing!",
+    "9": "Aw, look at him, goddamn pussy!",
+    "10": "Bears, give up!",
+    "11": "KEEP THEM COMING!",
+    "12": "Is this your warfare? You should try better!",
+    "13": "LAY DOWN YOUR WEAPONS AND GIVE UP!",
+    "14": "Yeah, yeah, I keep saying that!",
+    "15": "We are coming, you hear?",
+    "16": "SHUT UP, GODDAMMIT!",
+    "17": "Just let us pass and you'll be spared!",
+    "18": "Give up, Bears!",
+    "19": "Come out, you coward!",
+    "20": "GIVE UP, YOU'RE PINNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+    "21": "JUST DIE ALREADY!",
+    "22": "Gonna kill you all, bastards!",
+    "23": "YOU'RE GOING DOWN FOR ALL THIS SHIT!",
+    "24": "WHAT'S THE MATTER, YOU SCARED?!",
+    "25": "Ha ha ha ha ha! Ha ha ha ha ha ha ha ha ha!",
+    "26": "",
+    "27": "",
+    "28": "Damn, Ivans!",
+    "29": "ASSHOLE!",
+    "30": "PIECE OF SHIT!",
+    "31": "Son of a-",
+    "32": "GODDAMN RUSKIES",
+    "33": "DIE, SCAV!",
+    "34": "BASTARD!",
+    "35": "YOU MOTHER-"
+  },
+  "OnFirstContact": {
+    "General": [
+      "Contact!"
+    ],
+    "0": "Nike's over there.",
+    "1": "I see a bandit.",
+    "2": "Locals arrived.",
+    "3": "Scav spotted.",
+    "4": "Scav over there.",
+    "5": "Scav spotted.",
+    "6": "Ruskies ahead.",
+    "7": "We got a bandit.",
+    "8": "You sex spotted.",
+    "9": "Scam Ahead!",
+    "10": "USAC front!",
+    "11": "Tours to 12 o'clock.",
+    "12": "BEAR FRONT!",
+    "13": "Bear spotted.",
+    "14": "Heads up, it's Bear!",
+    "15": "We got a bandit.",
+    "16": "Locals arrived.",
+    "17": "Tango!",
+    "18": "Enemies spotted!",
+    "19": "I see the enemy.",
+    "20": "Contact!",
+    "21": "Enemy front!",
+    "22": "I see him.",
+    "23": "Bad guy, over there!",
+    "24": "Charlie."
+  },
+  "OnFriendlyDown": {
+    "General": [
+      "Friendly down."
+    ],
+    "0": "Aw, shit. Buddy's down.",
+    "1": "Our guy's down.",
+    "2": "We have casualties.",
+    "3": "We have casualties.",
+    "4": "Oh fuck teammates down"
+  },
+  "OnGoodWork": {
+    "General": [
+      "Good work."
+    ],
+    "0": "Nice move.",
+    "1": "Nice work, fella.",
+    "2": "Good one!",
+    "3": "THAT'S more like it!",
+    "4": "MARVELOUS!",
+    "5": "THAT'S MORE LIKE IT!",
+    "6": "MARVELOUS!",
+    "7": "Nice work, fella.",
+    "8": "Nice move.",
+    "9": "Good one!"
+  },
+  "OnGrenade": {
+    "General": [
+      "Grenade!"
+    ],
+    "0": "Grenade out!",
+    "1": "Frag out!",
+    "2": "EFD out.",
+    "3": "Throwing frag!",
+    "4": "Fire in the hole!"
+  },
+  "OnLoot": {
+    "General": [
+      "Looting."
+    ],
+    "0": "I'm on loot. Cover me.",
+    "1": "Going to pick up the staff. Cover me."
+  },
+  "OnLostVisual": {
+    "General": [
+      "Lost visual."
+    ],
+    "0": "Where is he?",
+    "1": "Where is he?",
+    "2": "Damn, he's gone.",
+    "3": "What the? He's vanished.",
+    "4": "Damn, he's gone.",
+    "5": "Where are you?",
+    "6": "Come out.",
+    "7": "Where are you?",
+    "8": "Stop hiding.",
+    "9": "Stop hiding!",
+    "10": "What the? He's vanished!"
+  },
+  "OnMutter": {
+    "General": [
+      "(muttering...)"
+    ],
+    "0": "Okay, we got bears. Now we got goddamn scavs.",
+    "1": "Other guys saw bears in this area.",
+    "2": "What's up over there? Oh, never mind.",
+    "3": "Just stay focused, guys.",
+    "4": "Better sweep your sectors.",
+    "5": "Scavs here? No way, man.",
+    "6": "So, what do we got here?",
+    "7": "Never mind, we still got work to do.",
+    "8": "(muttering...)",
+    "9": "Okay, it's nothing.",
+    "10": "What about Command? They just left us.",
+    "11": "You better worry about bears.",
+    "12": "So, what do we have here?",
+    "13": "Huh.",
+    "14": "Damn, I'm tired of this walking.",
+    "15": "No one's left behind? Yeah, sure.",
+    "16": "Like in the movie. I've got a bad feeling about this.",
+    "17": "Nice"
+  },
+  "OnOutOfAmmo": {
+    "General": [
+      "I'm out of ammo."
+    ],
+    "0": "I'm empty.",
+    "1": "I'm empty.",
+    "2": "Shit, no ammo!",
+    "3": "I'm empty.",
+    "4": "Ammo, anyone?",
+    "5": "I need ammo.",
+    "6": "I NEED AMMO!",
+    "7": "Ammo anyone!",
+    "8": "NO AMMO!",
+    "9": "SHIT NO AMMO"
+  },
+  "OnPosition": {
+    "General": [
+      "In position."
+    ],
+    "0": "I'M IN PLACE!",
+    "1": "I'm on position.",
+    "2": "On position!",
+    "3": "I'M ON POINTS!"
+  },
+  "OnRepeatedContact": {
+    "General": [
+      "Contact again!"
+    ],
+    "0": "Contact.",
+    "1": "Bad guy over there.",
+    "2": "I see the enemy.",
+    "3": "Enemy spotted.",
+    "4": "I see him.",
+    "5": "Bad guy, over there!",
+    "6": "I see the enemy.",
+    "7": "Enemies spotted!"
+  },
+  "OnSix": {
+    "General": [
+      "Behind us."
+    ],
+    "0": "Right behind!",
+    "1": "ON OUR SIX!",
+    "2": "RIGHT BEHIND!"
+  },
+  "OnWeaponJammed": {
+    "General": [
+      "Weapon jammed."
+    ],
+    "0": "Shit, it's gotta recharge!"
+  },
+  "OnWeaponReload": {
+    "General": [
+      "Reloading."
+    ],
+    "0": "Gotta reload!",
+    "1": "Reloading.",
+    "2": "Reloading!",
+    "3": "I need to change Mac!",
+    "4": "Changing mag.",
+    "5": "Dammit!",
+    "6": "I need to reload!",
+    "7": "I NEED TO CHANGE MAG!",
+    "8": "I need to reload!",
+    "9": "Reloading!",
+    "10": "GOT TO RELOAD!",
+    "11": "MAG CHANGE!",
+    "12": "DAMN IT!",
+    "13": "Changing mag.",
+    "14": "Reloading!"
+  },
+  "OnYourOwn": {
+    "General": [
+      "You're on your own."
+    ],
+    "0": "Let's split.",
+    "1": "Everyone on your own.",
+    "2": "Let's take a part. You know the drills.",
+    "3": "The stake apart, you know the drills.",
+    "4": "Everyone, take a roll. You know the drills."
+  },
+  "OpenDoor": {
+    "General": [
+      "Open the door."
+    ],
+    "0": "Open this door.",
+    "1": "Door, open it.",
+    "2": "Door, open it."
+  },
+  "Rat": {
+    "General": [
+      "Traitor!"
+    ],
+    "0": "God damn traitor.",
+    "1": "We got a rat here, dammit!"
+  },
+  "Ready": {
+    "General": [
+      "Ready."
+    ],
+    "0": "I'm ready.",
+    "1": "Ready.",
+    "2": "Ready to go!",
+    "3": "Standing by.",
+    "4": "On your mark.",
+    "5": "I'm ready.",
+    "6": "Ready!",
+    "7": "Ready to go!",
+    "8": "standing by",
+    "9": "ON YOUR MARK"
+  },
+  "Regroup": {
+    "General": [
+      "Regroup."
+    ],
+    "0": "Gather up!",
+    "1": "INFORMATION",
+    "2": "Stay grouped!",
+    "3": "Gather up!",
+    "4": "INFORMATION!"
+  },
+  "Repeat": {
+    "General": [
+      "Repeat that."
+    ],
+    "0": "Say again?",
+    "1": "What?",
+    "2": "Can't hear it.",
+    "3": "REPEAT!",
+    "4": "Say again?",
+    "5": "WHAT?!",
+    "6": "Can't hear it!",
+    "7": "REPEAT!"
+  },
+  "RightFlank": {
+    "General": [
+      "Right flank."
+    ],
+    "0": "RIGHT SIDE!",
+    "1": "Three o'clock.",
+    "2": "RIGHT FLANK!",
+    "3": "Right side!"
+  },
+  "Roger": {
+    "General": [
+      "Roger."
+    ],
+    "0": "Yes.",
+    "1": "Roger that.",
+    "2": "I'm okay with it.",
+    "3": "Affirmative.",
+    "4": "Affirmative!",
+    "5": "Confirmed.",
+    "6": "Okay, I'm on it.",
+    "7": "Yes.",
+    "8": "Okay!",
+    "9": "OKAY!",
+    "10": "Roger that!",
+    "11": "Confirmed!",
+    "12": "Okay, I'm on it!"
+  },
+  "Scav": {
+    "General": [
+      "Scav spotted."
+    ],
+    "0": "Scav spotted.",
+    "1": "Scav spotted.",
+    "2": "Scav over there.",
+    "3": "I see a bandit.",
+    "4": "Locals arrived.",
+    "5": "We got a bandit.",
+    "6": "Scam Ahead!",
+    "7": "We got a bandit.",
+    "8": "Locals arrived."
+  },
+  "ScavDown": {
+    "General": [
+      "Scav down."
+    ],
+    "0": "Scav down.",
+    "1": "Scav's down."
+  },
+  "Silence": {
+    "General": [
+      "Quiet."
+    ],
+    "0": "SILENCE!",
+    "1": "Keep quiet.",
+    "2": "Silence.",
+    "3": "No sound.",
+    "4": "Keep quiet.",
+    "5": "No sound.",
+    "6": "Silence!",
+    "7": "Keep quiet.",
+    "8": "Silence."
+  },
+  "SniperPhrase": {
+    "General": [
+      "Sniper!"
+    ],
+    "0": "It's a sniper. Take cover.",
+    "1": "SHIT! Enemy sniper!",
+    "2": "Sniper!"
+  },
+  "Spreadout": {
+    "General": [
+      "Spread out."
+    ],
+    "0": "Spread!",
+    "1": "Spread out!"
+  },
+  "Stop": {
+    "General": [
+      "Stop."
+    ],
+    "0": "STOP!",
+    "1": "Hold it!",
+    "2": "STOP!",
+    "3": "FREEZE!",
+    "4": "Hold it!"
+  },
+  "Suppress": {
+    "General": [
+      "Suppress them."
+    ],
+    "0": "Push it.",
+    "1": "Keep them pinned.",
+    "2": "Suppressive fire.",
+    "3": "Send him some lead.",
+    "4": "Push it, push it."
+  },
+  "WeaponBroken": {
+    "General": [
+      "Weapon broken."
+    ],
+    "0": "WHIP'S BROKEN!",
+    "1": "Dammit, my weapon's gone!",
+    "2": "Damn it! My web's gone."
+  }
+}

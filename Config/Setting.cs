@@ -55,6 +55,7 @@ namespace Subtitle.Config
         // —— Sections —— //
         private const string GeneralSection = "1. 通用";
         internal const string InterfaceSection = "1.1 界面";
+        internal const string CompatibilitySection = "1.2 兼容性";
 
         private const string SubtitleGeneralSection = "2 字幕 - 通用";
         private const string SubtitleAdvancedSection = "2.1 字幕 - 进阶";
@@ -74,7 +75,7 @@ namespace Subtitle.Config
         private const string W3dRoleColorSection = "4.2 3D气泡 - 角色颜色";
         private const string W3dRoleTextColorSection = "4.3 3D气泡 - 角色文本颜色";
 
-        private const string DebugSection = "99. 测试";
+        internal const string DebugSection = "99. 测试";
 
         // —— General —— //
         public static ConfigEntry<string> TextPresetName;
@@ -374,6 +375,7 @@ namespace Subtitle.Config
         // —— Debug —— //
         public static ConfigEntry<bool> EnableDebugTools;
         public static ConfigEntry<KeyboardShortcut> DebugPanelHotkey;
+        public static ConfigEntry<bool> VoiceEventDebugLog;
         public static ConfigEntry<bool> DanmakuDebugVerbose;
         public static BepInEx.Configuration.ConfigEntry<bool> MapBroadcastDebug;
         public static ConfigEntry<float> VoiceDedupWindowSec;
@@ -439,7 +441,7 @@ namespace Subtitle.Config
             entries.Add(TextPresetName = Config.Bind(
                 GeneralSection,
                 "文本样式预设",
-                "default",
+                DefaultTextPresetName,
                 new ConfigDescription(
                     "从 presets 文件夹读取所有 .jsonc预设文件。点击“应用”后，会将预设中所有包含选项一次性导入本配置。",
                     null,
@@ -455,8 +457,8 @@ namespace Subtitle.Config
                 if (string.IsNullOrEmpty(s_PresetsDir))
                     s_PresetsDir = Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "presets");
 
-                var name = TextPresetName.Value ?? "default";
-                var path = Path.Combine(s_PresetsDir, name + ".jsonc");
+                var name = TextPresetName.Value ?? DefaultTextPresetName;
+                var path = GetTextPresetPath(name);
                 if (!File.Exists(path))
                 {
                     s_Log.LogWarning($"[Settings] Preset '{name}' not found, keep selection but apply requires valid file.");
@@ -474,7 +476,7 @@ namespace Subtitle.Config
                 "界面 语言",
                 I18n.DefaultLanguage,
                 new ConfigDescription(
-                    "界面与字幕资源使用的语言（locales 下的语言目录名，如 ch）。\n切换后立即重载界面、台词、角色名、广播与主播词表；缺失文件回退 ch。",
+                    "界面与字幕资源使用的语言（locales 下的语言目录名，如 ch）。\n切换后立即重载界面、台词、角色名、广播与主播词表；角色台词缺失时使用当前语言的 Default_Voice，其他本地化资源缺失时可回退 ch。",
                     null,
                     new ConfigurationManagerAttributes { }),
                 null, delegate
@@ -1046,10 +1048,9 @@ namespace Subtitle.Config
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
                 "SubtitleBgShadowDistX", refreshSubtitleStyle);
 
-            // 注意：cfg 键与 DistX 相同是原有行为（两字段实际共享同一 entry），保持原样不“修复”
             SubtitleBgShadowDistY = Reg(
-                SubtitleAdvancedSection, "字幕 背景阴影水平偏移 X", -2f,
-                new ConfigDescription("背景阴影：水平偏移（px）", null,
+                SubtitleAdvancedSection, "字幕 背景阴影垂直偏移 Y", -2f,
+                new ConfigDescription("背景阴影：垂直偏移（px）", null,
                     new ConfigurationManagerAttributes { IsAdvanced = true, Indent = 1 }),
                 "SubtitleBgShadowDistY", refreshSubtitleStyle);
 
@@ -1931,13 +1932,13 @@ namespace Subtitle.Config
                 "启动调试工具",
                 false,
                 new ConfigDescription(
-                    "启用短句调试面板（仅开发/听写）。关闭则不创建面板，不影响正式游戏。",
+                    "启用语音浏览与字幕诊断工具（仅开发、听写和问题排查）。关闭后不创建调试界面，不影响正式游戏。",
                     null,
                     new ConfigurationManagerAttributes
                     {
-                        DispName = "启用调试工具",
+                        DispName = "启用开发者工具",
                         Category = "99.调试",
-                        Description = "启用短句调试面板（仅开发/听写）。",
+                        Description = "启用语音浏览与字幕诊断工具。",
             IsAdvanced = true
                     })));
 
@@ -1971,18 +1972,33 @@ namespace Subtitle.Config
                         IsAdvanced = true
                     })));
 
+            entries.Add(VoiceEventDebugLog = Config.Bind(
+                DebugSection,
+                "实时语音事件日志",
+                false,
+                new ConfigDescription(
+                    "把实时语音事件的 VoiceKey、Trigger、NetId、角色与频道处理结果写入 BepInEx 日志。此开关与调试面板相互独立。",
+                    null,
+                    new ConfigurationManagerAttributes
+                    {
+                        DispName = "实时语音事件日志",
+                        Category = "99.调试",
+                        Description = "输出实时语音事件及字幕处理结果。",
+                        IsAdvanced = true
+                    })));
+
             entries.Add(DanmakuDebugVerbose = Config.Bind(
                 DebugSection,
                 "弹幕：详细调试日志",
                 false,
                 new ConfigDescription(
-                    "弹幕详细调试日志（临时）。",
+                    "输出弹幕队列、语音去重命中与输出管线的详细日志。日志量较大，仅建议临时开启。",
                     null,
                     new ConfigurationManagerAttributes
                     {
-                        DispName = "弹幕：详细调试日志",
+                        DispName = "输出管线详细日志",
                         Category = "99.调试",
-                        Description = "弹幕详细调试日志（临时）。",
+                        Description = "输出弹幕、语音去重与投递管线的详细日志。",
             IsAdvanced = true
                     })));
 
@@ -1991,7 +2007,7 @@ namespace Subtitle.Config
                 "地图广播：调试日志",
                 false,
                 new ConfigDescription(
-                    "弹幕详细调试日志（临时）。",
+                    "输出地图广播音频的捕获、序列匹配与拦截详情。日志量较大，仅建议临时开启。",
                     null,
                     new ConfigurationManagerAttributes
                     {

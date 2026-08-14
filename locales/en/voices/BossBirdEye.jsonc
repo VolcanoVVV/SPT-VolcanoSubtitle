@@ -1,0 +1,349 @@
+{
+  "DontKnow": {
+    "General": [
+      "I don't know."
+    ],
+    "0": "I don't know, man.",
+    "1": "No idea."
+  },
+  "FriendlyFire": {
+    "General": [
+      "Friendly fire!"
+    ],
+    "0": "Ah, you stupid shit! You almost got me!",
+    "1": "Hey! Stop trying to kill me!"
+  },
+  "GetInCover": {
+    "General": [
+      "Get in cover."
+    ],
+    "0": "TAKE COVER!",
+    "1": "Take cover! Get down!"
+  },
+  "Going": {
+    "General": [
+      "Moving."
+    ],
+    "0": "I'm going.",
+    "1": "I'm going!",
+    "2": "Okay, I'm moving.",
+    "3": "Go, go, go!",
+    "4": "MOVE! MOVE!",
+    "5": "I'm going."
+  },
+  "HandBroken": {
+    "General": [
+      "My arm is broken."
+    ],
+    "0": "Damn! Arm is broken! It'll be hard to jack off now!",
+    "1": "Damn! Arm is broken!"
+  },
+  "HurtHeavy": {
+    "General": [
+      "I'm badly hurt."
+    ],
+    "0": "",
+    "1": "Cough, cough, cough.",
+    "2": "",
+    "3": "Cough, cough, cough."
+  },
+  "HurtNearDeath": {
+    "General": [
+      "I'm dying."
+    ],
+    "0": "",
+    "1": "",
+    "2": "",
+    "3": "Ah, that was faster than I thought."
+  },
+  "LegBroken": {
+    "General": [
+      "My leg is broken."
+    ],
+    "0": "Oh, Laker's gone. Fuck it."
+  },
+  "LootBody": {
+    "General": [
+      "Loot the body."
+    ],
+    "0": "Dead body here.",
+    "1": "BODY HAIR!"
+  },
+  "NeedAmmo": {
+    "General": [
+      "I need ammo."
+    ],
+    "0": "No ammo left!",
+    "1": "I HAVE NO AMMO TO SHOOT GUYS!"
+  },
+  "Negative": {
+    "General": [
+      "Negative."
+    ],
+    "0": "I disagree.",
+    "1": "FUCK THAT!"
+  },
+  "OnAgony": {
+    "General": [
+      "(agonized groaning...)"
+    ],
+    "0": "(agonized groaning...)",
+    "1": "(agonized groaning...)",
+    "2": "(agonized groaning...)",
+    "3": "(agonized groaning...)",
+    "4": "(agonized groaning...)",
+    "5": "(agonized groaning...)"
+  },
+  "OnBeingHurt": {
+    "General": [
+      "(sounds of pain...)"
+    ],
+    "0": "(sounds of pain...)",
+    "1": "(sounds of pain...)",
+    "2": "(sounds of pain...)",
+    "3": "(sounds of pain...)",
+    "4": "(sounds of pain...)"
+  },
+  "OnBeingHurtDissapoinment": {
+    "General": [
+      "I've been hit."
+    ],
+    "0": "I'M WOUNDED!",
+    "1": "I got hit, but it's okay. Carry on."
+  },
+  "OnBreath": {
+    "General": [
+      "(heavy breathing and coughing)"
+    ],
+    "0": "(heavy breathing and coughing)",
+    "1": "(heavy breathing and coughing)",
+    "2": "(heavy breathing and coughing)",
+    "3": "(heavy breathing and coughing)"
+  },
+  "OnDeath": {
+    "General": [
+      "(dying sounds)"
+    ],
+    "0": "(dying sounds)",
+    "1": "(dying sounds)",
+    "2": "(dying sounds)",
+    "3": "(dying sounds)",
+    "4": "(dying sounds)"
+  },
+  "OnEnemyConversation": {
+    "General": [
+      "Enemy talking."
+    ],
+    "0": "Yes, I hear, darling. I see the enemy.",
+    "1": "Oh finally, some action!",
+    "2": "Rise and shine! Finally some good action!",
+    "3": "contact",
+    "4": "I GOT A VISUAL",
+    "5": "I SEE A TARGET!",
+    "6": "Move out!"
+  },
+  "OnEnemyDown": {
+    "General": [
+      "Target down."
+    ],
+    "0": "Fellas, you good? Not you, pipe.",
+    "1": "THAT'S A KILL!",
+    "2": "GOT THAT FUCKER!",
+    "3": "ELIMINATED!",
+    "4": "Target down!",
+    "5": "Yes, that's how we work."
+  },
+  "OnEnemyGrenade": {
+    "General": [
+      "Enemy grenade!"
+    ],
+    "0": "GRENADE!",
+    "1": "OH SHIT, GRENADE!"
+  },
+  "OnEnemyShot": {
+    "General": [
+      "Enemy hit."
+    ],
+    "0": "WOUNDED HIM!",
+    "1": "He got a hit!",
+    "2": "He's wounded!"
+  },
+  "OnFight": {
+    "General": [
+      "Fight!"
+    ],
+    "0": "",
+    "1": "YES!",
+    "2": "ALRIGHT!",
+    "3": "CORRECT!",
+    "4": "Ha ha! Pathetic.",
+    "5": "",
+    "6": "",
+    "7": "On point!",
+    "8": "Oh, I'm fast like the flesh!",
+    "9": "Fuck this fuck!",
+    "10": "Pipe, come on!",
+    "11": "Confirmed!",
+    "12": "Working!",
+    "13": "PIE PURRY UP!",
+    "14": "Oh shit, that's me!",
+    "15": "NO VISUAL!",
+    "16": "I got it!",
+    "17": "STOP MOVING!",
+    "18": "YOU ARE GONNA DIE!",
+    "19": "Roger, roger!",
+    "20": "FUCK!",
+    "21": "Shit, shit, shit!",
+    "22": "",
+    "23": "",
+    "24": ""
+  },
+  "OnFirstContact": {
+    "General": [
+      "Contact!"
+    ],
+    "0": "Oh, I feel them.",
+    "1": "Guys, we're going to have some fun.",
+    "2": "Oh, brother, you sick.",
+    "3": "Bad, Yusek, bad!",
+    "4": "Yes, I hear, darling. I see the enemy.",
+    "5": "Ambush! Ambush!",
+    "6": "Low life ahead!",
+    "7": "SCAREFRONT!",
+    "8": "",
+    "9": "CONTACT! BAREFRIGHT!"
+  },
+  "OnFriendlyDown": {
+    "General": [
+      "Friendly down."
+    ],
+    "0": "Pipe is dead. Rest in peace, bro.",
+    "1": "I don't give a shit! I have nothing to lose!",
+    "2": "Well, fuck.",
+    "3": "This wasn't in my contract. Fuck!",
+    "4": "Hey, boss, come in.",
+    "5": "Boss is down!",
+    "6": "Night is down!",
+    "7": "Knight? Knight! Fuck!",
+    "8": "They got pipe, bastards!",
+    "9": "I saw! Pipe is down!"
+  },
+  "OnGoodWork": {
+    "General": [
+      "Good work."
+    ],
+    "0": "Fellas, you good? Not you, pipe.",
+    "1": "Yes, that's how we work."
+  },
+  "OnGrenade": {
+    "General": [
+      "Grenade!"
+    ],
+    "0": "Throwing frag!",
+    "1": "I got a present for ya!"
+  },
+  "OnLostVisual": {
+    "General": [
+      "Lost visual."
+    ],
+    "0": "Licky, licky for you, coward.",
+    "1": "I smell him nearby. Don't get relaxed.",
+    "2": "Shut up, just quiet!",
+    "3": "Come here! Let's discuss your future.",
+    "4": "I know a lot of rats in reserve. Are you one of them?",
+    "5": "Shut up! Just quiet!",
+    "6": "No sound!"
+  },
+  "OnMutter": {
+    "General": [
+      "(muttering...)"
+    ],
+    "0": "Let's go further.",
+    "1": "It's a good day.",
+    "2": "Hmm.",
+    "3": "Hmm"
+  },
+  "OnRepeatedContact": {
+    "General": [
+      "Contact again!"
+    ],
+    "0": "Yes, I hear, darling. I see the enemy.",
+    "1": "Go, go! Clear it!",
+    "2": "Bad guy front.",
+    "3": "Oh finally, some action!",
+    "4": "Okay, let's clear it.",
+    "5": "BAD GUY FRONT!",
+    "6": "contact",
+    "7": "I GOT A VISUAL",
+    "8": "I SEE A TARGET!",
+    "9": "ENEMY FRIGHT!"
+  },
+  "OnSix": {
+    "General": [
+      "Behind us."
+    ],
+    "0": "BEHIND US!",
+    "1": "They're on our tail now! Turn around!"
+  },
+  "OnWeaponJammed": {
+    "General": [
+      "Weapon jammed."
+    ],
+    "0": "OH COME ON!",
+    "1": "I GOTTA JAM! COVER ME!"
+  },
+  "OnWeaponReload": {
+    "General": [
+      "Reloading."
+    ],
+    "0": "I need to reload!",
+    "1": "Changing mag."
+  },
+  "Roger": {
+    "General": [
+      "Roger."
+    ],
+    "0": "YES!",
+    "1": "ALRIGHT!",
+    "2": "Sir, yes sir!"
+  },
+  "Scav": {
+    "General": [
+      "Scav spotted."
+    ],
+    "0": "Whoa, stop!",
+    "1": "Hey Feathers, STOP SHOOTING!"
+  },
+  "StartHeal": {
+    "General": [
+      "Healing."
+    ],
+    "0": "Cover me! Need to take some funny pills!",
+    "1": "I'm healing! Come back later!"
+  },
+  "Stop": {
+    "General": [
+      "Stop."
+    ],
+    "0": "DON'T MOVE!",
+    "1": "Whoa, stop!"
+  },
+  "UnderFire": {
+    "General": [
+      "We're under fire!"
+    ],
+    "0": "This wasn't in my contract. Fuck!",
+    "1": "Pipe! Knight! I need some fire support here!",
+    "2": "Another minute, and I'll be fish food! Need my boys here!",
+    "3": "",
+    "4": "Pipe, come on!",
+    "5": "Shit, shit, shit!"
+  },
+  "WeaponBroken": {
+    "General": [
+      "Weapon broken."
+    ],
+    "0": "RIFLE IS BROKEN!",
+    "1": "GUN DOWN!"
+  }
+}

@@ -18,6 +18,10 @@ mono_crash.*
 
 # Build results
 [Dd]ebug/
+# 本项目的源码目录也叫 Debug；默认继续忽略构建输出，只显式纳入新增源码。
+!Debug/
+Debug/*
+!Debug/DebugDiagnostics.cs
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
@@ -36,6 +40,7 @@ bld/
 SourceCode
 SPT-FontReplace
 Fika
+ReleasePackages
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/

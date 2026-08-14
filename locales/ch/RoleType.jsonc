@@ -44,7 +44,7 @@
   "ravangeZryachiyEvent": "复仇Zryachiy",
   "bossTagillaAgro": "米诺陶洛斯",
   "bossKillaAgro": "迷宫Killa",
-
+  "bosslegion":{ "Name": "军团", "Kind": "Bosses" },
   "followerBigPipe": "Big Pipe", 
   "followerBirdEye": "Brideye", 
   "bossGluhar": "Glukhar", 

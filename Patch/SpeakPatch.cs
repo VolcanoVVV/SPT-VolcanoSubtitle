@@ -305,8 +305,8 @@ public static class SubtitlePatch
         string aiTypeRaw = GetAITypeOrPlayer(speakerPlayer);   // player / WildSpawnType / ai
         string nameForShow = GetDisplayName(speakerPlayer);    // 玩家/AI 昵称优先
 
-        // 8) 调试日志：仅调试开关开启时才拼字符串
-        if (Settings.EnableDebugTools != null && Settings.EnableDebugTools.Value)
+        // 8) 控制台实时事件日志与 GUI 调试工具相互独立。
+        if (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value)
         {
             try
             {
@@ -440,19 +440,28 @@ public static class SubtitlePatch
         bool allowSubtitle = !string.IsNullOrEmpty(textSub);
         bool allowDanmaku = !string.IsNullOrEmpty(textDm);
         bool allowWorld3d = !string.IsNullOrEmpty(textW3d);
+        string reasonSub = allowSubtitle ? null : PhraseSubtitle.DescribeResolution("Subtitle", voiceKey, trigger.ToString(), netIdStr);
+        string reasonDm = allowDanmaku ? null : PhraseSubtitle.DescribeResolution("Danmaku", voiceKey, trigger.ToString(), netIdStr);
+        string reasonW3d = allowWorld3d ? null : PhraseSubtitle.DescribeResolution("World3D", voiceKey, trigger.ToString(), netIdStr);
         if (Settings.EnableWorld3D != null && !Settings.EnableWorld3D.Value)
+        {
             allowWorld3d = false;
+            reasonW3d = "FILTER: channel disabled";
+        }
         if (isLocalSpeaker && Settings.World3DShowSelf != null && !Settings.World3DShowSelf.Value)
+        {
             allowWorld3d = false;
+            reasonW3d = "FILTER: local player hidden";
+        }
 
         // —— 距离过滤：只在“非本地且拿到距离”时调整 allowXxx ——
         if (!isLocalSpeaker && distMeters.HasValue)
         {
             float d = distMeters.Value;
 
-            if (d > limitSub) allowSubtitle = false;
-            if (d > limitDm) allowDanmaku = false;
-            if (d > limitW3d) allowWorld3d = false;
+            if (d > limitSub) { allowSubtitle = false; reasonSub = "FILTER: distance " + d.ToString("0.0") + "m > " + limitSub.ToString("0.0") + "m"; }
+            if (d > limitDm) { allowDanmaku = false; reasonDm = "FILTER: distance " + d.ToString("0.0") + "m > " + limitDm.ToString("0.0") + "m"; }
+            if (d > limitW3d) { allowWorld3d = false; reasonW3d = "FILTER: distance " + d.ToString("0.0") + "m > " + limitW3d.ToString("0.0") + "m"; }
 
             // 距离过滤调试日志（仅 Play 路径原有此日志）
             if (localPlayPath && (!allowSubtitle || !allowDanmaku))
@@ -477,26 +486,67 @@ public static class SubtitlePatch
             float nowUnscaled = Time.unscaledTime;
 
             if (Settings.SubtitleZombieEnabled != null && !Settings.SubtitleZombieEnabled.Value)
+            {
                 allowSubtitle = false;
+                reasonSub = "FILTER: infected phrases disabled";
+            }
 
             int subCd = (Settings.SubtitleZombieCooldownSec != null) ? Settings.SubtitleZombieCooldownSec.Value : 0;
             if (subCd > 0 && (nowUnscaled - s_LastZombieSubtitleTime) < subCd)
+            {
                 allowSubtitle = false;
+                reasonSub = "FILTER: infected cooldown";
+            }
 
             if (Settings.DanmakuZombieEnabled != null && !Settings.DanmakuZombieEnabled.Value)
+            {
                 allowDanmaku = false;
+                reasonDm = "FILTER: infected phrases disabled";
+            }
 
             int dmCd = (Settings.DanmakuZombieCooldownSec != null) ? Settings.DanmakuZombieCooldownSec.Value : 0;
             if (dmCd > 0 && (nowUnscaled - s_LastZombieDanmakuTime) < dmCd)
+            {
                 allowDanmaku = false;
+                reasonDm = "FILTER: infected cooldown";
+            }
 
             if (Settings.World3DZombieEnabled != null && !Settings.World3DZombieEnabled.Value)
+            {
                 allowWorld3d = false;
+                reasonW3d = "FILTER: infected phrases disabled";
+            }
 
             int w3dCd = (Settings.World3DZombieCooldownSec != null) ? Settings.World3DZombieCooldownSec.Value : 0;
             if (w3dCd > 0 && (nowUnscaled - s_LastZombieWorld3DTime) < w3dCd)
+            {
                 allowWorld3d = false;
+                reasonW3d = "FILTER: infected cooldown";
+            }
         }
+
+        bool duplicateSuppressed = localPlayPath && SuppressDuplicate(speakerInstance, netIdStr, trigger);
+        bool diagnosticsOn = (Settings.EnableDebugTools != null && Settings.EnableDebugTools.Value) ||
+            (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value);
+        if (diagnosticsOn)
+        {
+            string triggerText = trigger.ToString();
+            string subStatus = Settings.EnableSubtitle != null && !Settings.EnableSubtitle.Value
+                ? "FILTER: channel disabled"
+                : duplicateSuppressed ? "FILTER: duplicate voice event"
+                : allowSubtitle ? "SHOW | " + PhraseSubtitle.DescribeResolution("Subtitle", voiceKey, triggerText, netIdStr) : (reasonSub ?? "FILTER");
+            string dmStatus = Settings.EnableDanmaku != null && !Settings.EnableDanmaku.Value
+                ? "FILTER: channel disabled"
+                : duplicateSuppressed ? "FILTER: duplicate voice event"
+                : allowDanmaku ? "SHOW | " + PhraseSubtitle.DescribeResolution("Danmaku", voiceKey, triggerText, netIdStr) : (reasonDm ?? "FILTER");
+            string w3dStatus = duplicateSuppressed ? "FILTER: duplicate voice event" : allowWorld3d
+                ? "SHOW | " + PhraseSubtitle.DescribeResolution("World3D", voiceKey, triggerText, netIdStr)
+                : (reasonW3d ?? "FILTER");
+            Subtitle.DebugTools.DebugDiagnostics.RecordVoice(voiceKey, triggerText, netIdStr,
+                nameForShow, aiTypeRaw, distMeters, subStatus, dmStatus, w3dStatus);
+        }
+
+        if (duplicateSuppressed) return;
 
         // —— 距离文本后缀（仅非本地、且对应通道仍允许时附加）——
         string distanceSuffix = null;
@@ -514,9 +564,6 @@ public static class SubtitlePatch
             if (showDistW3d && allowWorld3d)
                 fullW3d += distanceSuffix;
         }
-
-        // —— 去重：Play 路径在投递前去重；PlayDirect 路径已在构建前去重 ——
-        if (localPlayPath && SuppressDuplicate(speakerInstance, netIdStr, trigger)) return;
 
         // —— 最终投递 + 成功后更新时间戳 ——
         try
@@ -1213,8 +1260,8 @@ public static class SubtitlePatch
                 string aiTypeRaw = GetAITypeOrPlayer(speaker);
                 string nameForShow = GetDisplayName(speaker);
 
-                // 6) 调试日志（受 EnableDebugTools 开关控制）
-                if (Settings.EnableDebugTools != null && Settings.EnableDebugTools.Value)
+                // 6) 控制台实时事件日志与 GUI 调试工具相互独立。
+                if (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value)
                 {
                     try
                     {

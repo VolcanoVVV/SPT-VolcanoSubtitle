@@ -198,6 +198,7 @@
     <Compile Include="SettingsUI\SettingControlFactory.FontListEditor.cs" />
     <Compile Include="SettingsUI\SettingsPreviewPanel.cs" />
     <Compile Include="Debug\DebugPhrasePanel.cs" />
+    <Compile Include="Debug\DebugDiagnostics.cs" />
     <Compile Include="Patch\BattleUIScreenShowPatch.cs" />
     <Compile Include="Patch\GameWorldPatches.cs" />
     <Compile Include="Patch\LabRadioPatch.cs" />

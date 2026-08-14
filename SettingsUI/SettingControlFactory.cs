@@ -29,6 +29,7 @@ namespace Subtitle.SettingsUI
 
         // 各 section 名与 Setting.cs 中 private const 保持一致（字面量副本）
         private const string GeneralSectionName = "1. 通用";
+        private const string DebugSectionName = "99. 测试";
         private const string SubtitleAdvancedSectionName = "2.1 字幕 - 进阶";
         private const string DanmakuAdvancedSectionName = "3.1 弹幕 - 进阶";
         private const string World3DAdvancedSectionName = "4.1 3D气泡 - 进阶";
@@ -289,21 +290,41 @@ namespace Subtitle.SettingsUI
                         I18n.Text("PhraseFilterPanel.Button", "打开面板"),
                         I18n.Text("PhraseFilterPanel.Tooltip", "打开台词过滤面板，用于选择声线/触发器/NetId 的显示规则。"), setHint,
                         delegate { try { PhraseFilterPanel.ToggleVisible(); } catch { } });
+                    break;
+                case DebugSectionName:
+                    BuildActionRow(parent, I18n.Text("Debug.OpenVoiceBrowser.Label", "语音浏览与导出"),
+                        I18n.Text("Debug.OpenVoiceBrowser.Button", "打开"),
+                        I18n.Text("Debug.OpenVoiceBrowser.Tooltip", "打开 VoiceKey / Trigger / NetId 浏览、试听与语音导出面板。需要先启用开发者工具并进入藏身处或战局。"), setHint,
+                        Settings.OpenVoiceDebugPanel);
+                    BuildActionRow(parent, I18n.Text("Debug.OpenDiagnostics.Label", "实时事件与资源诊断"),
+                        I18n.Text("Debug.OpenDiagnostics.Button", "打开"),
+                        I18n.Text("Debug.OpenDiagnostics.Tooltip", "打开实时语音事件检查器和当前语言资源检查工具。"), setHint,
+                        Settings.OpenDiagnosticsPanel);
+                    BuildActionRow(parent, I18n.Text("Debug.ReloadLocale.Label", "重新加载本地化资源"),
+                        I18n.Text("Debug.ReloadLocale.Button", "重新加载"),
+                        I18n.Text("Debug.ReloadLocale.Tooltip", "清理台词、角色名、主播词表和广播缓存，并重新读取当前语言文件。"), setHint,
+                        Settings.ReloadCurrentLocaleResources);
                     BuildActionRow(parent, I18n.Text("TestSubtitle.Label", "随机测试字幕"),
                         I18n.Text("TestSubtitle.Button", "▶ 发送"),
                         I18n.Text("TestSubtitle.Tooltip", "随机发送一条测试字幕（任意场景可用）。"), setHint, Settings.SendRandomTestSubtitle);
                     BuildActionRow(parent, I18n.Text("TestDanmaku.Label", "随机测试弹幕"),
                         I18n.Text("TestDanmaku.Button", "▶ 发送 3 条"),
                         I18n.Text("TestDanmaku.Tooltip", "随机发送 3 条测试弹幕（任意场景可用）。"), setHint, Settings.SendRandomTestDanmaku);
+                    BuildActionRow(parent, I18n.Text("TestWorld3D.Label", "随机测试 3D 气泡"),
+                        I18n.Text("TestWorld3D.Button", "▶ 发送"),
+                        I18n.Text("TestWorld3D.Tooltip", "在本地玩家位置发送一条随机 3D 气泡测试；需要进入藏身处或战局。"), setHint, Settings.SendRandomTestWorld3D);
                     break;
                 case SubtitleAdvancedSectionName:
-                    BuildFontBundleRow(parent, Settings.SubtitleFontBundleName, "字幕 字体资源包", setHint);
+                    if (Settings.IsFontReplaceInstalled())
+                        BuildFontBundleRow(parent, Settings.SubtitleFontBundleName, "字幕 字体资源包", setHint);
                     break;
                 case DanmakuAdvancedSectionName:
-                    BuildFontBundleRow(parent, Settings.DanmakuFontBundleName, "弹幕 字体资源包", setHint);
+                    if (Settings.IsFontReplaceInstalled())
+                        BuildFontBundleRow(parent, Settings.DanmakuFontBundleName, "弹幕 字体资源包", setHint);
                     break;
                 case World3DAdvancedSectionName:
-                    BuildFontBundleRow(parent, Settings.World3DFontBundleName, "3D气泡 字体资源包", setHint);
+                    if (Settings.IsFontReplaceInstalled())
+                        BuildFontBundleRow(parent, Settings.World3DFontBundleName, "3D气泡 字体资源包", setHint);
                     break;
             }
         }
@@ -335,56 +356,71 @@ namespace Subtitle.SettingsUI
             }
         }
 
-        // 语言选择行：◀ 本地语言名 ▶，每次构建时实时扫描 locales 根目录（ScanLanguages 保证 ch 置顶），
+        // 语言选择行：所有语言以按钮并排显示，每行最多两个；语言增加时自动向下换行。
+        // 每次构建时实时扫描 locales 根目录（ScanLanguages 保证 ch 置顶），
         // 新增 locales/xx/ 目录后下次打开窗口即出现在可选项里。
         // 切换写 UiLanguage.Value → SettingChanged 钩子（I18n.Reload + SettingsWindow.RebuildAll）整体重建界面。
         private static void BuildLanguageRow(RectTransform parent, Action<string> setHint)
         {
             var entry = Settings.UiLanguage;
             if (entry == null) return;
+
+            // 一行两个按钮，在最窄的允许窗口宽度下仍能完整显示；更多语言自动增加行高。
+            var langs = new List<string>(I18n.ScanLanguages());
+            const int buttonsPerRow = 2;
+            int buttonRows = Math.Max(1, (langs.Count + buttonsPerRow - 1) / buttonsPerRow);
+            float rowHeight = 4f + buttonRows * 24f + (buttonRows - 1) * 4f;
+
             RectTransform area;
             CreateRow(parent, I18n.SettingName(entry.Definition.Key, "语言"),
                 I18n.SettingDesc(entry.Definition.Key, entry.Description != null ? entry.Description.Description : null),
-                30f, setHint, out area);
+                rowHeight, setHint, out area);
 
-            // 实时扫描（不缓存）：行重建时（打开窗口/切分类/切语言）拿到最新目录列表
-            var langs = new List<string>(I18n.ScanLanguages());
+            var stackGo = new GameObject("LanguageButtons");
+            stackGo.transform.SetParent(area, false);
+            var stackRt = stackGo.AddComponent<RectTransform>();
+            var stackLe = stackGo.AddComponent<LayoutElement>();
+            stackLe.flexibleWidth = 1f;
+            stackLe.preferredHeight = rowHeight - 4f;
+            var stack = stackGo.AddComponent<VerticalLayoutGroup>();
+            stack.childControlWidth = true;
+            stack.childControlHeight = true;
+            stack.childForceExpandWidth = true;
+            stack.childForceExpandHeight = false;
+            stack.spacing = 4f;
 
-            var prev = CreateLayoutButton(area, "Prev", "◀", 28f);
-            var nameLabel = AddAreaText(area, 120f);
-            var next = CreateLayoutButton(area, "Next", "▶", 28f);
-
-            Action refreshLabel = delegate
+            for (int rowIndex = 0; rowIndex < buttonRows; rowIndex++)
             {
-                string cur = entry.Value;
-                if (string.IsNullOrEmpty(cur))
+                var buttonRow = CreateInnerRow(stackRt, 24f);
+                int first = rowIndex * buttonsPerRow;
+                for (int column = 0; column < buttonsPerRow; column++)
                 {
-                    nameLabel.text = LanguageDisplayName(I18n.DefaultLanguage);
-                }
-                else if (langs.Contains(cur))
-                {
-                    nameLabel.text = LanguageDisplayName(cur);
-                }
-                else
-                {
-                    // 保存的语言目录已被删除：显示原始保存值（I18n 加载时本身也会回落到内置中文），
-                    // 点一下 ◀/▶ 即可切回列表内的语言
-                    nameLabel.text = cur;
-                }
-            };
-            refreshLabel();
+                    int languageIndex = first + column;
+                    if (languageIndex >= langs.Count)
+                    {
+                        // 奇数个语言时保留半行空位，使最后一个按钮仍与上方按钮等宽。
+                        var spacerGo = new GameObject("Spacer");
+                        spacerGo.transform.SetParent(buttonRow, false);
+                        spacerGo.AddComponent<RectTransform>();
+                        spacerGo.AddComponent<LayoutElement>().flexibleWidth = 1f;
+                        continue;
+                    }
 
-            Action<int> step = delegate (int dir)
-            {
-                if (langs.Count == 0) return;
-                int idx = langs.IndexOf(entry.Value);
-                // 保存值不在扫描结果里（目录已删）：第一下先回到 ch
-                idx = idx < 0 ? 0 : (idx + dir + langs.Count) % langs.Count;
-                entry.Value = langs[idx]; // 触发 SettingChanged → 整体重建（本行随之以新语言重建）
-                refreshLabel();
-            };
-            prev.onClick.AddListener(delegate { step(-1); });
-            next.onClick.AddListener(delegate { step(1); });
+                    string languageCode = langs[languageIndex];
+                    var button = CreateLayoutButton(buttonRow, "Language_" + languageCode,
+                        LanguageDisplayName(languageCode), 0f);
+                    bool selected = string.Equals(entry.Value, languageCode, StringComparison.OrdinalIgnoreCase) ||
+                        (string.IsNullOrEmpty(entry.Value) && string.Equals(languageCode, I18n.DefaultLanguage, StringComparison.OrdinalIgnoreCase));
+                    var image = button.GetComponent<Image>();
+                    if (image != null) image.color = selected ? BtnOn : BtnNormal;
+
+                    button.onClick.AddListener(delegate
+                    {
+                        if (string.Equals(entry.Value, languageCode, StringComparison.OrdinalIgnoreCase)) return;
+                        entry.Value = languageCode; // 触发 SettingChanged → 所有本地化资源与界面整体重建
+                    });
+                }
+            }
         }
 
         // 预设选择行：◀ 名称 ▶ + 刷新 + 应用；显示始终回同步到 TextPresetName.Value

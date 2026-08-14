@@ -30,7 +30,8 @@ namespace SubtitleSystem
         /// 对外查询：
         /// 1) 尝试读取 voiceKey.jsonc；
         /// 2) 命中 netId 则取首条；否则从 General 随机一条；
-        /// 3) voiceKey 未命或缺失时，降级到 default.jsonc 按相同逻辑。
+        /// 3) voiceKey 未命或缺失时，降级到当前语言的 Default_Voice.jsonc 按相同逻辑；
+        ///    角色台词与默认台词都不会跨语言回退。
         /// </summary>
         public static string GetSubtitleForChannel(string channel, string voiceKey, string phrase, string netId)
         {
@@ -76,7 +77,47 @@ namespace SubtitleSystem
 
             Debug.LogWarning(string.Format("[SubtitleSystem] Miss voice='{0}' phrase='{1}' netId='{2}'.",
                 vk, p, n));
-            return "！——未找到对应台词——！";
+            return I18n.Text("Phrase.MissingText", "！——未找到对应台词——！");
+        }
+
+        internal static string DescribeResolution(string channel, string voiceKey, string phrase, string netId)
+        {
+            string vk = string.IsNullOrWhiteSpace(voiceKey) ? DefaultVoice : voiceKey.Trim();
+            vk = vk.ToLowerInvariant();
+            string p = string.IsNullOrWhiteSpace(phrase) ? "" : phrase.Trim();
+            string n = string.IsNullOrWhiteSpace(netId) ? null : netId.Trim();
+
+            bool allowNetId;
+            bool allowGeneral;
+            Subtitle.Config.PhraseFilterManager.GetAllowFlags(channel, vk, p, n,
+                out allowNetId, out allowGeneral);
+            if (!allowNetId && !allowGeneral) return "FILTER: PhraseFilter";
+
+            EnsureLoaded(vk);
+            string ignored;
+            Dictionary<string, Dictionary<string, List<string>>> table;
+            if (_cache.TryGetValue(vk, out table))
+            {
+                if (allowNetId && TryPick(table, p, n, false, out ignored))
+                    return "VOICE: " + vk + ".jsonc / " + p + " / #" + n;
+                if (allowGeneral && TryPick(table, p, "General", false, out ignored))
+                    return "VOICE GENERAL: " + vk + ".jsonc / " + p;
+            }
+
+            bool defaultNetId;
+            bool defaultGeneral;
+            Subtitle.Config.PhraseFilterManager.GetAllowFlags(channel, DefaultVoice, p, n,
+                out defaultNetId, out defaultGeneral);
+            if (!defaultNetId && !defaultGeneral) return "FILTER: Default_Voice disabled";
+            EnsureLoaded(DefaultVoice);
+            if (_cache.TryGetValue(DefaultVoice, out table))
+            {
+                if (defaultNetId && TryPick(table, p, n, false, out ignored))
+                    return "DEFAULT: Default_Voice.jsonc / " + p + " / #" + n;
+                if (defaultGeneral && TryPick(table, p, "General", false, out ignored))
+                    return "DEFAULT GENERAL: Default_Voice.jsonc / " + p;
+            }
+            return "MISSING: current locale";
         }
 
         // ================= 内部实现 =================
@@ -89,8 +130,8 @@ namespace SubtitleSystem
             try
             {
                 var path = string.Equals(voiceKey, DefaultVoice, StringComparison.OrdinalIgnoreCase)
-                    ? Subtitle.Config.PhraseFilterManager.ResolveLocaleFile(voiceKey + ".jsonc")
-                    : Subtitle.Config.PhraseFilterManager.ResolveVoiceFile(voiceKey);
+                    ? Subtitle.Config.PhraseFilterManager.ResolveCurrentLocaleFile(voiceKey + ".jsonc")
+                    : Subtitle.Config.PhraseFilterManager.ResolveCurrentLocaleVoiceFile(voiceKey);
                 if (!File.Exists(path))
                 {
                     return false;

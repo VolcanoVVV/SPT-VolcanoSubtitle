@@ -1,0 +1,30 @@
+// Внимание: порядок элементов clips фиксирован, не изменяйте его.
+{
+  "announcer_elevators_O": "Внимание, персонал. Лифт в секторе O введён в эксплуатацию.",
+  "announcer_elevators_R": "Внимание, персонал. Лифт в секторе R введён в эксплуатацию.",
+  "sequences": [
+    {
+      "clips": [
+        "announcer_composite_1_security3",
+        "announcer_composite_2_B",
+        "announcer_composite_3_11"
+      ],
+      "text": "Внимание, служба безопасности. В секторе B11 обнаружена несанкционированная активность."
+    },
+    {
+      "clips": [
+        "announcer_composite_1_security3",
+        "announcer_composite_2_Y",
+        "announcer_composite_3_11"
+      ],
+      "text": "Внимание, служба безопасности. В секторе Y11 обнаружена несанкционированная активность."
+    },
+    {
+      "clips": [
+        "announcer_composite_1_security",
+        "announcer_composite_2_G"
+      ],
+      "text": "Внимание всем охранникам. Проследуйте в сектор G и займите оборонительные позиции."
+    }
+  ]
+}

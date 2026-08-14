@@ -1,0 +1,268 @@
+{
+  // Global fallback voice lines.
+  // If a character has no text for a voice line, one of the entries below is played at random.
+  "OnDeath": {
+    "General": ["(dying sounds)"]
+  },
+  "Cooperation": {
+    "General": ["Want to work together?","Team up?"]
+  },
+  "OnFight": {
+    "General": ["Come on! Scared?", "Come on, let's go!", "I'll blow you away!","Finish him!","Who the hell are you?","I'll kill you!","They're not getting out of here."]
+  },
+  "OnMutter": {
+    "General": ["(muttering...)"]
+  },
+  "OnWeaponReload": {
+    "General": ["I'm reloading!","Reloading!","Reloading now!"]
+  },
+  "NeedWeapon": {
+    "General": ["I need a weapon.","Give me a gun.","I need a gun."]
+  },
+  "NeedMedkit": {
+    "General": ["I need first aid.","Anyone got meds?","I need a medkit."]
+  },
+  "NeedAmmo": {
+    "General": ["I need ammo!", "Anyone got spare ammo?", "I'm out of ammo!","Need ammo."]
+  },
+  "NeedFrag": {
+    "General": ["I need a throwable.", "I need a grenade.","Need a grenade."]
+  },
+  "NeedSniper": {
+    "General": ["I need sniper cover.","Need sniper support.","Sniper, cover me!"]
+  },
+  "NeedHelp": {
+    "General": ["I need help.", "Give me a hand!"]
+  },
+  "Slience": {
+    "General": ["Quiet!", "Shh! Keep it down!", "Stay quiet!"]
+  },
+  "FollowMe": {
+    "General": ["Follow me.", "I'll take point!"]
+  },
+  "Look": {
+    "General": ["Stay alert!", "Keep your eyes open!"]
+  },
+  "GetInCover": {
+    "General": ["Find cover!", "Get to cover!", "Take cover, now.", "Get behind cover."]
+  },
+  "Fire": {
+    "General": ["Prepare to fire!", "Weapons ready!"]
+  },
+  "Suppress": {
+    "General": ["Suppress them!", "Enemy suppressed!", "Keep them pinned down!"]
+  },
+  "Regroup": {
+    "General": ["Regroup!", "Form up!", "Rally up!"]
+  },
+  "GoForward": {
+    "General": ["Move forward.", "Keep advancing."]
+  },
+  "GoLoot": {
+    "General": ["Go loot the place.", "Go check it for supplies."]
+  },
+  "OnYourOwn": {
+    "General": ["You're on your own!", "Handle it yourself."]
+  },
+  "CoverMe": {
+    "General": ["Cover me!", "I need cover!"]
+  },
+  "Gogogo": {
+    "General": ["Go, go, go!", "Move!", "Keep pushing!"]
+  },
+  "KnifesOnly": {
+    "General": ["Knives only!", "Use your knife, no guns!"]
+  },
+  "HoldFire": {
+    "General": ["Hold your fire!", "Cease fire!"]
+  },
+  "Spreadout": {
+    "General": ["Spread out.", "Fan out."]
+  },
+  "HoldPosition": {
+    "General": ["Hold!", "Hold your position!", "Hold this position!"]
+  },
+  "GetBack": {
+    "General": ["Fall back!", "Retreat, now!", "Run!"]
+  },
+  "Stop": {
+    "General": ["Stop!", "Wait!", "Hold it!"]
+  },
+  "Badwork": {
+    "General": ["What are you doing?!", "That was terrible!"]
+  },
+  "Repeat": {
+    "General": ["Repeat that!", "Say that again.", "What did you say? I didn't catch that!", "What?"]
+  },
+  "Onposition": {
+    "General": ["In position!", "I'm in position."]
+  },
+  "GoodWork": {
+    "General": ["Good work!", "Nice!", "Nice!", "Well done!"]
+  },
+  "Going": {
+    "General": ["Moving.", "On my way."]
+  },
+  "Clear": {
+    "General": ["Clear!", "Area clear!", "Threat eliminated!"]
+  },
+  "Covering": {
+    "General": ["I'm covering you!", "I've got you covered!"]
+  },
+  "Ready": {
+    "General": ["I'm ready!", "I'm set!"]
+  },
+  "OnLoot": {
+    "General": ["I'm looting.", "Searching for supplies!"]
+  },
+  "Roger": {
+    "General": ["Roger!", "Understood!","Copy!","Yes!","Okay!"]
+  },
+  "Negative": {
+    "General": ["Negative!", "No!","Not happening!"]
+  },
+  "DontKnow": {
+    "General": ["I don't know!","No idea!"]
+  },
+  "Scav": {
+    "General": ["Watch out for Scavs!", "Scav spotted!","There's a Scav!"]
+  },
+  "RightFlank": {
+    "General": ["Contact right!", "Enemy on the right flank!","Hostile on the right!","Someone's on our right!"]
+  },
+  "OnSix": {
+    "General": ["Six o'clock!", "Contact behind us!","Enemy in the rear!","Hostile behind us!"]
+  },
+  "LeftFlank": {
+    "General": ["Contact left!", "Enemy on the left flank!","Hostile on the left!","Someone's on our left!"]
+  },
+  "InTheFront": {
+    "General": ["Contact front!", "Enemy ahead!","Twelve o'clock!","Hostile in front!"]
+  },
+  "SniperPhrase": {
+    "General": ["Sniper!", "Watch out for the sniper!","There's a sniper!","It's a sniper!","Sniper spotted!"]
+  },
+  "ScavDown": {
+    "General": ["Scav down!", "Scav eliminated!"]
+  },
+  "EnemyHit": {
+    "General": ["Hit!", "Enemy hit!","I hit him!","Target hit!"]
+  },
+  "NoisePhrase": {
+    "General": ["I heard something.", "Did you hear that?","Someone there?"]
+  },
+  "EnemyDown": {
+    "General": ["Enemy down!", "Target down!","Enemy eliminated!","Kill confirmed!","Hostile down!"]
+  },
+  "KnifeKill": {
+    "General": ["Got him with the knife!", "I knifed him.","Killed him with a knife."]
+  },
+  "LostVisual": {
+    "General": ["Lost the target!", "Lost visual!","Where is he?","Where did he go?!","He's gone!"]
+  },
+  "Down": {
+    "General": ["Teammate down!", "Teammate KIA!","Teammate dead!"]
+  },
+  "Rat": {
+    "General": ["Traitor!", "We've got a traitor!","You traitor!"]
+  },
+  "Hit": {
+    "General": ["Teammate hit!", "Teammate down!", "Teammate KIA!","Teammate dead!"]
+  },
+  "FriendlyFire": {
+    "General": ["Friendly fire!", "We're friendly, stop shooting!","Friendly!","Watch your fire!","Don't shoot your teammates!","That's a friendly!"]
+  },
+  "OnLostVisual": {
+    "General": ["Where did he go?","He vanished!","He's gone!","I can't find him!"]
+  },
+  "OnGrenade": {
+    "General": ["Eat this!","Grenade out!","Fire in the hole!"]
+  },
+  "OnEnemyGrenade": {
+    "General": ["Watch out! Grenade!","Incoming grenade!","Grenade! Run!","They threw a grenade!"]
+  },
+  "OnRepeatedContact": {
+    "General": ["Enemy contact!","Contact!","I see him!"]
+  },
+  "OnBeingHurtDissapoinment": {
+    "General": ["I've been hit!","I'm wounded."]
+  },
+  "WeaponBroken": {
+    "General": ["My weapon's broken!","My gun jammed!","My weapon won't fire!"]
+  },
+  "OnFirstContact": {
+    "General": ["Enemy spotted!","I see the enemy!","I've got eyes on him!","I see him!"]
+  },
+  "UnderFire": {
+    "General": ["I'm pinned down!","They're firing at me!","They're suppressing me!"]
+  },
+  "OnEnemyShot": {
+    "General": ["Enemy spotted!","I see the enemy!","I've got eyes on him!","I see him!"]
+  },
+  "Silence ":{
+    "General":["Quiet!","Shh! Keep it down!"]
+  },
+  "OnAgony":{
+    "General":["(cries of agony)"]
+  },
+  "OnBeingHurt":{
+    "General":["(sounds of pain)"]
+  },
+  "OnBreath":{
+    "General":["(breathing sounds)"]
+  },
+  "OnEnemyConversation":{
+    "General":["Enemy spotted!","I see the enemy!","I've got eyes on him!","I see him!"]
+  },
+  "OnEnemyDown":{
+    "General":["Enemy down!","Enemy dead!","Got him!","Took him out!","Target eliminated!"]
+  },
+  "OnFriendlyDown":{
+    "General":["Teammate down!","Teammate dead!"]
+  },
+  "OnGoodWork":{
+    "General":["Good work!","Nice job.","Excellent!","Hell yeah!"]
+  },
+ "Exhausted": {
+    "General": ["I'm exhausted.","I'm completely worn out."]
+  },
+  "HandBroken": {
+    "General": ["My arm's broken.","Damn... I can't feel my arm.","I can't move my arm."]
+  },
+  "HurtHeavy": {
+    "General": ["(heavy panting)"]
+  },
+  "HurtLight":{
+    "General":["I've been hit.","It's just a flesh wound.","I'm wounded."]
+  },
+  "HurtMedium":{
+    "General":["I'm hurt pretty bad.","That hurts."]
+  },
+  "HurtNearDeath":{
+    "General":["I'm dying.","I'm not going to make it.","Am I going to die...?"]
+  },
+  "LegBroken": {
+    "General": ["My leg's broken.","Damn... I can't feel my leg.","I can't move my leg."]
+  },
+  "ExitLocated": {
+    "General": ["Mark the extraction point.","Found the extraction point."]
+  },
+  "LootBody": {
+    "General": ["Found a body.","There's a body here."]
+  },
+  "LootContainer": {
+    "General": ["Search the crate.","Check the container."]
+  },
+  "LootNothing": {
+    "General": ["Nothing to loot.","There's nothing here."]
+  },
+  "OnWeaponJammed": {
+    "General": ["Weapon jammed!","My gun jammed!"]
+  },
+  "Toxic":{
+    "General":["(swearing)"]
+  },
+  "OnOutOfAmmo":{
+    "General":["I'm out of ammo!"]
+  }
+}
