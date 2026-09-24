@@ -34,7 +34,7 @@
   "NeedHelp": {
     "General": ["I need help.", "Give me a hand!"]
   },
-  "Slience": {
+  "Silence": {
     "General": ["Quiet!", "Shh! Keep it down!", "Stay quiet!"]
   },
   "FollowMe": {
@@ -88,13 +88,13 @@
   "Stop": {
     "General": ["Stop!", "Wait!", "Hold it!"]
   },
-  "Badwork": {
+  "BadWork": {
     "General": ["What are you doing?!", "That was terrible!"]
   },
   "Repeat": {
     "General": ["Repeat that!", "Say that again.", "What did you say? I didn't catch that!", "What?"]
   },
-  "Onposition": {
+  "OnPosition": {
     "General": ["In position!", "I'm in position."]
   },
   "GoodWork": {
@@ -199,9 +199,6 @@
   "OnEnemyShot": {
     "General": ["Enemy spotted!","I see the enemy!","I've got eyes on him!","I see him!"]
   },
-  "Silence ":{
-    "General":["Quiet!","Shh! Keep it down!"]
-  },
   "OnAgony":{
     "General":["(cries of agony)"]
   },
@@ -264,5 +261,62 @@
   },
   "OnOutOfAmmo":{
     "General":["I'm out of ammo!"]
+  },
+  "Bleeding": {
+    "General": ["I'm bleeding!", "I need to stop the bleeding.", "I'm bleeding out over here!"]
+  },
+  "CheckHim": {
+    "General": ["Check him.", "Go check that body.", "Make sure he's dead."]
+  },
+  "Dehydrated": {
+    "General": ["I'm dehydrated.", "I need water.", "My throat's bone dry."]
+  },
+  "Frozen": {
+    "General": ["I'm freezing.", "I can't feel my hands.", "It's freezing out here..."]
+  },
+  "Greetings": {
+    "General": ["Hey there.", "Hello.", "Hi.", "How's it going?"]
+  },
+  "LocateHostiles": {
+    "General": ["Find the enemy!", "Locate the hostiles!", "Where are they? Find them!"]
+  },
+  "LockedDoor": {
+    "General": ["The door is locked.", "It's locked.", "This door won't budge."]
+  },
+  "LootGeneric": {
+    "General": ["Looting.", "Grabbing what I can.", "Let's see what's here."]
+  },
+  "LootKey": {
+    "General": ["Found a key.", "There's a key here.", "Key found!"]
+  },
+  "LootMoney": {
+    "General": ["Found money.", "Cash here!", "Money, nice."]
+  },
+  "LootWeapon": {
+    "General": ["Found a weapon.", "There's a weapon here.", "Found a gun."]
+  },
+  "LowKarmaAttack": {
+    "General": ["You shot at your own?!", "What the hell are you doing?!", "You're attacking friendlies?!"]
+  },
+  "Mine": {
+    "General": ["Minefield!", "Watch out, mines!", "Mines ahead!"]
+  },
+  "OnSwitchToMeleeWeapon": {
+    "General": ["Switching to melee.", "Knife out.", "Going in quiet."]
+  },
+  "OnWeaponMisfired": {
+    "General": ["Misfire!", "Damn it, misfire!", "My gun just misfired!"]
+  },
+  "OpenDoor": {
+    "General": ["Open the door.", "Get the door.", "Opening the door."]
+  },
+  "Provocation": {
+    "General": ["Come on, show yourself!", "Is that all you've got?", "Come get some!"]
+  },
+  "StartHeal": {
+    "General": ["Healing.", "Patching myself up.", "Hold on, I'm healing."]
+  },
+  "Warning": {
+    "General": ["Watch out!", "Heads up!", "Careful!"]
   }
 }

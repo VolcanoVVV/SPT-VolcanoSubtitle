@@ -1,61 +1,179 @@
 {
-  "Look": {},
-  "CoverMe": {},
-  "Fire": {},
-  "FollowMe": {},
-  "GetInCover": {},
-  "KnifesOnly": {},
-  "Silence": {},
-  "Spreadout": {},
-  "Stop": {},
-  "InTheFront": {},
-  "OnSix": {},
-  "SniperPhrase": {},
-  "EnemyDown": {},
-  "KnifeKill": {},
-  "LostVisual": {},
-  "NoisePhrase": {},
-  "OnAgony": {},
-  "OnBeingHurt": {},
-  "OnBeingHurtDissapoinment": {},
-  "OnBreath": {},
-  "OnDeath": {},
-  "OnEnemyConversation": {},
-  "OnEnemyDown": {},
-  "OnEnemyGrenade": {},
-  "OnEnemyShot": {},
-  "OnFight": {},
-  "OnFirstContact": {},
-  "OnFriendlyDown": {},
-  "OnGoodWork": {},
-  "OnGrenade": {},
-  "OnLostVisual": {},
-  "OnMutter": {},
-  "OnRepeatedContact": {},
-  "OnWeaponReload": {},
-  "HandBroken": {},
-  "HurtHeavy": {},
-  "HurtMedium": {},
-  "HurtNearDeath": {},
-  "LegBroken": {},
-  "NeedAmmo": {},
-  "NeedHelp": {},
-  "BadWork": {},
-  "Clear": {},
-  "Covering": {},
-  "DontKnow": {},
-  "Going": {},
-  "GoodWork": {},
-  "Negative": {},
-  "Repeat": {},
-  "Roger": {},
-  "ExitLocated": {},
-  "LootBody": {},
-  "LootContainer": {},
-  "LootNothing": {},
-  "WeaponBroken": {},
-  "OnWeaponJammed": {},
-  "Down": {},
-  "FriendlyFire": {},
-  "Toxic": {}
+  "Look": {
+    "General": ["眼睛放亮点，别乱开枪！", "喂，你们这帮傻逼，别他妈乱开火！", "眼睛都给我睁大点，别他妈走神！"]
+  },
+  "CoverMe": {
+    "General": ["这边！我这儿被狠狠压着了！", "兄弟们，我被夹了！", "兄弟们，我他妈在挨打！"]
+  },
+  "Fire": {
+    "General": ["干掉他们！", "直接开火！", "随你们，想怎么打就怎么打！"]
+  },
+  "FollowMe": {
+    "General": ["都跟我来！", "喂，跟上，跟我走！", "跟我来，操！"]
+  },
+  "GetInCover": {
+    "General": ["操，快躲起来！", "都他妈给我缩到角落里！", "算了算了，赶紧找掩体！"]
+  },
+  "KnifesOnly": {
+    "General": ["刀都准备好！别开枪！用刀狠狠干！", "枪不准响！听懂了没有，操！", "刀子都准备好，别开枪，用刀狠狠干！"]
+  },
+  "Silence": {
+    "General": ["嘘！把嘴都给我闭上！", "都他妈的安静点，搞什么呢？", "行了，都他妈给我闭嘴！"]
+  },
+  "Spreadout": {
+    "General": ["散开！操！", "兄弟们，马上要被覆盖了！", "往两边跑！"]
+  },
+  "Stop": {
+    "General": ["站住。", "别动！", "站住！"]
+  },
+  "InTheFront": {
+    "General": ["在正前方！那孙子跑了！", "前面前面！就在那儿，那狗东西！", "看前面！那畜生跑了！"]
+  },
+  "OnSix": {
+    "General": ["后面有人，操！", "后面，操！", "小心！在他妈后面！"]
+  },
+  "SniperPhrase": {
+    "General": ["操，谁在开枪？", "有人躲在树林里！", "妈的，是狙击手在打！"]
+  },
+  "EnemyDown": {
+    "General": ["把他干死了！", "咋样，闭眼了吧？", "死透了！"]
+  },
+  "KnifeKill": {
+    "General": ["捅死一个。", "呵呵呵，废物。", "捅翻一个！"]
+  },
+  "LostVisual": {
+    "General": ["他跑哪去了？", "他他妈跑哪儿去了？不会是忍者吧！", "喂，躲哪儿去了？"]
+  },
+  "NoisePhrase": {
+    "General": ["你听见了吗？", "你他妈没听到？", "什么动静？"]
+  },
+  "OnAgony": {
+    "General": ["(濒死状态)", "(惨叫声)"]
+  },
+  "OnBeingHurt": {
+    "General": ["(疼痛声)"]
+  },
+  "OnBeingHurtDissapoinment": {
+    "General": ["好像挨了一枪。", "我被打中了，这帮畜生！", "啊，我完了。"]
+  },
+  "OnBreath": {
+    "General": ["(呼吸声)", "(喘息咳嗽声)", "(喘息声)"]
+  },
+  "OnDeath": {
+    "General": ["(疼痛声)", "(惨叫声)"]
+  },
+  "OnEnemyConversation": {
+    "General": ["咋不吭声了？", "你他妈说俄语行不行？在那叽叽咕咕啥呢？！", "去死吧，畜生！"]
+  },
+  "OnEnemyDown": {
+    "General": ["咋样，闭眼了吧？", "搞死了！", "把他干死了！"]
+  },
+  "OnEnemyGrenade": {
+    "General": ["手雷！", "往两边跑！", "兄弟们，要被炸了！"]
+  },
+  "OnEnemyShot": {
+    "General": ["打中了！", "百分百命中！", "他妈的，我肯定打中他了！"]
+  },
+  "OnFight": {
+    "General": ["嘿！", "臭婊子！", "狗杂种！"]
+  },
+  "OnFirstContact": {
+    "General": ["那儿！狗东西！", "干死那个狗屌！", "就在那儿！"]
+  },
+  "OnFriendlyDown": {
+    "General": ["操，他真不走运。", "妈的！我们兄弟被干掉了！", "他们在打我们的人！"]
+  },
+  "OnGoodWork": {
+    "General": ["干得漂亮，真不错！", "利索！真利索！", "行啊你，小子！"]
+  },
+  "OnGrenade": {
+    "General": ["扔手雷了！", "兄弟们，快散开！", "兄弟们，快跑！"]
+  },
+  "OnLostVisual": {
+    "General": ["他跑哪去了？", "他他妈跑哪儿去了？不会是忍者吧！", "你在哪？！"]
+  },
+  "OnMutter": {
+    "General": ["我那哥们儿以前肯定来过这儿。", "先找商人，再找女人。", "咋样，这块儿都见过那帮臭外地的了？"]
+  },
+  "OnRepeatedContact": {
+    "General": ["狗东西在那儿！", "就在那儿！操，弄死他！", "兄弟们，包围他！"]
+  },
+  "OnWeaponReload": {
+    "General": ["兄弟们，我在换弹！", "装弹中！", "正在换弹！"]
+  },
+  "HandBroken": {
+    "General": ["啊！我的手！操！", "啊！手断了！", "啊，操，手废了。"]
+  },
+  "HurtHeavy": {
+    "General": ["我们完了。", "彻底没戏了。", "唉，死定了。"]
+  },
+  "HurtMedium": {
+    "General": ["好像挨了一枪。", "操！被打中了，这帮畜生！", "啊...我中弹了！"]
+  },
+  "HurtNearDeath": {
+    "General": ["啊，我完了...", "我死定了...", "行了兄弟们，我跑不动了..."]
+  },
+  "LegBroken": {
+    "General": ["啊啊！！！操！腿断了！", "啊啊啊！！！腿他妈断了！", "啊，腿断了！"]
+  },
+  "NeedAmmo": {
+    "General": ["操，子弹打光了！", "没子弹了！", "妈的，打完了！"]
+  },
+  "NeedHelp": {
+    "General": ["我需要帮忙！", "啊！帮帮我！", "啊！快来帮我！"]
+  },
+  "BadWork": {
+    "General": ["这傻逼。", "这个脑残。", "狗杂种，操了。"]
+  },
+  "Clear": {
+    "General": ["没人。", "真没人？", "操，这儿压根一个人都没有！"]
+  },
+  "Covering": {
+    "General": ["兄弟们，你们那边他妈啥情况？", "喂！别打！我们不想开火！就看看而已！", "你们那边咋了，臭外地的也在？"]
+  },
+  "DontKnow": {
+    "General": ["我哪知道！", "你烦不烦？", "不知道！"]
+  },
+  "Going": {
+    "General": ["我先上了！", "行了，妈的，我上了！", "我上了！"]
+  },
+  "GoodWork": {
+    "General": ["干得漂亮，真不错！", "利索！真利索！", "牛逼啊！"]
+  },
+  "Negative": {
+    "General": ["不。", "去你妈的！", "想都别想！"]
+  },
+  "Repeat": {
+    "General": ["啥？", "你刚才说啥？", "再说一遍！"]
+  },
+  "Roger": {
+    "General": ["嗯。", "懂了。", "明白。"]
+  },
+  "ExitLocated": {
+    "General": ["行了兄弟们，撤了！", "走，赶紧从这儿溜了。", "该他妈滚出这地方了！"]
+  },
+  "LootBody": {
+    "General": ["这儿有个尸体。", "这儿一具死尸。", "得搜一搜这个。"]
+  },
+  "LootContainer": {
+    "General": ["这儿得翻一翻。", "行，这儿得搜一搜。", "得把这东西搜了。"]
+  },
+  "LootNothing": {
+    "General": ["空的。", "啥也没有。", "操，空的！"]
+  },
+  "WeaponBroken": {
+    "General": ["枪管都他妈废了，咋办？", "完了，真操蛋了！", "为啥不好使了！"]
+  },
+  "OnWeaponJammed": {
+    "General": ["操，枪卡壳了！", "完了，根本他妈打不响！", "操你妈，真是坨垃圾！"]
+  },
+  "Down": {
+    "General": ["兄弟倒了！", "操！咱们兄弟被干掉了！", "这边在打我们的人！"]
+  },
+  "FriendlyFire": {
+    "General": ["操，你这傻逼，自己人都打！", "你他妈往哪儿开枪呢？", "你在搞什么，傻逼吧？！"]
+  },
+  "Toxic": {
+    "General": ["滚吧，你这狗杂种！", "你可真行啊，兵老爷！", "你在那儿鬼叫啥呢，弱智？"]
+  }
 }

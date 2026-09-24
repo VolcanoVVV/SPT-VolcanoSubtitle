@@ -113,7 +113,7 @@
     "3":"(重咳嗽声)",
     "4":"呃啊。"
   },
-  "OnBeingHurtDissapointment": {
+  "OnBeingHurtDissapoinment": {
     "General": ["我受伤了。"],
     "0": "我受伤了。",
     "1": "我被打中了，问题不大，继续。"

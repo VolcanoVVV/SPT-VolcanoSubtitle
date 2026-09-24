@@ -16,7 +16,7 @@ using Subtitle;
 
 namespace Subtitle
 {
-    [BepInPlugin("Volcano.Subtitle", "Volcano-Subtitle 火山家的实时字幕", "2.0.1")]
+    [BepInPlugin("Volcano.Subtitle", "Volcano-Subtitle 火山家的实时字幕", "2.0.2")]
     public class Plugin : BaseUnityPlugin
     {
         public static Plugin Instance { get; private set; }

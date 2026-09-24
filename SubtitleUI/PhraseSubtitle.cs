@@ -11,6 +11,9 @@ namespace SubtitleSystem
     {
         private const string DefaultVoice = "Default_Voice";
 
+        // 跨语言最终兜底的缓存键（带 @ 避免与真实声线名冲突）
+        private const string FallbackChCacheKey = "default_voice@fallback_ch";
+
         // 缓存：voiceKey -> phrase(trigger) -> (netId | General) -> List<string>
         private static Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>> _cache =
             new Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>>(StringComparer.OrdinalIgnoreCase);
@@ -31,7 +34,7 @@ namespace SubtitleSystem
         /// 1) 尝试读取 voiceKey.jsonc；
         /// 2) 命中 netId 则取首条；否则从 General 随机一条；
         /// 3) voiceKey 未命或缺失时，降级到当前语言的 Default_Voice.jsonc 按相同逻辑；
-        ///    角色台词与默认台词都不会跨语言回退。
+        ///    角色台词不跨语言回退；当前语言非默认语言时，最终兜底到 ch 的 Default_Voice.jsonc。
         /// </summary>
         public static string GetSubtitleForChannel(string channel, string voiceKey, string phrase, string netId)
         {
@@ -75,9 +78,16 @@ namespace SubtitleSystem
             // 4) default + General（随机一条）
             if (allowDefaultGeneral && _cache.ContainsKey(DefaultVoice) && TryPick(_cache[DefaultVoice], p, "General", true, out s)) return StreamerFilter.Apply(s);
 
+            // 5) 跨语言最终兜底：当前语言非默认语言时，尝试 ch 的 Default_Voice（复用 Default_Voice 过滤标志）
+            if (IsNonDefaultLanguage() && EnsureFallbackChLoaded())
+            {
+                if (allowDefaultNetId && TryPick(_cache[FallbackChCacheKey], p, n, false, out s)) return StreamerFilter.Apply(s);
+                if (allowDefaultGeneral && TryPick(_cache[FallbackChCacheKey], p, "General", true, out s)) return StreamerFilter.Apply(s);
+            }
+
             Debug.LogWarning(string.Format("[SubtitleSystem] Miss voice='{0}' phrase='{1}' netId='{2}'.",
                 vk, p, n));
-            return I18n.Text("Phrase.MissingText", "！——未找到对应台词——！");
+            return I18n.Text("Phrase.MissingText", "(嘀咕声)");
         }
 
         internal static string DescribeResolution(string channel, string voiceKey, string phrase, string netId)
@@ -117,6 +127,13 @@ namespace SubtitleSystem
                 if (defaultGeneral && TryPick(table, p, "General", false, out ignored))
                     return "DEFAULT GENERAL: Default_Voice.jsonc / " + p;
             }
+            if (IsNonDefaultLanguage() && EnsureFallbackChLoaded() && _cache.TryGetValue(FallbackChCacheKey, out table))
+            {
+                if (defaultNetId && TryPick(table, p, n, false, out ignored))
+                    return "DEFAULT CH: ch/Default_Voice.jsonc / " + p + " / #" + n;
+                if (defaultGeneral && TryPick(table, p, "General", false, out ignored))
+                    return "DEFAULT CH GENERAL: ch/Default_Voice.jsonc / " + p;
+            }
             return "MISSING: current locale";
         }
 
@@ -132,7 +149,39 @@ namespace SubtitleSystem
                 var path = string.Equals(voiceKey, DefaultVoice, StringComparison.OrdinalIgnoreCase)
                     ? Subtitle.Config.PhraseFilterManager.ResolveCurrentLocaleFile(voiceKey + ".jsonc")
                     : Subtitle.Config.PhraseFilterManager.ResolveCurrentLocaleVoiceFile(voiceKey);
-                if (!File.Exists(path))
+                return LoadIntoCache(voiceKey, path);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[SubtitleSystem] Load voice '" + voiceKey + "' failed: " + ex);
+                return false;
+            }
+        }
+
+        // 跨语言最终兜底：加载 ch 目录的 Default_Voice.jsonc，目录或文件缺失时静默失败
+        private static bool EnsureFallbackChLoaded()
+        {
+            if (_cache.ContainsKey(FallbackChCacheKey)) return true;
+
+            string dir = Subtitle.Config.PhraseFilterManager.DefaultLocalesDir;
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return false;
+            return LoadIntoCache(FallbackChCacheKey, Path.Combine(dir, DefaultVoice + ".jsonc"));
+        }
+
+        // 当前语言为空视为默认语言，此时不启用跨语言兜底
+        private static bool IsNonDefaultLanguage()
+        {
+            string lang = I18n.CurrentLanguage;
+            return !string.IsNullOrEmpty(lang)
+                && !string.Equals(lang, I18n.DefaultLanguage, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // 读路径→解析→填缓存，任何失败静默返回 false
+        private static bool LoadIntoCache(string cacheKey, string path)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 {
                     return false;
                 }
@@ -184,13 +233,13 @@ namespace SubtitleSystem
                     table[phKey] = idMap;
                 }
 
-                _cache[voiceKey] = table;
-                Debug.Log("[SubtitleSystem] Loaded: " + voiceKey + "  from " + path);
+                _cache[cacheKey] = table;
+                Debug.Log("[SubtitleSystem] Loaded: " + cacheKey + "  from " + path);
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.LogError("[SubtitleSystem] Load voice '" + voiceKey + "' failed: " + ex);
+                Debug.LogError("[SubtitleSystem] Load voice '" + cacheKey + "' failed: " + ex);
                 return false;
             }
         }

@@ -131,7 +131,7 @@
     "1": "(重喘息声)",
     "2": "(重喘息声)"
   },
-  "OnBeingHurtDissapointment": {
+  "OnBeingHurtDissapoinment": {
     "General": ["我受伤了。"],
     "0": "我中弹了。",
     "1": "吃了点子弹，需要治疗。",
