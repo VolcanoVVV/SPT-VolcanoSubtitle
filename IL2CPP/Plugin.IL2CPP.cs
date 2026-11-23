@@ -16,6 +16,7 @@ namespace Subtitle
             ClassInjector.RegisterTypeInIl2Cpp<SettingsUI.SettingsPreviewPanel>();
             ClassInjector.RegisterTypeInIl2Cpp<Config.PhraseFilterPanel>();
             ClassInjector.RegisterTypeInIl2Cpp<DebugTools.DebugPhrasePanel>();
+            DebugTools.DebugPhrasePanel.RegisterAudioCaptureComponent();
             ClassInjector.RegisterTypeInIl2Cpp<DebugTools.DebugDiagnosticsPanel>();
             ClassInjector.RegisterTypeInIl2Cpp<UIStateListener>();
         }

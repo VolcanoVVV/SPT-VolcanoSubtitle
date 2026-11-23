@@ -1,5 +1,6 @@
 #if GAME_IL2CPP
 using BepInEx.Unity.IL2CPP.Utils;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 #endif
 using System;
 using System.Collections;
@@ -727,8 +728,18 @@ row.onClick.AddManagedListener(delegate {
             public string FilePath;
         }
 
+#if GAME_IL2CPP
+        internal static void RegisterAudioCaptureComponent()
+        {
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<AudioPcmCapture>();
+        }
+#endif
+
         private sealed class AudioPcmCapture : MonoBehaviour
         {
+#if GAME_IL2CPP
+            public AudioPcmCapture(IntPtr pointer) : base(pointer) { }
+#endif
             private readonly object _sync = new object();
             private List<float> _samples = new List<float>();
             private bool _recording;
@@ -755,17 +766,29 @@ row.onClick.AddManagedListener(delegate {
             }
 
             // Unity 在音频线程调用；这里只进行加锁复制，不访问其他 Unity 对象。
+#if GAME_IL2CPP
+            private void OnAudioFilterRead(Il2CppStructArray<float> data, int channels)
+#else
             private void OnAudioFilterRead(float[] data, int channels)
+#endif
             {
                 if (data == null || data.Length == 0) return;
                 lock (_sync)
                 {
                     if (!_recording) return;
                     if (_channels == 0) _channels = channels;
+#if GAME_IL2CPP
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        _samples.Add(data[i]);
+                        data[i] = 0f;
+                    }
+#else
                     _samples.AddRange(data);
 
                     // 捕获用 AudioSource 必须实际进入 DSP 管线，但不应被用户听见。
                     Array.Clear(data, 0, data.Length);
+#endif
                 }
             }
         }
