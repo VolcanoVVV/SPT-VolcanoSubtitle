@@ -1,3 +1,4 @@
+#if !GAME_IL2CPP
 using System;
 using System.Reflection;
 using EFT;
@@ -28,3 +29,4 @@ namespace Subtitle.Patch
         }
     }
 }
+#endif

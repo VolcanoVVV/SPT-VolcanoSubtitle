@@ -1,3 +1,4 @@
+using Subtitle.Utils;
 using Newtonsoft.Json; // 需确保项目里已有\
 using Newtonsoft.Json.Linq;
 using Subtitle.Config;
@@ -470,7 +471,7 @@ public sealed class BackgroundSpec
                     }
 
                     Font font = null;
-                    var fonts = ab.LoadAllAssets<Font>();
+                    var fonts = ab.LoadTypedAssets<Font>();
                     if (fonts != null && fonts.Length > 0)
                     {
                         font = fonts[0];
@@ -480,10 +481,10 @@ public sealed class BackgroundSpec
                         var fontAssetName = Path.GetFileNameWithoutExtension(path);
                         TMP_FontAsset pick = null;
                         if (!string.IsNullOrEmpty(fontAssetName))
-                            pick = ab.LoadAsset<TMP_FontAsset>(fontAssetName);
+                            pick = ab.LoadTypedAsset<TMP_FontAsset>(fontAssetName);
                         if (pick == null)
                         {
-                            var tmpFonts = ab.LoadAllAssets<TMP_FontAsset>();
+                            var tmpFonts = ab.LoadTypedAssets<TMP_FontAsset>();
                             if (tmpFonts != null && tmpFonts.Length > 0)
                                 pick = tmpFonts[0];
                         }
@@ -561,11 +562,11 @@ public sealed class BackgroundSpec
 
                     string assetName = Path.GetFileNameWithoutExtension(path);
                     TMP_FontAsset font = !string.IsNullOrEmpty(assetName)
-                        ? bundle.LoadAsset<TMP_FontAsset>(assetName)
+                        ? bundle.LoadTypedAsset<TMP_FontAsset>(assetName)
                         : null;
                     if (font == null)
                     {
-                        TMP_FontAsset[] fonts = bundle.LoadAllAssets<TMP_FontAsset>();
+                        TMP_FontAsset[] fonts = bundle.LoadTypedAssets<TMP_FontAsset>();
                         if (fonts != null && fonts.Length > 0) font = fonts[0];
                     }
                     if (font != null)

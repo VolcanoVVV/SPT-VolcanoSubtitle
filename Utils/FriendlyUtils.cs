@@ -81,7 +81,7 @@ namespace Subtitle.Utils
                 if (player == null || main == null) return false;
 
                 // 本地玩家引用不变时直接复用缓存的 GroupId
-                if (!object.ReferenceEquals(main, s_CachedMainPlayer))
+                if (!UnityCompat.SameObject(main, s_CachedMainPlayer))
                 {
                     s_CachedMainPlayer = main;
                     s_CachedMainGroupId = GetGroupIdSafe(main);

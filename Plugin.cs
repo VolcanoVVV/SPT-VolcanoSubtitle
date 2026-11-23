@@ -1,3 +1,4 @@
+using Subtitle.Utils;
 using BepInEx;
 using BepInEx.Logging;
 using Comfort.Common;
@@ -14,13 +15,26 @@ using UnityEngine;
 using UnityEngine.UI;
 using Subtitle;
 
+#if GAME_IL2CPP
+using BepInEx.Unity.IL2CPP;
+using static UnityEngine.Object;
+#endif
+
 namespace Subtitle
 {
     [BepInPlugin("Volcano.Subtitle", "Volcano-Subtitle 火山家的实时字幕", "2.0.2")]
-    public class Plugin : BaseUnityPlugin
+#if GAME_IL2CPP
+    public partial class Plugin : BasePlugin
+#else
+    public partial class Plugin : BaseUnityPlugin
+#endif
     {
         public static Plugin Instance { get; private set; }
+#if GAME_IL2CPP
+        public new static ManualLogSource Log => ((BasePlugin)Instance)?.Log;
+#else
         public static ManualLogSource Log => Instance?.Logger;
+#endif
 
         public GameObject SubtitleGO { get; private set; }
         public SubtitleManager SubtitleComponent { get; private set; }
@@ -32,11 +46,20 @@ namespace Subtitle
             get { return Path.Combine(Application.dataPath, "..", "BepInEx", "plugins", "subtitle", "presets"); }
         }
 
+#if GAME_IL2CPP
+        public override void Load()
+#else
         private void Awake()
+#endif
         {
             Settings.Init(Config);
             Instance = this;
+#if GAME_IL2CPP
+            RegisterUnityComponents();
+            AddComponent<SubtitleUpdateBehaviour>();
+#else
             DontDestroyOnLoad(this);
+#endif
 
             // 图形化设置窗口：常驻创建（默认隐藏），热键轮询在下方 Plugin.Update 中
             SettingsUI.SettingsWindow.EnsureCreated();
@@ -79,6 +102,9 @@ namespace Subtitle
         {
             var harmony = new HarmonyLib.Harmony("Volcano.Subtitle");
 
+#if GAME_IL2CPP
+            EnableIl2CppHarmonyPatches(harmony);
+#else
             // 先 PatchAll 整个程序集（包含嵌套类与独立 patch 类）
             try
             {
@@ -90,6 +116,7 @@ namespace Subtitle
             }
 
             new BattleUIScreenShowPatch().Enable();
+#endif
             new GameWorldRegisterPlayerPatch().Enable();
             new GameWorldUnregisterPlayerPatch().Enable();
 
@@ -106,6 +133,27 @@ namespace Subtitle
 
         internal void TryAttachToBattleUIScreen(EftBattleUIScreen screen)
         {
+#if GAME_IL2CPP
+            if (screen == null) return;
+
+            var manager = SubtitleManager.Instance;
+            if (manager == null)
+                manager = SubtitleManager.TryAttachToBattleUIScreen(screen).GetComponent<SubtitleManager>();
+            if (manager == null) return;
+
+            if (manager.transform.parent != screen.transform)
+                manager.transform.SetParent(screen.transform, false);
+
+            SubtitleGO = manager.gameObject;
+            SubtitleComponent = manager;
+            manager.ApplySubtitleLayoutSettings();
+            manager.SetVisible(true);
+            if (_standaloneCanvasGO != null)
+            {
+                Destroy(_standaloneCanvasGO);
+                _standaloneCanvasGO = null;
+            }
+#else
             if (screen.GetComponentInChildren<SubtitleManager>() != null)
             {
                 Log.LogDebug("SubtitleManager already attached to BattleUI.");
@@ -126,6 +174,7 @@ namespace Subtitle
             {
                 Log.LogError("Failed to attach SubtitleManager to BattleUI.");
             }
+#endif
         }
 
         internal bool OpenVoiceDebugPanel()
@@ -146,6 +195,21 @@ namespace Subtitle
 
         internal void DestroySubtitle()
         {
+#if GAME_IL2CPP
+            var manager = SubtitleManager.Instance;
+            if (manager != null)
+            {
+                manager.ReleaseInstance();
+                Destroy(manager.gameObject);
+            }
+            SubtitleGO = null;
+            SubtitleComponent = null;
+            if (_standaloneCanvasGO != null)
+            {
+                Destroy(_standaloneCanvasGO);
+                _standaloneCanvasGO = null;
+            }
+#else
             if (SubtitleGO != null)
             {
                 Destroy(SubtitleGO);
@@ -153,6 +217,7 @@ namespace Subtitle
                 SubtitleComponent = null;
                 Log.LogDebug("SubtitleManager destroyed.");
             }
+#endif
         }
 
         void Update()
@@ -208,14 +273,18 @@ namespace Subtitle
             var ui = UnityEngine.Object.FindObjectOfType<EFT.UI.EftBattleUIScreen>();
             if (ui != null)
             {
-                var go = SubtitleSystem.SubtitleManager.TryAttachToBattleUIScreen(ui);
+#if GAME_IL2CPP
+                TryAttachToBattleUIScreen(ui);
+#else
+                SubtitleSystem.SubtitleManager.TryAttachToBattleUIScreen(ui);
+#endif
                 return SubtitleSystem.SubtitleManager.Instance;
             }
 
             // 3) 创建独立 Canvas（仅用于测试）
             if (_standaloneCanvasGO == null)
             {
-                _standaloneCanvasGO = new GameObject("SubtitleStandaloneCanvas",
+                _standaloneCanvasGO = UnityCompat.CreateGameObject("SubtitleStandaloneCanvas",
                     typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
                 var cvs = _standaloneCanvasGO.GetComponent<Canvas>();
                 cvs.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -225,7 +294,7 @@ namespace Subtitle
             }
 
             // 在 Canvas 下新建一个 Panel + SubtitleManager
-            var panel = new GameObject("SubtitleRoot", typeof(RectTransform));
+            var panel = UnityCompat.CreateGameObject("SubtitleRoot", typeof(RectTransform));
             panel.transform.SetParent(_standaloneCanvasGO.transform, false);
             var rt = panel.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0f, 0f);

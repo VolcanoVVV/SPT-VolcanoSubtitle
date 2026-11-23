@@ -1,3 +1,6 @@
+#if GAME_IL2CPP
+using KeyboardShortcut = BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut;
+#endif
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
@@ -261,7 +264,7 @@ namespace Subtitle.SettingsUI
             for (int c = 0; c < childRows.Count; c++)
                 if (childRows[c] != null) childRows[c].SetActive(!collapsed);
 
-            btn.onClick.AddListener(delegate
+            btn.onClick.AddManagedListener(delegate
             {
                 bool now;
                 if (!s_GroupCollapsed.TryGetValue(key, out now)) now = false;
@@ -336,7 +339,7 @@ namespace Subtitle.SettingsUI
             RectTransform area;
             CreateRow(parent, label, tooltip, 30f, setHint, out area); // 特殊行不缩进
             var btn = CreateLayoutButton(area, "Action", buttonText, 120f);
-            if (onClick != null) btn.onClick.AddListener(delegate { onClick(); });
+            if (onClick != null) btn.onClick.AddManagedListener(delegate { onClick(); });
         }
 
         // 语言的本地名称（native name，非翻译文本，故写死在代码里）：已知代码映射，未知目录显示原始目录名
@@ -414,7 +417,7 @@ namespace Subtitle.SettingsUI
                     var image = button.GetComponent<Image>();
                     if (image != null) image.color = selected ? BtnOn : BtnNormal;
 
-                    button.onClick.AddListener(delegate
+                    button.onClick.AddManagedListener(delegate
                     {
                         if (string.Equals(entry.Value, languageCode, StringComparison.OrdinalIgnoreCase)) return;
                         entry.Value = languageCode; // 触发 SettingChanged → 所有本地化资源与界面整体重建
@@ -448,22 +451,22 @@ namespace Subtitle.SettingsUI
             };
             refreshLabel();
 
-            prev.onClick.AddListener(delegate
+            prev.onClick.AddManagedListener(delegate
             {
                 Settings.SetSelectedPresetIndex(Settings.GetSelectedPresetIndex() - 1);
                 refreshLabel();
             });
-            next.onClick.AddListener(delegate
+            next.onClick.AddManagedListener(delegate
             {
                 Settings.SetSelectedPresetIndex(Settings.GetSelectedPresetIndex() + 1);
                 refreshLabel();
             });
-            refresh.onClick.AddListener(delegate
+            refresh.onClick.AddManagedListener(delegate
             {
                 Settings.RefreshPresetList();
                 refreshLabel();
             });
-            apply.onClick.AddListener(delegate
+            apply.onClick.AddManagedListener(delegate
             {
                 var pick = Settings.ApplySelectedPreset();
                 if (pick == null) return;
@@ -505,7 +508,7 @@ namespace Subtitle.SettingsUI
                 input.SetTextWithoutNotify(names[sel]);
 
             var save = CreateLayoutButton(area, "Save", I18n.Text("SavePreset.Button", "保存为预设"), 84f);
-            save.onClick.AddListener(delegate
+            save.onClick.AddManagedListener(delegate
             {
                 var name = input.text != null ? input.text.Trim() : "";
                 if (string.IsNullOrEmpty(name))
@@ -551,7 +554,7 @@ namespace Subtitle.SettingsUI
             };
             refreshLabel();
 
-            prev.onClick.AddListener(delegate
+            prev.onClick.AddManagedListener(delegate
             {
                 var list = Settings.GetFontBundleNames(entry);
                 int count = list != null ? list.Count : 0;
@@ -560,7 +563,7 @@ namespace Subtitle.SettingsUI
                 Settings.SetFontBundleSelection(entry, idx, entry.Value);
                 refreshLabel();
             });
-            next.onClick.AddListener(delegate
+            next.onClick.AddManagedListener(delegate
             {
                 var list = Settings.GetFontBundleNames(entry);
                 int count = list != null ? list.Count : 0;
@@ -569,12 +572,12 @@ namespace Subtitle.SettingsUI
                 Settings.SetFontBundleSelection(entry, idx, entry.Value);
                 refreshLabel();
             });
-            refresh.onClick.AddListener(delegate
+            refresh.onClick.AddManagedListener(delegate
             {
                 Settings.RefreshFontBundles(entry);
                 refreshLabel();
             });
-            apply.onClick.AddListener(delegate
+            apply.onClick.AddManagedListener(delegate
             {
                 // 应用会把选择写入 entry.Value 并触发对应渠道的运行期样式刷新；只改隐藏条目，无需整栏重建
                 Settings.ApplyFontBundleSelection(entry);
@@ -601,7 +604,7 @@ namespace Subtitle.SettingsUI
                 img.color = v ? BtnOn : BtnNormal;
             };
             refresh();
-            btn.onClick.AddListener(delegate
+            btn.onClick.AddManagedListener(delegate
             {
                 bool cur = entry.BoxedValue is bool && (bool)entry.BoxedValue;
                 entry.BoxedValue = !cur;
@@ -636,7 +639,7 @@ namespace Subtitle.SettingsUI
                 slider.SetValueWithoutNotify(Mathf.Clamp(cur, min, max));
                 UpdateNumberLabel(valueLabel, cur, isInt, percent, min, max);
 
-                slider.onValueChanged.AddListener(delegate (float v)
+                slider.onValueChanged.AddManagedListener(delegate (float v)
                 {
                     if (isInt) entry.BoxedValue = (int)v;
                     else entry.BoxedValue = v;
@@ -667,8 +670,8 @@ namespace Subtitle.SettingsUI
                     UpdateNumberLabel(valueLabel, GetNumber(entry, isInt), isInt, false, 0f, 0f);
                 };
                 refresh();
-                minus.onClick.AddListener(delegate { StepNumber(entry, isInt, -step); refresh(); });
-                plus.onClick.AddListener(delegate { StepNumber(entry, isInt, step); refresh(); });
+                minus.onClick.AddManagedListener(delegate { StepNumber(entry, isInt, -step); refresh(); });
+                plus.onClick.AddManagedListener(delegate { StepNumber(entry, isInt, step); refresh(); });
                 AddResetButton(area, entry, refresh);
             }
         }
@@ -691,7 +694,7 @@ namespace Subtitle.SettingsUI
                     : "?";
             };
             refresh();
-            btn.onClick.AddListener(delegate
+            btn.onClick.AddManagedListener(delegate
             {
                 // 点击切到下一个枚举值（循环）
                 var cur = entry.BoxedValue;
@@ -722,7 +725,7 @@ namespace Subtitle.SettingsUI
                 txt.text = cur != null ? cur.ToString() : "?";
             };
             refresh();
-            btn.onClick.AddListener(delegate
+            btn.onClick.AddManagedListener(delegate
             {
                 // 点击在可选项列表里循环
                 var cur = entry.BoxedValue;
@@ -762,7 +765,7 @@ namespace Subtitle.SettingsUI
             input.textComponent = text;
             input.placeholder = ph;
             input.SetTextWithoutNotify(entry.BoxedValue as string ?? string.Empty);
-            input.onEndEdit.AddListener(delegate (string v) { entry.BoxedValue = v; });
+            input.onEndEdit.AddManagedListener(delegate (string v) { entry.BoxedValue = v; });
 
             AddResetButton(area, entry, delegate
             {
@@ -824,7 +827,7 @@ namespace Subtitle.SettingsUI
                 slider.SetValueWithoutNotify(GetChannel(cur, captured));
                 valueLabel.text = GetChannel(cur, captured).ToString("0.00");
 
-                slider.onValueChanged.AddListener(delegate (float val)
+                slider.onValueChanged.AddManagedListener(delegate (float val)
                 {
                     var c = SetChannel(GetColor(entry), captured, val);
                     entry.BoxedValue = c;
@@ -880,7 +883,7 @@ namespace Subtitle.SettingsUI
         private static void AddResetButton(RectTransform area, ConfigEntryBase entry, Action refresh)
         {
             var btn = CreateLayoutButton(area, "Reset", I18n.Text("Reset.Option", "重置"), 40f);
-            btn.onClick.AddListener(delegate
+            btn.onClick.AddManagedListener(delegate
             {
                 Settings.ResetEntryToDefault(entry);
                 if (refresh != null) refresh();
@@ -1187,10 +1190,9 @@ namespace Subtitle.SettingsUI
         {
             if (go == null || setHint == null) return;
             var trigger = go.AddComponent<EventTrigger>();
-            trigger.triggers = new List<EventTrigger.Entry>();
 
             var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            enter.callback.AddListener(delegate (BaseEventData d)
+            enter.callback.AddManagedListener(delegate (BaseEventData d)
             {
                 setHint(tooltip);
                 SettingsWindow.ShowFloatingHint(tooltip);
@@ -1198,7 +1200,7 @@ namespace Subtitle.SettingsUI
             trigger.triggers.Add(enter);
 
             var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-            exit.callback.AddListener(delegate (BaseEventData d)
+            exit.callback.AddManagedListener(delegate (BaseEventData d)
             {
                 setHint(null);
                 SettingsWindow.HideFloatingHint();

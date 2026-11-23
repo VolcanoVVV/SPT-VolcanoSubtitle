@@ -1,6 +1,10 @@
 using EFT;
 using HarmonyLib;
+#if GAME_IL2CPP
+using SPTushonka.Reflection.Patching;
+#else
 using SPT.Reflection.Patching;
+#endif
 using Subtitle.Utils;
 using System.Reflection;
 
@@ -34,10 +38,13 @@ namespace Subtitle.Patch
         public static void PatchPostfix(IPlayer iPlayer)
         {
             Subtitle.Utils.SpeakerIndex.RemovePlayer(iPlayer);
-            if (iPlayer.IsYourPlayer)
+            if (iPlayer != null && iPlayer.IsYourPlayer)
             {
                 // 本地玩家离场 = 对局结束，清掉友军判定的 GroupId 缓存
                 Subtitle.Utils.FriendlyUtils.InvalidateMainPlayerCache();
+#if GAME_IL2CPP
+                SpeakerIndex.Clear();
+#endif
                 Plugin.Instance.DestroySubtitle();
                 Logger.LogDebug("Player unregistered. Subtitle system cleaned up.");
             }

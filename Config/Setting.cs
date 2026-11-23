@@ -1,3 +1,6 @@
+#if GAME_IL2CPP
+using KeyboardShortcut = BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut;
+#endif
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;

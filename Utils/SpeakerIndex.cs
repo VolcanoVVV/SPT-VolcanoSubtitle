@@ -2,6 +2,9 @@ using EFT;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+#if GAME_IL2CPP
+using Il2CppInterop.Runtime.InteropTypes;
+#endif
 
 namespace Subtitle.Utils
 {
@@ -9,7 +12,7 @@ namespace Subtitle.Utils
    {
         private static readonly Dictionary<object, IPlayer> _bySpeaker = new Dictionary<object, IPlayer>();
         // 反向索引：玩家 → 其 Speaker，用于 O(1) 移除
-        private static readonly Dictionary<IPlayer, object> _byPlayer = new Dictionary<IPlayer, object>();
+        private static readonly Dictionary<object, object> _byPlayer = new Dictionary<object, object>();
 
         // 全成员扫描兜底命中后缓存成员信息，避免每次注册都全量反射
         private static readonly Dictionary<Type, MemberInfo> s_SpeakerMemberCache = new Dictionary<Type, MemberInfo>();
@@ -23,7 +26,7 @@ namespace Subtitle.Utils
             object spk = null;
 
             // 0) 强类型快路径：Player.Speaker 是公开字段（4.1.x）
-            var pl = p as Player;
+            var pl = AsPlayer(p);
             if (pl != null)
             {
                 try { spk = pl.Speaker; } catch { }
@@ -76,12 +79,14 @@ namespace Subtitle.Utils
             if (spk != null)
             {
                 // 同一玩家重复注册时，先摘掉旧的正向映射
+                var playerKey = UnityCompat.ObjectIdentity(p);
+                var speakerKey = UnityCompat.ObjectIdentity(spk);
                 object oldSpk;
-                if (_byPlayer.TryGetValue(p, out oldSpk) && !object.ReferenceEquals(oldSpk, spk))
+                if (_byPlayer.TryGetValue(playerKey, out oldSpk) && !Equals(oldSpk, speakerKey))
                     _bySpeaker.Remove(oldSpk);
 
-                _bySpeaker[spk] = p; // 建立 “PhraseSpeaker实例 → IPlayer” 的映射
-                _byPlayer[p] = spk;
+                _bySpeaker[speakerKey] = p; // 建立 “PhraseSpeaker实例 → IPlayer” 的映射
+                _byPlayer[playerKey] = speakerKey;
             }
         }
 
@@ -110,20 +115,38 @@ namespace Subtitle.Utils
             catch { return false; }
         }
 
+        internal static Player AsPlayer(IPlayer player)
+        {
+#if GAME_IL2CPP
+            return player as Player ?? (player as Il2CppObjectBase)?.TryCast<Player>();
+#else
+            return player as Player;
+#endif
+        }
+
+#if GAME_IL2CPP
+        internal static void Clear()
+        {
+            _byPlayer.Clear();
+            _bySpeaker.Clear();
+        }
+#endif
+
         public static void RemovePlayer(IPlayer p)
         {
             if (p == null) return;
+            var playerKey = UnityCompat.ObjectIdentity(p);
             object spk;
-            if (_byPlayer.TryGetValue(p, out spk))
+            if (_byPlayer.TryGetValue(playerKey, out spk))
             {
-                _byPlayer.Remove(p);
+                _byPlayer.Remove(playerKey);
                 _bySpeaker.Remove(spk);
             }
         }
 
         public static IPlayer TryGetBySpeaker(object speakerObj)
         {
-            if (speakerObj != null && _bySpeaker.TryGetValue(speakerObj, out var p)) return p;
+            if (speakerObj != null && _bySpeaker.TryGetValue(UnityCompat.ObjectIdentity(speakerObj), out var p)) return p;
             return null;
         }
    }

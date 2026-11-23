@@ -1,3 +1,6 @@
+#if GAME_IL2CPP
+using KeyboardShortcut = BepInEx.Unity.IL2CPP.Configuration.KeyboardShortcut;
+#endif
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
@@ -16,6 +19,9 @@ namespace Subtitle.SettingsUI
     /// </summary>
     public class SettingsWindow : MonoBehaviour
     {
+#if GAME_IL2CPP
+        public SettingsWindow(System.IntPtr pointer) : base(pointer) { }
+#endif
         private static SettingsWindow s_instance;
 
         private Canvas _canvas;
@@ -295,7 +301,7 @@ namespace Subtitle.SettingsUI
                     new Vector2(8f, 0f), new Vector2(-6f, 0f), true, 0f);
                 _catButtons.Add(btn);
                 int captured = i;
-                btn.onClick.AddListener(delegate { SelectCategory(captured); });
+                btn.onClick.AddManagedListener(delegate { SelectCategory(captured); });
             }
             LayoutRebuilder.ForceRebuildLayoutImmediate(_catContent);
         }
@@ -657,7 +663,7 @@ namespace Subtitle.SettingsUI
             resetAllRt.offsetMin = new Vector2(-180f, 0f);
             resetAllRt.offsetMax = new Vector2(-84f, 0f);
             _resetAllLabel = resetAll.GetComponentInChildren<Text>(true);
-            resetAll.onClick.AddListener(delegate
+            resetAll.onClick.AddManagedListener(delegate
             {
                 if (Time.unscaledTime - _resetAllArmedAt <= ConfirmWindowSec)
                 {
@@ -676,12 +682,12 @@ namespace Subtitle.SettingsUI
                 new Vector2(0.945f, 0.15f), new Vector2(0.995f, 0.85f),
                 new Color(0.25f, 0.25f, 0.25f, 1f), 13, true);
             _closeLabel = close.GetComponentInChildren<Text>(true);
-            close.onClick.AddListener(Hide);
+            close.onClick.AddManagedListener(Hide);
 
             // 标题栏拖拽移动窗口（Drag 事件沿层级向上传递，子控件不处理时会到这里）
             var trigger = top.gameObject.AddComponent<EventTrigger>();
             var drag = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
-            drag.callback.AddListener(delegate (BaseEventData data)
+            drag.callback.AddManagedListener(delegate (BaseEventData data)
             {
                 var ped = data as PointerEventData;
                 if (ped == null || _windowRt == null || _canvas == null) return;
@@ -712,7 +718,7 @@ namespace Subtitle.SettingsUI
 
             var trigger = grip.gameObject.AddComponent<EventTrigger>();
             var drag = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
-            drag.callback.AddListener(delegate (BaseEventData data)
+            drag.callback.AddManagedListener(delegate (BaseEventData data)
             {
                 var ped = data as PointerEventData;
                 if (ped == null || _windowRt == null || _canvas == null) return;
@@ -764,7 +770,7 @@ namespace Subtitle.SettingsUI
             catResetRt.offsetMin = new Vector2(-104f, 0f);
             catResetRt.offsetMax = new Vector2(-6f, 0f);
             _resetCatLabel = catReset.GetComponentInChildren<Text>(true);
-            catReset.onClick.AddListener(delegate
+            catReset.onClick.AddManagedListener(delegate
             {
                 if (Time.unscaledTime - _resetCatArmedAt <= ConfirmWindowSec)
                 {

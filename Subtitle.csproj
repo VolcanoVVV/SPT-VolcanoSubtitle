@@ -216,6 +216,7 @@
     <Compile Include="Utils\SubtitleEnum.cs" />
     <Compile Include="Utils\StreamerFilter.cs" />
     <Compile Include="Utils\UIStateListener.cs" />
+    <Compile Include="Utils\UnityCompat.cs" />
     <Compile Include="World3D\SubtitleWorld3D.cs" />
   </ItemGroup>
   <ItemGroup />

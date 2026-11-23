@@ -167,6 +167,9 @@ namespace Subtitle.DebugTools
 
     internal sealed class DebugDiagnosticsPanel : MonoBehaviour
     {
+#if GAME_IL2CPP
+        public DebugDiagnosticsPanel(System.IntPtr pointer) : base(pointer) { }
+#endif
         private static DebugDiagnosticsPanel s_Instance;
         private GameObject _panel;
         private Text _body;
@@ -230,11 +233,11 @@ namespace Subtitle.DebugTools
             var clear = UiWidgets.CreateButton(top, "Clear", I18n.Text("Debug.Diagnostics.Clear", "清空"), new Vector2(0.79f, 0.1f), new Vector2(0.85f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 12, false);
             var copy = UiWidgets.CreateButton(top, "Copy", I18n.Text("Debug.Diagnostics.Copy", "复制"), new Vector2(0.86f, 0.1f), new Vector2(0.91f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 12, false);
             var close = UiWidgets.CreateButton(top, "Close", I18n.Text("Close", "关闭"), new Vector2(0.92f, 0.1f), new Vector2(0.98f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 12, false);
-            _events.onClick.AddListener(delegate { _showResources = false; _dirty = true; });
-            _resources.onClick.AddListener(delegate { _showResources = true; _dirty = true; });
-            clear.onClick.AddListener(delegate { if (!_showResources) DebugDiagnostics.Clear(); });
-            copy.onClick.AddListener(delegate { GUIUtility.systemCopyBuffer = _showResources ? DebugDiagnostics.ScanCurrentLocale() : DebugDiagnostics.BuildEventReport(); });
-            close.onClick.AddListener(delegate { _panel.SetActive(false); });
+            _events.onClick.AddManagedListener(delegate { _showResources = false; _dirty = true; });
+            _resources.onClick.AddManagedListener(delegate { _showResources = true; _dirty = true; });
+            clear.onClick.AddManagedListener(delegate { if (!_showResources) DebugDiagnostics.Clear(); });
+            copy.onClick.AddManagedListener(delegate { GUIUtility.systemCopyBuffer = _showResources ? DebugDiagnostics.ScanCurrentLocale() : DebugDiagnostics.BuildEventReport(); });
+            close.onClick.AddManagedListener(delegate { _panel.SetActive(false); });
 
             var bodyArea = UiWidgets.CreateRect(root, "Body", Vector2.zero, new Vector2(1f, 0.91f), new Vector2(8f, 8f), new Vector2(-8f, -4f));
             ScrollRect scroll;

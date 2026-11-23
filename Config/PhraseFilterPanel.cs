@@ -1,3 +1,6 @@
+#if GAME_IL2CPP
+using BepInEx.Unity.IL2CPP.Utils;
+#endif
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,6 +14,9 @@ namespace Subtitle.Config
 {
     public class PhraseFilterPanel : MonoBehaviour
     {
+#if GAME_IL2CPP
+        public PhraseFilterPanel(System.IntPtr pointer) : base(pointer) { }
+#endif
         private static PhraseFilterPanel s_instance;
 
         private Canvas _canvas;
@@ -193,7 +199,7 @@ namespace Subtitle.Config
         private void StartAutoRefresh()
         {
             if (_autoRefresh != null) return;
-            _autoRefresh = StartCoroutine(AutoRefreshLoop());
+            _autoRefresh = this.StartCoroutine(AutoRefreshLoop());
         }
 
         private void StopAutoRefresh()
@@ -284,9 +290,9 @@ namespace Subtitle.Config
             _applyLabel = _btnApply.GetComponentInChildren<Text>(true);
             _refreshLabel = _btnRefresh.GetComponentInChildren<Text>(true);
 
-            _btnApply.onClick.AddListener(ApplyAndSave);
-            _btnRefresh.onClick.AddListener(OnClickRefresh);
-            _btnClose.onClick.AddListener(Hide);
+            _btnApply.onClick.AddManagedListener(ApplyAndSave);
+            _btnRefresh.onClick.AddManagedListener(OnClickRefresh);
+            _btnClose.onClick.AddManagedListener(Hide);
             AttachWindowDrag(top.gameObject);
 
             var accentRt = UiWidgets.CreateRect(panel.transform, "ChannelAccent",
@@ -311,9 +317,9 @@ namespace Subtitle.Config
             _btnChDanmaku = CreateFixedButton(toolbar, "ChDanmaku", GetChannelDisplayName("Danmaku"), 298f, 422f, ButtonNormal, 13);
             _btnChWorld3D = CreateFixedButton(toolbar, "ChWorld3D", GetChannelDisplayName("World3D"), 426f, 566f, ButtonNormal, 13);
 
-            _btnChSubtitle.onClick.AddListener(delegate { OnClickChannel("Subtitle"); });
-            _btnChDanmaku.onClick.AddListener(delegate { OnClickChannel("Danmaku"); });
-            _btnChWorld3D.onClick.AddListener(delegate { OnClickChannel("World3D"); });
+            _btnChSubtitle.onClick.AddManagedListener(delegate { OnClickChannel("Subtitle"); });
+            _btnChDanmaku.onClick.AddManagedListener(delegate { OnClickChannel("Danmaku"); });
+            _btnChWorld3D.onClick.AddManagedListener(delegate { OnClickChannel("World3D"); });
 
             _editScopeLabel = UiWidgets.CreateText(toolbar, "EditScopeLabel", I18n.Text("PhraseFilter.EditScope", "编辑范围："), 13, TextAnchor.MiddleLeft,
                 Vector2.zero, Vector2.zero);
@@ -324,8 +330,8 @@ namespace Subtitle.Config
             scopeLabelRt.offsetMax = new Vector2(680f, 0f);
             _btnScopeCurrent = CreateFixedButton(toolbar, "ScopeCurrent", I18n.Text("PhraseFilter.ScopeCurrent", "当前类型"), 684f, 800f, ButtonNormal, 12);
             _btnScopeAll = CreateFixedButton(toolbar, "ScopeAll", I18n.Text("PhraseFilter.ScopeAll", "三种类型"), 804f, 924f, ButtonNormal, 12);
-            _btnScopeCurrent.onClick.AddListener(delegate { SetEditScope(false); });
-            _btnScopeAll.onClick.AddListener(delegate { SetEditScope(true); });
+            _btnScopeCurrent.onClick.AddManagedListener(delegate { SetEditScope(false); });
+            _btnScopeAll.onClick.AddManagedListener(delegate { SetEditScope(true); });
 
             // ---------- 状态栏 ----------
             var bottom = UiWidgets.CreateRect(panel.transform, "StatusBar",
@@ -350,13 +356,13 @@ namespace Subtitle.Config
                 new Vector2(8f, 38f), new Vector2(-8f, 0f));
 
             _voiceSearch = CreateSearchInput(leftHead, new Vector2(8f, 6f), new Vector2(-184f, 34f));
-            _voiceSearch.onValueChanged.AddListener(delegate { RefreshVoiceList(true, true); });
+            _voiceSearch.onValueChanged.AddManagedListener(delegate { RefreshVoiceList(true, true); });
             _btnFilterAll = CreateBottomRightButton(leftHead, "FilterAll", I18n.Text("PhraseFilter.FilterAll", "全部"), -178f, -122f);
             _btnFilterEnabled = CreateBottomRightButton(leftHead, "FilterEnabled", I18n.Text("PhraseFilter.FilterEnabled", "启用"), -118f, -62f);
             _btnFilterDisabled = CreateBottomRightButton(leftHead, "FilterDisabled", I18n.Text("PhraseFilter.FilterDisabled", "停用"), -58f, -4f);
-            _btnFilterAll.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.All); });
-            _btnFilterEnabled.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.Enabled); });
-            _btnFilterDisabled.onClick.AddListener(delegate { SetVoiceListFilter(VoiceListFilter.Disabled); });
+            _btnFilterAll.onClick.AddManagedListener(delegate { SetVoiceListFilter(VoiceListFilter.All); });
+            _btnFilterEnabled.onClick.AddManagedListener(delegate { SetVoiceListFilter(VoiceListFilter.Enabled); });
+            _btnFilterDisabled.onClick.AddManagedListener(delegate { SetVoiceListFilter(VoiceListFilter.Disabled); });
 
             var voiceScrollWrap = UiWidgets.CreateRect(left, "VoiceScrollWrap", Vector2.zero, Vector2.one,
                 new Vector2(2f, 2f), new Vector2(-2f, -78f));
@@ -377,8 +383,8 @@ namespace Subtitle.Config
                 new Vector2(10f, 0f), new Vector2(-220f, 0f));
             _btnExpandAll = CreateRightAnchoredButton(rightHead, "ExpandAll", I18n.Text("PhraseFilter.ExpandAll", "全部展开"), -208f, -108f, ButtonNormal, 12);
             _btnCollapseAll = CreateRightAnchoredButton(rightHead, "CollapseAll", I18n.Text("PhraseFilter.CollapseAll", "全部收起"), -104f, -4f, ButtonNormal, 12);
-            _btnExpandAll.onClick.AddListener(delegate { SetAllTriggersExpanded(true); });
-            _btnCollapseAll.onClick.AddListener(delegate { SetAllTriggersExpanded(false); });
+            _btnExpandAll.onClick.AddManagedListener(delegate { SetAllTriggersExpanded(true); });
+            _btnCollapseAll.onClick.AddManagedListener(delegate { SetAllTriggersExpanded(false); });
 
             var lineScrollWrap = UiWidgets.CreateRect(right, "LineScrollWrap", Vector2.zero, Vector2.one,
                 new Vector2(2f, 2f), new Vector2(-2f, -40f));
@@ -640,7 +646,7 @@ namespace Subtitle.Config
                 visibleCount++;
 
                 var captured = vk;
-                btn.onClick.AddListener(delegate { OnSelectVoice(captured); });
+                btn.onClick.AddManagedListener(delegate { OnSelectVoice(captured); });
                 ApplyVoiceButtonVisual(btn, vf.Enabled,
                     !string.IsNullOrEmpty(_currentVoiceKey) && string.Equals(_currentVoiceKey, vk, StringComparison.OrdinalIgnoreCase));
             }
@@ -661,7 +667,7 @@ namespace Subtitle.Config
                 {
                     Vector2 savedPos;
                     if (_voiceScrollPositions.TryGetValue(channel, out savedPos))
-                        StartCoroutine(RestoreScrollPositionNextFrame(_voiceScroll, savedPos));
+                        this.StartCoroutine(RestoreScrollPositionNextFrame(_voiceScroll, savedPos));
                 }
             }
         }
@@ -745,10 +751,10 @@ namespace Subtitle.Config
             var voiceToggle = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, "", new Vector2(12f, 0f), new Vector2(-6f, 0f), true, 0f);
             StyleToggleButton(voiceToggle, vf.Enabled, I18n.Text("PhraseFilter.VoiceEnabled", "声线启用"), true);
             AttachScrollHandlers(voiceToggle.gameObject, _lineScroll);
-            voiceToggle.onClick.AddListener(delegate {
+            voiceToggle.onClick.AddManagedListener(delegate {
                 SetVoiceEnabledForEditScope(voiceKey, !vf.Enabled);
                 StyleToggleButton(voiceToggle, vf.Enabled, I18n.Text("PhraseFilter.VoiceEnabled", "声线启用"), true);
-                MarkDirty();
+                MarkFilterDirty();
 
                 RefreshVoiceList(true);
                 SetVoiceSelectionVisual(_currentVoiceKey);
@@ -807,7 +813,7 @@ namespace Subtitle.Config
                     er.offsetMax = Vector2.zero;
                 }
                 AttachScrollHandlers(expandBtn.gameObject, _lineScroll);
-                expandBtn.onClick.AddListener(delegate {
+                expandBtn.onClick.AddManagedListener(delegate {
                     _triggerExpanded[expKey] = !_triggerExpanded[expKey];
                     Vector2 prevPos = Vector2.zero;
                     if (_lineScroll != null && _lineScroll.content != null)
@@ -815,7 +821,7 @@ namespace Subtitle.Config
                     SaveCurrentScrollPositions(PhraseFilterManager.CurrentChannel, voiceKey);
                     RefreshLinesForVoice(voiceKey);
                     if (_lineScroll != null)
-                        StartCoroutine(RestoreScrollPositionNextFrame(_lineScroll, prevPos));
+                        this.StartCoroutine(RestoreScrollPositionNextFrame(_lineScroll, prevPos));
                 });
 
                 var triggerLabel = I18n.Text("PhraseFilter.TriggerPrefix", "语音事件：") + FormatTriggerLabel(trigger);
@@ -824,10 +830,10 @@ namespace Subtitle.Config
                 if (headerLe != null) headerLe.flexibleWidth = 1f;
                 StyleToggleButton(header, tf.Enabled, triggerLabel, true);
                 AttachScrollHandlers(header.gameObject, _lineScroll);
-                header.onClick.AddListener(delegate {
+                header.onClick.AddManagedListener(delegate {
                     SetTriggerEnabledForEditScope(voiceKey, trigger, !tf.Enabled);
                     StyleToggleButton(header, tf.Enabled, triggerLabel, true);
-                    MarkDirty();
+                    MarkFilterDirty();
                 });
 
                 var ids = new List<string>(kv.Value ?? new List<string>());
@@ -904,7 +910,7 @@ namespace Subtitle.Config
                 var generalOnlyBtn = UiWidgets.InstantiateButton(_lineBtnTpl, _lineContent, "", new Vector2(48f, 0f), new Vector2(-6f, 0f), true, 0f);
                 StyleToggleButton(generalOnlyBtn, tf.GeneralOnly, I18n.Text("PhraseFilter.GeneralOnly", "仅使用全局默认台词"), false);
                 AttachScrollHandlers(generalOnlyBtn.gameObject, _lineScroll);
-                generalOnlyBtn.onClick.AddListener(delegate {
+                generalOnlyBtn.onClick.AddManagedListener(delegate {
                     tf.GeneralOnly = !tf.GeneralOnly;
                     if (tf.GeneralOnly)
                     {
@@ -919,7 +925,7 @@ namespace Subtitle.Config
                     SyncTriggerToEditScope(voiceKey, trigger, tf);
                     StyleToggleButton(generalOnlyBtn, tf.GeneralOnly, I18n.Text("PhraseFilter.GeneralOnly", "仅使用全局默认台词"), false);
                     refreshRows();
-                    MarkDirty();
+                    MarkFilterDirty();
                 });
                 AttachTooltip(generalOnlyBtn, delegate {
                     return PhraseFilterManager.GetGlobalLineText(voiceKey, trigger);
@@ -941,7 +947,7 @@ namespace Subtitle.Config
                     bool isGeneral = string.Equals(capturedId, "General", StringComparison.OrdinalIgnoreCase);
                     if (isGeneral)
                     {
-                        row.onClick.AddListener(delegate {
+                        row.onClick.AddManagedListener(delegate {
                             if (tf.GeneralOnly)
                             {
                                 tf.GeneralOnly = false;
@@ -969,12 +975,12 @@ namespace Subtitle.Config
                             tf.NetIds[capturedId] = next;
                             SyncTriggerToEditScope(voiceKey, trigger, tf);
                             refreshRows();
-                            MarkDirty();
+                            MarkFilterDirty();
                         });
                     }
                     else
                     {
-                        row.onClick.AddListener(delegate {
+                        row.onClick.AddManagedListener(delegate {
                             bool restoredFromGeneralOnly = false;
                             if (tf.GeneralOnly)
                             {
@@ -1006,7 +1012,7 @@ namespace Subtitle.Config
                                     StyleToggleButton(row, tf.NetIds[capturedId], GetNetIdLabel(capturedId), false);
                             }
                             SyncTriggerToEditScope(voiceKey, trigger, tf);
-                            MarkDirty();
+                            MarkFilterDirty();
                         });
                     }
                     AttachTooltip(row, delegate {
@@ -1018,7 +1024,7 @@ namespace Subtitle.Config
             Canvas.ForceUpdateCanvases();
             Vector2 savedLinePos;
             if (_lineScrollPositions.TryGetValue(GetLineScrollKey(PhraseFilterManager.CurrentChannel, voiceKey), out savedLinePos))
-                StartCoroutine(RestoreScrollPositionNextFrame(_lineScroll, savedLinePos));
+                this.StartCoroutine(RestoreScrollPositionNextFrame(_lineScroll, savedLinePos));
         }
 
         private Button CreateRightAnchoredButton(RectTransform parent, string name, string label,
@@ -1165,7 +1171,7 @@ namespace Subtitle.Config
             return result;
         }
 
-        private void MarkDirty()
+        private void MarkFilterDirty()
         {
             string channel = PhraseFilterManager.CurrentChannel;
             if (_editAllChannels)
@@ -1294,7 +1300,7 @@ namespace Subtitle.Config
             if (titleBar == null) return;
             var trigger = titleBar.AddComponent<EventTrigger>();
             var drag = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
-            drag.callback.AddListener(delegate(BaseEventData data)
+            drag.callback.AddManagedListener(delegate(BaseEventData data)
             {
                 var ped = data as PointerEventData;
                 if (ped == null || _windowRt == null || _canvas == null) return;
@@ -1317,7 +1323,7 @@ namespace Subtitle.Config
 
             var trigger = grip.gameObject.AddComponent<EventTrigger>();
             var drag = new EventTrigger.Entry { eventID = EventTriggerType.Drag };
-            drag.callback.AddListener(delegate(BaseEventData data)
+            drag.callback.AddManagedListener(delegate(BaseEventData data)
             {
                 var ped = data as PointerEventData;
                 if (ped == null || _windowRt == null || _canvas == null) return;
@@ -1603,14 +1609,13 @@ namespace Subtitle.Config
             if (btn == null || textProvider == null) return;
             var trigger = btn.gameObject.GetComponent<EventTrigger>();
             if (trigger == null) trigger = btn.gameObject.AddComponent<EventTrigger>();
-            if (trigger.triggers == null) trigger.triggers = new List<EventTrigger.Entry>();
 
             var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            enter.callback.AddListener(delegate { ShowTooltip(textProvider()); });
+            enter.callback.AddManagedListener(delegate { ShowTooltip(textProvider()); });
             trigger.triggers.Add(enter);
 
             var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-            exit.callback.AddListener(delegate { HideTooltip(); });
+            exit.callback.AddManagedListener(delegate { HideTooltip(); });
             trigger.triggers.Add(exit);
         }
 
@@ -1619,7 +1624,6 @@ namespace Subtitle.Config
             if (go == null || scroll == null) return;
             var trigger = go.GetComponent<EventTrigger>();
             if (trigger == null) trigger = go.AddComponent<EventTrigger>();
-            if (trigger.triggers == null) trigger.triggers = new List<EventTrigger.Entry>();
 
             AddScrollEvent(trigger, EventTriggerType.BeginDrag, delegate(BaseEventData d) {
                 var ped = d as PointerEventData;
@@ -1643,7 +1647,7 @@ namespace Subtitle.Config
         {
             if (trigger == null || handler == null) return;
             var entry = new EventTrigger.Entry { eventID = type };
-            entry.callback.AddListener(data => handler(data));
+            entry.callback.AddManagedListener(data => handler(data));
             trigger.triggers.Add(entry);
         }
 

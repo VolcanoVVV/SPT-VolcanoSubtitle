@@ -1,3 +1,7 @@
+using Subtitle.Utils;
+#if GAME_IL2CPP
+using BepInEx.Unity.IL2CPP.Utils;
+#endif
 // Filename: Subtitle.Danmaku.cs
 using System.Collections;
 using System.Collections.Generic;
@@ -65,7 +69,7 @@ namespace SubtitleSystem
             if (this == null || this.transform == null) return;
 
             // 创建全屏 RectTransform 容器
-            var go = new GameObject("DanmakuLayer", typeof(RectTransform));
+            var go = UnityCompat.CreateGameObject("DanmakuLayer", typeof(RectTransform));
             go.transform.SetParent(this.transform, false);
             _danmakuLayer = go.GetComponent<RectTransform>();
             _danmakuLayer.anchorMin = new Vector2(0f, 0f);
@@ -181,7 +185,7 @@ namespace SubtitleSystem
             if (!_danmakuInited) InitializeDanmakuLayer();
             if (_danmakuLayer == null || string.IsNullOrEmpty(text)) return;
             _danmakuQueue.Enqueue(new DanmakuItem { Text = text, Color = color });
-            if (!_spawnLoopRunning) StartCoroutine(CoSpawnLoop());
+            if (!_spawnLoopRunning) this.StartCoroutine(CoSpawnLoop());
         }
 
         // 逐条发送弹幕（有间隔），车道不可用时等待直到可用
@@ -322,7 +326,7 @@ namespace SubtitleSystem
             _lanes[lane].lastSpeed = itemSpeed;
 
             // 开始移动
-            StartCoroutine(CoMoveLeft(go, startX, endX, itemSpeed));
+            this.StartCoroutine(CoMoveLeft(go, startX, endX, itemSpeed));
             return true;
         }
 
@@ -343,7 +347,7 @@ namespace SubtitleSystem
 
             if (go == null)
             {
-                go = new GameObject("DanmakuItem", typeof(RectTransform), typeof(Text), typeof(CanvasGroup));
+                go = UnityCompat.CreateGameObject("DanmakuItem", typeof(RectTransform), typeof(Text), typeof(CanvasGroup));
                 go.transform.SetParent(_danmakuLayer, false);
 
                 var txt = go.GetComponent<Text>();

@@ -1,6 +1,10 @@
 // 文件：Subtitle/Config/Settings.Methods.cs
 using BepInEx.Configuration;
+#if GAME_IL2CPP
+using BepInEx.Unity.IL2CPP;
+#else
 using BepInEx.Bootstrap;
+#endif
 using Comfort.Common;
 using EFT;
 using Newtonsoft.Json.Linq;
@@ -19,6 +23,12 @@ namespace Subtitle.Config
 {
     internal partial class Settings
     {
+#if GAME_IL2CPP
+        private static IReadOnlyDictionary<string, BepInEx.PluginInfo> LoadedPlugins => IL2CPPChainloader.Instance?.Plugins;
+#else
+        private static IReadOnlyDictionary<string, BepInEx.PluginInfo> LoadedPlugins => Chainloader.PluginInfos;
+#endif
+
         private static List<string> s_FontBundleNames = new List<string>();
         private static bool s_FontBundleListLoaded = false;
         private static readonly Dictionary<ConfigEntryBase, int> s_FontBundleSelection =
@@ -428,10 +438,10 @@ namespace Subtitle.Config
             // 在语言切换后更新 Metadata.Name 并重建列表，F12 标题即可同步变化。
             try
             {
-                if (Chainloader.PluginInfos != null &&
-                    Chainloader.PluginInfos.ContainsKey("Volcano.Subtitle"))
+                if (LoadedPlugins != null &&
+                    LoadedPlugins.ContainsKey("Volcano.Subtitle"))
                 {
-                    var info = Chainloader.PluginInfos["Volcano.Subtitle"];
+                    var info = LoadedPlugins["Volcano.Subtitle"];
                     if (info != null && info.Metadata != null)
                     {
                         var nameProperty = info.Metadata.GetType().GetProperty("Name",
@@ -557,6 +567,7 @@ namespace Subtitle.Config
             if (instanceProp != null)
                 instance = instanceProp.GetValue(null, null);
 
+#if !GAME_IL2CPP
             if (instance == null)
             {
                 var objs = UnityEngine.Object.FindObjectsOfType(cmType);
@@ -571,6 +582,7 @@ namespace Subtitle.Config
                     instance = all[0];
             }
 
+#endif
             if (instance == null) return;
 
             string[] methods = {
@@ -922,7 +934,7 @@ namespace Subtitle.Config
         {
             try
             {
-                return Chainloader.PluginInfos != null && Chainloader.PluginInfos.ContainsKey(FontReplacePluginGuid);
+                return LoadedPlugins != null && LoadedPlugins.ContainsKey(FontReplacePluginGuid);
             }
             catch { return false; }
         }

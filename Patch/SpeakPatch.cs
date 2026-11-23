@@ -2,7 +2,6 @@ using BepInEx.Logging;
 using Comfort.Common;
 using EFT;
 using HarmonyLib;
-using SPT.Common.Utils;
 using Subtitle;
 using Subtitle.Config;
 using Subtitle.Utils;
@@ -100,7 +99,7 @@ public static class SubtitlePatch
                     var pl = list[i];
                     if (pl == null || pl.AIData == null) continue;
                     var bo = pl.AIData.BotOwner;
-                    if (bo != null && object.ReferenceEquals(bo.GetPlayer, p)) return bo;
+                    if (bo != null && UnityCompat.SameObject(bo.GetPlayer, p)) return bo;
                 }
             }
         }
@@ -238,15 +237,17 @@ public static class SubtitlePatch
     }
 
     // 实际说话层：只做 Postfix
+#if GAME_IL2CPP
+    [HarmonyPatch(typeof(SpeakerClass), "Play", new[] { typeof(EPhraseTrigger), typeof(ETagStatus), typeof(bool), typeof(Il2CppSystem.Nullable<int>), typeof(ETagFilter) })]
+#else
     [HarmonyPatch(typeof(SpeakerClass), "Play")]
+#endif
     [HarmonyPostfix]
     public static void PhraseSpeakerPlayPostfix(
         SpeakerClass __instance,
         EPhraseTrigger trigger,
         ETagStatus tags,
-        bool demand,
-        int? importance,
-        ref TagBank __result)
+        TagBank __result)
     {
         // 1) 失败/忽略直接退出
         if (__result == null) return;
@@ -627,6 +628,7 @@ public static class SubtitlePatch
             var gw = Singleton<GameWorld>.Instance;
             if (gw == null) return null;
 
+#if !GAME_IL2CPP
             var tgw = Traverse.Create(gw);
 
             // 私有字段或公开属性两种命名都兼容
@@ -651,7 +653,8 @@ public static class SubtitlePatch
                 }
             }
 
-            // 若没有字典，降级：遍历 AllAlivePlayersList 比 Id / ProfileId
+#endif
+            // 遍历 AllAlivePlayersList 比 Id / ProfileId
             var list = gw.AllAlivePlayersList;
             if (list != null)
             {
@@ -738,7 +741,7 @@ public static class SubtitlePatch
                     for (int i = 0; i < list.Count; i++)
                     {
                         var pl = list[i];
-                        if (pl != null && object.ReferenceEquals(pl.Speaker, sp))
+                        if (pl != null && UnityCompat.SameObject(pl.Speaker, sp))
                             return pl;
                     }
 
@@ -760,7 +763,7 @@ public static class SubtitlePatch
                     if (p == null) continue;
 
                     var spkObj = GetPlayerSpeakerObject(p);
-                    if (spkObj != null && object.ReferenceEquals(spkObj, sp))
+                    if (spkObj != null && UnityCompat.SameObject(spkObj, sp))
                         return p;
                 }
 
@@ -855,7 +858,7 @@ public static class SubtitlePatch
         try
         {
             // 强类型：Player.Speaker 是公开字段
-            var pl = p as Player;
+            var pl = SpeakerIndex.AsPlayer(p);
             if (pl != null) return pl.Speaker;
 
             // 反射兜底（非 Player 实现）
@@ -1133,6 +1136,20 @@ public static class SubtitlePatch
             yield break;
         }
 
+#if GAME_IL2CPP
+        var registered = gw.RegisteredPlayers;
+        if (registered != null)
+        {
+            for (int i = 0; i < registered.Count; i++)
+            {
+                if (registered[i] != null) yield return registered[i];
+            }
+        }
+        else if (gw.MainPlayer != null)
+        {
+            yield return gw.MainPlayer;
+        }
+#else
         var t = Traverse.Create(gw);
 
         // AllPlayers / AllPlayersList
@@ -1193,6 +1210,7 @@ public static class SubtitlePatch
                 if (bp is IPlayer ip3) yield return ip3;
             }
         }
+#endif
     }
 
     private static float? ComputeDistanceMeters(IPlayer speaker, IPlayer main)
@@ -1234,7 +1252,8 @@ public static class SubtitlePatch
             try
             {
                 // 1) 反解说话者 IPlayer（强解析 → 兜底，兜底内含 TrackRoot 策略）
-                IPlayer speaker = SpeakerResolver.TryResolveStrong(__instance);
+                IPlayer speaker = SpeakerIndex.TryGetBySpeaker(__instance);
+                if (speaker == null) speaker = SpeakerResolver.TryResolveStrong(__instance);
                 if (speaker == null) speaker = SpeakerResolver.TryResolveFallback(__instance);
                 if (speaker == null) return;
 

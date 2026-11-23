@@ -1,3 +1,4 @@
+using Subtitle.Utils;
 using System.Collections;
 using System.Collections.Generic;
 using EFT;
@@ -312,7 +313,7 @@ namespace SubtitleSystem
 
         private World3DBubble CreateWorld3DBubble(Transform anchor, float baseYOffset)
         {
-            var root = new GameObject("World3DBubble", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasGroup));
+            var root = UnityCompat.CreateGameObject("World3DBubble", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(CanvasGroup));
             root.transform.SetParent(anchor, true);
             root.transform.position = anchor.position + Vector3.up * (baseYOffset + _w3dSnap.ExtraOffsetY);
             root.transform.localRotation = Quaternion.identity;
@@ -329,7 +330,7 @@ namespace SubtitleSystem
             var rootRt = root.GetComponent<RectTransform>();
             rootRt.sizeDelta = new Vector2(GetWorld3DMaxWidth(), 100f);
 
-            var bubbleGo = new GameObject("Bubble", typeof(RectTransform), typeof(Image));
+            var bubbleGo = UnityCompat.CreateGameObject("Bubble", typeof(RectTransform), typeof(Image));
             bubbleGo.transform.SetParent(root.transform, false);
             var bubbleRt = bubbleGo.GetComponent<RectTransform>();
             bubbleRt.anchorMin = new Vector2(0.5f, 0.5f);
@@ -339,7 +340,7 @@ namespace SubtitleSystem
             var bg = bubbleGo.GetComponent<Image>();
             bg.raycastTarget = false;
 
-            var textGo = new GameObject("TextLegacy", typeof(RectTransform), typeof(Text));
+            var textGo = UnityCompat.CreateGameObject("TextLegacy", typeof(RectTransform), typeof(Text));
             textGo.transform.SetParent(bubbleGo.transform, false);
             var textRt = textGo.GetComponent<RectTransform>();
             textRt.anchorMin = new Vector2(0.5f, 0.5f);
@@ -351,7 +352,7 @@ namespace SubtitleSystem
             text.supportRichText = true;
             text.raycastTarget = false;
 
-            var tmpGo = new GameObject("TextSDF", typeof(RectTransform), typeof(TextMeshProUGUI));
+            var tmpGo = UnityCompat.CreateGameObject("TextSDF", typeof(RectTransform), typeof(TextMeshProUGUI));
             tmpGo.transform.SetParent(bubbleGo.transform, false);
             var tmpRt = tmpGo.GetComponent<RectTransform>();
             tmpRt.anchorMin = new Vector2(0.5f, 0.5f);
