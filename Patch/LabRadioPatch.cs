@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
+using Newtonsoft.Json.Linq;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
@@ -30,8 +30,12 @@ namespace Subtitle
             return "<color=#" + hex + ">" + s + "</color>";
         }
         // ======== 外部要求：调试/总开关/颜色 ========
-        private static bool EnableSub { get { try { return Subtitle.Config.Settings.EnableMapBroadcastSubtitle != null ? Subtitle.Config.Settings.EnableMapBroadcastSubtitle.Value : true; } catch { return true; } } }
-        private static bool EnableDm { get { try { return Subtitle.Config.Settings.EnableMapBroadcastDanmaku != null ? Subtitle.Config.Settings.EnableMapBroadcastDanmaku.Value : true; } catch { return true; } } }
+        private static bool EnableSub =>
+            (Config.Settings.EnableSubtitle == null || Config.Settings.EnableSubtitle.Value) &&
+            (Config.Settings.EnableMapBroadcastSubtitle == null || Config.Settings.EnableMapBroadcastSubtitle.Value);
+        private static bool EnableDm =>
+            (Config.Settings.EnableDanmaku == null || Config.Settings.EnableDanmaku.Value) &&
+            (Config.Settings.EnableMapBroadcastDanmaku == null || Config.Settings.EnableMapBroadcastDanmaku.Value);
         private static bool DebugOn { get { try { return Subtitle.Config.Settings.MapBroadcastDebug != null && Subtitle.Config.Settings.MapBroadcastDebug.Value; } catch { return false; } } }
   
         private static readonly ManualLogSource Log = BepInEx.Logging.Logger.CreateLogSource("Subtitle.Debug");
@@ -61,11 +65,12 @@ namespace Subtitle
             try
             {
                 LoadMapping();
-                if (DebugOn) Log.LogInfo("[LabBroadcast] init bootstrap.");
+                if (DebugOn && Subtitle.Utils.LogThrottle.Allow("broadcast.bootstrap", 0.5)) Log.LogInfo("[LabBroadcast] init bootstrap.");
             }
             catch (Exception e)
             {
-                Log.LogWarning("[LabBroadcast] bootstrap failed: " + e);
+                if (Subtitle.Utils.LogThrottle.Allow("Patch.LabRadioPatch.cs.72", 10))
+                    Log.LogWarning("[LabBroadcast] bootstrap failed: " + e);
             }
         }
 
@@ -89,7 +94,7 @@ namespace Subtitle
                 int id = __instance != null ? __instance.GetInstanceID() : 0;
 
                 // 2) 调试日志
-                if (DebugOn)
+                if (DebugOn && Subtitle.Utils.LogThrottle.Allow("broadcast.hit", 0.5))
                 {
                     string path = TryBuildPath(__instance);
                     Log.LogInfo("[LabBroadcast] hit: clip=" + name + " len=" + clip.length.ToString("0.00") + "s  src=" + path);
@@ -99,6 +104,7 @@ namespace Subtitle
                 string textSingle;
                 if (s_ClipText.TryGetValue(name, out textSingle) && !string.IsNullOrEmpty(textSingle))
                 {
+                    s_Tails.Remove(id);
                     Show(textSingle, clip.length);
                     return;
                 }
@@ -128,7 +134,7 @@ namespace Subtitle
 
                 if (matched != null)
                 {
-                    if (DebugOn) Log.LogInfo("[LabBroadcast] seq matched: " + string.Join(" + ", matched.Clips) + " => \"" + matched.Text + "\"");
+                    if (DebugOn && Subtitle.Utils.LogThrottle.Allow("broadcast.sequence", 0.5)) Log.LogInfo("[LabBroadcast] seq matched: " + string.Join(" + ", matched.Clips) + " => \"" + matched.Text + "\"");
                     // 序列的持续时间保守给个 3.5s（你要更严谨可以在 JSONC 里为序列加上 dur 秒数）
                     Show(matched.Text, Math.Max(clip.length + 0.5f, 3.5f));
                     // 命中后清尾巴，避免叠触发
@@ -137,7 +143,8 @@ namespace Subtitle
             }
             catch (Exception e)
             {
-                Log.LogWarning("[LabBroadcast] Postfix failed: " + e);
+                if (Subtitle.Utils.LogThrottle.Allow("Patch.LabRadioPatch.cs.145", 10))
+                    Log.LogWarning("[LabBroadcast] Postfix failed: " + e);
             }
         }
 
@@ -185,18 +192,20 @@ namespace Subtitle
             try
             {
                 // 4) 分发
-                if (EnableSub && SubtitleSystem.SubtitleManager.Instance != null)
-                    SubtitleSystem.SubtitleManager.Instance.AddSubtitle(subText, subBodyColor, Math.Max(0.5f, durationSec));
+                var manager = SubtitleSystem.SubtitleManager.Instance;
+                bool subAccepted = EnableSub && manager != null && manager.isActiveAndEnabled &&
+                    manager.TryAddSubtitle(subText, subBodyColor, Math.Max(0.5f, durationSec), Config.Settings.RoleKind.Unknown);
+                bool dmQueued = EnableDm && manager != null && manager.isActiveAndEnabled &&
+                    manager.TryAddDanmaku(dmText, dmBodyColor);
 
-                if (EnableDm && SubtitleSystem.SubtitleManager.Instance != null)
-                    SubtitleSystem.SubtitleManager.Instance.AddDanmaku(dmText, dmBodyColor);
-
-                if (DebugOn)
-                    Log.LogInfo("[LabBroadcast] OUT: \"" + text + "\" dur=" + durationSec.ToString("0.00") + "s");
+                if (DebugOn && Subtitle.Utils.LogThrottle.Allow("broadcast.output", 0.5))
+                    Log.LogInfo("[LabBroadcast] dispatch subtitleAccepted=" + subAccepted + " danmakuQueued=" + dmQueued +
+                        " managerReady=" + (manager != null && manager.isActiveAndEnabled) + " dur=" + durationSec.ToString("0.00") + "s");
             }
             catch (Exception e)
             {
-                Log.LogWarning("[LabBroadcast] show failed: " + e);
+                if (Subtitle.Utils.LogThrottle.Allow("Patch.LabRadioPatch.cs.204", 10))
+                    Log.LogWarning("[LabBroadcast] show failed: " + e);
             }
         }
 
@@ -215,76 +224,75 @@ namespace Subtitle
             LoadMapping();
         }
 
+        internal static void ResetPlaybackState()
+        {
+            s_Tails.Clear();
+        }
+
         private static void LoadMapping()
         {
             s_ClipText.Clear();
             s_Seqs.Clear();
             s_SeqMaxLen = 1;
+            ResetPlaybackState();
 
             try
             {
                 var path = MapPath;
                 if (!File.Exists(path))
                 {
-                    Log.LogWarning("[LabBroadcast] mapping not found: " + path);
+                    if (Subtitle.Utils.LogThrottle.Allow("Patch.LabRadioPatch.cs.240", 10))
+                        Log.LogWarning("[LabBroadcast] mapping not found: " + path);
                     return;
                 }
 
                 string raw = File.ReadAllText(path, Encoding.UTF8);
                 string json = Subtitle.Utils.JsoncUtils.StripJsonComments(raw);
 
-                // 1) 顶层 "clip":"text" 映射（忽略保留字）
-                // 允许写：
-                // {
-                //   "announcer_elevators_O": "电梯门即将打开……",
-                //   "announcer_elevators_R": "电梯门即将关闭……",
-                //   "sequences": [ ... ]
-                // }
-                var kvRx = new Regex("\"([^\"]+)\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.Multiline);
-                var ms = kvRx.Matches(json);
-                for (int i = 0; i < ms.Count; i++)
+                var root = JObject.Parse(json);
+                foreach (var property in root.Properties())
                 {
-                    var m = ms[i];
-                    string k = m.Groups[1].Value;
-                    if (string.Equals(k, "sequences", StringComparison.OrdinalIgnoreCase)) continue;
-                    if (string.Equals(k, "clips", StringComparison.OrdinalIgnoreCase)) continue;
-                    if (string.Equals(k, "text", StringComparison.OrdinalIgnoreCase)) continue;
-
-                    string v = m.Groups[2].Value;
-                    if (k.StartsWith("announcer_", StringComparison.OrdinalIgnoreCase))
-                        s_ClipText[k] = v ?? "";
+                    if (property.Name.StartsWith("announcer_", StringComparison.OrdinalIgnoreCase) &&
+                        property.Value.Type == JTokenType.String)
+                        s_ClipText[property.Name] = (string)property.Value;
                 }
 
-                // 2) 序列： { "clips": ["announcer_composite_1_security3","announcer_composite_2_B","announcer_composite_3_11"], "text": "安保等级提升……" }
-                var seqRx = new Regex("\\{\\s*\"clips\"\\s*:\\s*\\[(.*?)\\]\\s*,\\s*\"text\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.Singleline);
-                var sm = seqRx.Matches(json);
-                for (int i = 0; i < sm.Count; i++)
+                var sequences = root["sequences"] as JArray;
+                if (sequences != null)
                 {
-                    string arr = sm[i].Groups[1].Value;
-                    string txt = sm[i].Groups[2].Value;
-                    var names = new List<string>();
-                    var nameRx = new Regex("\"([^\"]+)\"");
-                    var nm = nameRx.Matches(arr);
-                    for (int j = 0; j < nm.Count; j++)
+                    foreach (var item in sequences)
                     {
-                        string n = nm[j].Groups[1].Value;
-                        if (!string.IsNullOrEmpty(n)) names.Add(n);
-                    }
-                    if (names.Count > 0)
-                    {
-                        s_Seqs.Add(new Seq { Clips = names.ToArray(), Text = txt ?? "" });
-                        if (names.Count > s_SeqMaxLen) s_SeqMaxLen = names.Count;
+                        var entry = item as JObject;
+                        var clips = entry?["clips"] as JArray;
+                        var text = entry?["text"];
+                        if (clips == null || clips.Count == 0 || text == null || text.Type != JTokenType.String)
+                            continue;
+                        var names = new List<string>();
+                        bool valid = true;
+                        foreach (var clip in clips)
+                        {
+                            if (clip.Type != JTokenType.String || string.IsNullOrWhiteSpace((string)clip))
+                            {
+                                valid = false;
+                                break;
+                            }
+                            names.Add((string)clip);
+                        }
+                        if (!valid) continue;
+                        s_Seqs.Add(new Seq { Clips = names.ToArray(), Text = (string)text });
+                        s_SeqMaxLen = Math.Max(s_SeqMaxLen, names.Count);
                     }
                 }
 
-                if (DebugOn)
+                if (DebugOn && Subtitle.Utils.LogThrottle.Allow("broadcast.mapping", 0.5))
                 {
                     Log.LogInfo("[LabBroadcast] mapping loaded: singles=" + s_ClipText.Count + " seq=" + s_Seqs.Count + " maxLen=" + s_SeqMaxLen);
                 }
             }
             catch (Exception e)
             {
-                Log.LogWarning("[LabBroadcast] load mapping failed: " + e);
+                if (Subtitle.Utils.LogThrottle.Allow("Patch.LabRadioPatch.cs.289", 10))
+                    Log.LogWarning("[LabBroadcast] load mapping failed: " + e);
             }
         }
 

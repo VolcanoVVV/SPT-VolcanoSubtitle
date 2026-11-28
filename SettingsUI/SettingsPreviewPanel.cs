@@ -22,6 +22,9 @@ namespace Subtitle.SettingsUI
     /// </summary>
     internal sealed class SettingsPreviewPanel : MonoBehaviour
     {
+#if GAME_IL2CPP
+        public SettingsPreviewPanel(System.IntPtr pointer) : base(pointer) { }
+#endif
         private RectTransform _pane;
 
         // —— 预览状态：选中的角色类别 / 自定义台词 / 最近一次随机台词（RefreshAll 统一读取） ——
@@ -226,7 +229,7 @@ namespace Subtitle.SettingsUI
             kindBtnRt.sizeDelta = new Vector2(104f, 22f);
             kindBtnRt.anchoredPosition = new Vector2(32f, 0f);
             _kindBtnLabel = kindBtn.GetComponentInChildren<Text>();
-            kindBtn.onClick.AddListener(delegate
+            kindBtn.onClick.AddManagedListener(delegate
             {
                 int idx = System.Array.IndexOf(kCycleKinds, _kind);
                 _kind = kCycleKinds[(idx + 1) % kCycleKinds.Length];
@@ -239,7 +242,7 @@ namespace Subtitle.SettingsUI
             PlaceFixed(_lineLabel.rectTransform, 140f, 28f);
 
             // 自定义台词输入框：留空 = 回退默认样例（默认样例含“操”，用于演示主播模式打码）
-            var inputGo = new GameObject("LineInput", typeof(RectTransform), typeof(Image), typeof(InputField));
+            var inputGo = UnityCompat.CreateGameObject("LineInput", typeof(RectTransform), typeof(Image), typeof(InputField));
             inputGo.transform.SetParent(row, false);
             var inputRt = (RectTransform)inputGo.transform;
             inputRt.anchorMin = new Vector2(0f, 0.5f);
@@ -262,7 +265,7 @@ namespace Subtitle.SettingsUI
 
             input.textComponent = inputText;
             input.placeholder = _linePlaceholder;
-            input.onValueChanged.AddListener(delegate (string v)
+            input.onValueChanged.AddManagedListener(delegate (string v)
             {
                 _customText = v;
                 RefreshAll();
@@ -276,7 +279,7 @@ namespace Subtitle.SettingsUI
             randBtnRt.sizeDelta = new Vector2(52f, 22f);
             randBtnRt.anchoredPosition = new Vector2(-2f, 0f);
             _randomButtonLabel = randBtn.GetComponentInChildren<Text>(true);
-            randBtn.onClick.AddListener(delegate
+            randBtn.onClick.AddManagedListener(delegate
             {
                 string aiType, line;
                 Settings.RoleKind picked;
@@ -351,13 +354,13 @@ namespace Subtitle.SettingsUI
                 case Settings.RoleKind.Scav: aiType = "assault"; fallbackLabel = "Scav"; nameForShow = "Kisliy_77"; return;
                 case Settings.RoleKind.Raider: aiType = "pmcBot"; fallbackLabel = "Raider"; nameForShow = null; return;
                 case Settings.RoleKind.Rogue: aiType = "exUsec"; fallbackLabel = "Rogue"; nameForShow = null; return;
-                case Settings.RoleKind.Cultist: aiType = "sectantPriest"; fallbackLabel = "邪教徒"; nameForShow = null; return;
-                case Settings.RoleKind.BossFollower: aiType = "followerGluharAssault"; fallbackLabel = "Boss小弟"; nameForShow = null; return;
-                case Settings.RoleKind.Zombie: aiType = "infectedpmc"; fallbackLabel = "丧尸"; nameForShow = null; return;
+                case Settings.RoleKind.Cultist: aiType = "sectantPriest"; fallbackLabel = KindDisplayName(Settings.RoleKind.Cultist); nameForShow = null; return;
+                case Settings.RoleKind.BossFollower: aiType = "followerGluharAssault"; fallbackLabel = KindDisplayName(Settings.RoleKind.BossFollower); nameForShow = null; return;
+                case Settings.RoleKind.Zombie: aiType = "infectedpmc"; fallbackLabel = KindDisplayName(Settings.RoleKind.Zombie); nameForShow = null; return;
                 case Settings.RoleKind.Goons: aiType = "bossKnight"; fallbackLabel = "Knight"; nameForShow = null; return;
                 case Settings.RoleKind.Bosses: aiType = "bossKilla"; fallbackLabel = "Killa"; nameForShow = null; return;
-                case Settings.RoleKind.Player: aiType = "玩家"; fallbackLabel = "玩家"; nameForShow = null; return;
-                case Settings.RoleKind.Teammate: aiType = "队友"; fallbackLabel = "队友"; nameForShow = null; return;
+                case Settings.RoleKind.Player: aiType = "player"; fallbackLabel = KindDisplayName(Settings.RoleKind.Player); nameForShow = null; return;
+                case Settings.RoleKind.Teammate: aiType = "teammate"; fallbackLabel = KindDisplayName(Settings.RoleKind.Teammate); nameForShow = null; return;
                 default: aiType = ""; fallbackLabel = "AI"; nameForShow = null; return;
             }
         }
@@ -553,7 +556,7 @@ namespace Subtitle.SettingsUI
             {
                 if (_subBg == null)
                 {
-                    var bgGo = new GameObject("BG", typeof(RectTransform), typeof(Image));
+                    var bgGo = UnityCompat.CreateGameObject("BG", typeof(RectTransform), typeof(Image));
                     bgGo.transform.SetParent(_subRowRt, false);
                     bgGo.transform.SetAsFirstSibling(); // 放在 Text 之下
                     _subBg = bgGo.GetComponent<Image>();

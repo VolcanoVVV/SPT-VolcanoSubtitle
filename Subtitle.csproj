@@ -100,8 +100,11 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(GameVersionPath)' != '' ">
-    <GamePluginPath>$(GameVersionPath)\BepInEx\plugins\subtitle</GamePluginPath>
-    <PackagePluginPath>V:\EFToffline\汉化\Subtitle 实时字幕【开发】\打包\BepInEx\plugins\subtitle</PackagePluginPath>
+    <GamePluginPath Condition=" '$(GamePluginPath)' == '' ">$(GameVersionPath)\BepInEx\plugins\subtitle</GamePluginPath>
+    <!-- 保留开发时自动部署；纯构建/打包可显式关闭，打包不再覆盖共享目录。 -->
+    <DeployToGame Condition=" '$(DeployToGame)' == '' ">true</DeployToGame>
+    <PackageRoot Condition=" '$(PackageRoot)' == '' ">$(MSBuildProjectDirectory)\ReleasePackages\$(Configuration)</PackageRoot>
+    <PackagePluginPath Condition=" '$(PackagePluginPath)' == '' ">$(PackageRoot)\BepInEx\plugins\subtitle</PackagePluginPath>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
@@ -211,29 +214,42 @@
     <Compile Include="SubtitleUI\SubtitleTextStyle.cs" />
     <Compile Include="Utils\FriendlyUtils.cs" />
     <Compile Include="Utils\I18n.cs" />
+    <Compile Include="Utils\LogThrottle.cs" />
+    <Compile Include="Utils\DiagnosticText.cs" />
     <Compile Include="Utils\JsoncUtils.cs" />
     <Compile Include="Utils\SpeakerIndex.cs" />
     <Compile Include="Utils\SubtitleEnum.cs" />
     <Compile Include="Utils\StreamerFilter.cs" />
     <Compile Include="Utils\UIStateListener.cs" />
+    <Compile Include="Utils\UnityCompat.cs" />
     <Compile Include="World3D\SubtitleWorld3D.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="CopyBuildOutput" AfterTargets="Build" Condition=" '$(GameVersionPath)' != '' ">
+  <Target Name="CollectSubtitleData">
     <!-- 构建时动态枚举数据文件，并保留 locales、presets 的子目录结构。 -->
     <ItemGroup>
       <SubtitleLocaleFiles Include="$(MSBuildProjectDirectory)\locales\**\*" />
       <SubtitlePresetFiles Include="$(MSBuildProjectDirectory)\presets\**\*" />
+      <SubtitlePackageDocs Include="$(MSBuildProjectDirectory)\README.md;$(MSBuildProjectDirectory)\CHANGELOG.md;$(MSBuildProjectDirectory)\BUILDING.md;$(MSBuildProjectDirectory)\LICENSE.txt" />
+      <SubtitleExtraDocs Include="$(MSBuildProjectDirectory)\docs\**\*.md" />
     </ItemGroup>
-    <MakeDir Directories="$(GamePluginPath);$(PackagePluginPath)" />
+  </Target>
+  <Target Name="CopyBuildOutput" AfterTargets="Build" DependsOnTargets="CollectSubtitleData" Condition=" '$(DeployToGame)' == 'true' And '$(GameVersionPath)' != '' ">
+    <MakeDir Directories="$(GamePluginPath)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GamePluginPath)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PackagePluginPath)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="$(MSBuildProjectDirectory)\PhraseFilter.jsonc" DestinationFiles="$(GamePluginPath)\PhraseFilter.jsonc" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(MSBuildProjectDirectory)\PhraseFilter.jsonc" DestinationFiles="$(PackagePluginPath)\PhraseFilter.jsonc" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(SubtitleLocaleFiles)" DestinationFiles="@(SubtitleLocaleFiles->'$(GamePluginPath)\locales\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(SubtitleLocaleFiles)" DestinationFiles="@(SubtitleLocaleFiles->'$(PackagePluginPath)\locales\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(SubtitlePresetFiles)" DestinationFiles="@(SubtitlePresetFiles->'$(GamePluginPath)\presets\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="Package" DependsOnTargets="Build;CollectSubtitleData">
+    <MakeDir Directories="$(PackagePluginPath)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PackagePluginPath)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\PhraseFilter.jsonc" DestinationFiles="$(PackagePluginPath)\PhraseFilter.jsonc" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(SubtitleLocaleFiles)" DestinationFiles="@(SubtitleLocaleFiles->'$(PackagePluginPath)\locales\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(SubtitlePresetFiles)" DestinationFiles="@(SubtitlePresetFiles->'$(PackagePluginPath)\presets\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(SubtitlePackageDocs)" DestinationFolder="$(PackageRoot)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(SubtitleExtraDocs)" DestinationFiles="@(SubtitleExtraDocs->'$(PackageRoot)\docs\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\Tests\README.md" DestinationFiles="$(PackageRoot)\Tests\README.md" SkipUnchangedFiles="true" />
   </Target>
 </Project>

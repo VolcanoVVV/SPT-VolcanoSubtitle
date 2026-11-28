@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>Subtitle</AssemblyName>
+    <DefineConstants>$(DefineConstants);GAME_4_1;GAME_IL2CPP</DefineConstants>
+    <SptGamePath Condition="'$(SptGamePath)' == ''">V:\EFToffline\EFToffline - 5.0debug</SptGamePath>
+    <BepInExPath>$(SptGamePath)\BepInEx</BepInExPath>
+    <ManagedJsonPath Condition="'$(ManagedJsonPath)' == ''">$(BepInExPath)\plugins\Newtonsoft.Json.dll</ManagedJsonPath>
+    <PackageRoot Condition="'$(PackageRoot)' == '' And '$(PackagePath)' == ''">$(MSBuildProjectDirectory)\..\ReleasePackages\$(Configuration)-5.0-IL2CPP</PackageRoot>
+    <PackagePath Condition="'$(PackagePath)' == ''">$(PackageRoot)\BepInEx\plugins\subtitle</PackagePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Plugin.cs;..\Config\*.cs;..\Debug\*.cs;..\Patch\*.cs;..\SettingsUI\*.cs;..\SubtitleUI\*.cs;..\Utils\*.cs;..\World3D\*.cs" />
+    <Reference Include="$(BepInExPath)\core\0Harmony.dll;$(BepInExPath)\core\BepInEx.Core.dll;$(BepInExPath)\core\BepInEx.Unity.IL2CPP.dll;$(BepInExPath)\core\Il2CppInterop.Runtime.dll;$(BepInExPath)\core\Il2CppInterop.Common.dll" Private="false" />
+    <Reference Include="$(ManagedJsonPath);$(BepInExPath)\plugins\sptushonka\SPTushonka.Reflection.dll" Private="false" />
+    <Reference Include="$(BepInExPath)\interop\Assembly-CSharp.dll;$(BepInExPath)\interop\PlayerEnums.dll;$(BepInExPath)\interop\Il2Cppmscorlib.dll;$(BepInExPath)\interop\Il2CppSystem.dll;$(BepInExPath)\interop\Comfort.dll;$(BepInExPath)\interop\Comfort.Unity.dll;$(BepInExPath)\interop\DOTween.dll;$(BepInExPath)\interop\DissonanceVoip.dll;$(BepInExPath)\interop\Sirenix.Serialization.dll;$(BepInExPath)\interop\Unity.TextMeshPro.dll;$(BepInExPath)\interop\UnityEngine*.dll" Private="false" />
+    <PackageResource Include="..\locales\**\*">
+      <RelativePath>locales\%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+    </PackageResource>
+    <PackageResource Include="..\presets\**\*">
+      <RelativePath>presets\%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+    </PackageResource>
+    <PackageDoc Include="..\CHANGELOG.md;..\LICENSE.txt" />
+    <PackageResource Include="..\PhraseFilter.jsonc">
+      <RelativePath>PhraseFilter.jsonc</RelativePath>
+    </PackageResource>
+  </ItemGroup>
+
+  <Target Name="CheckSptReferences" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(BepInExPath)\interop\Assembly-CSharp.dll') Or !Exists('$(BepInExPath)\core\BepInEx.Unity.IL2CPP.dll')" Text="Set SptGamePath to a SPT 5.0 BE installation with generated BepInEx interop assemblies." />
+    <Error Condition="!Exists('$(ManagedJsonPath)')" Text="Set ManagedJsonPath to a managed Newtonsoft.Json 13.x DLL. Use the CoreCLR assembly from the plugin installation." />
+  </Target>
+
+  <Target Name="Package" DependsOnTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PackagePath)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="README.md" DestinationFiles="$(PackageRoot)\README.md" SkipUnchangedFiles="true" Condition="'$(PackageRoot)' != ''" />
+    <Copy SourceFiles="@(PackageDoc)" DestinationFolder="$(PackageRoot)" SkipUnchangedFiles="true" Condition="'$(PackageRoot)' != ''" />
+    <Copy SourceFiles="@(PackageResource)" DestinationFiles="@(PackageResource->'$(PackagePath)\%(RelativePath)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

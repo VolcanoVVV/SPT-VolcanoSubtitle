@@ -17,6 +17,8 @@ namespace SubtitleSystem
         // 缓存：voiceKey -> phrase(trigger) -> (netId | General) -> List<string>
         private static Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>> _cache =
             new Dictionary<string, Dictionary<string, Dictionary<string, List<string>>>>(StringComparer.OrdinalIgnoreCase);
+        // 缺失或损坏的声线也缓存，切换语言/手动重载时允许重新读取。
+        private static readonly HashSet<string> _failedLoads = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         static PhraseSubtitle()
         {
@@ -27,6 +29,7 @@ namespace SubtitleSystem
         public static void InvalidateCache()
         {
             _cache.Clear();
+            _failedLoads.Clear();
         }
 
         /// <summary>
@@ -85,7 +88,8 @@ namespace SubtitleSystem
                 if (allowDefaultGeneral && TryPick(_cache[FallbackChCacheKey], p, "General", true, out s)) return StreamerFilter.Apply(s);
             }
 
-            Debug.LogWarning(string.Format("[SubtitleSystem] Miss voice='{0}' phrase='{1}' netId='{2}'.",
+            if (LogThrottle.Allow("voice.missing", 30))
+                Debug.LogWarning(string.Format("[SubtitleSystem] Miss voice='{0}' phrase='{1}' netId='{2}'.",
                 vk, p, n));
             return I18n.Text("Phrase.MissingText", "(嘀咕声)");
         }
@@ -143,6 +147,7 @@ namespace SubtitleSystem
         private static bool EnsureLoaded(string voiceKey)
         {
             if (_cache.ContainsKey(voiceKey)) return true;
+            if (_failedLoads.Contains(voiceKey)) return false;
 
             try
             {
@@ -153,6 +158,7 @@ namespace SubtitleSystem
             }
             catch (Exception ex)
             {
+                _failedLoads.Add(voiceKey);
                 Debug.LogError("[SubtitleSystem] Load voice '" + voiceKey + "' failed: " + ex);
                 return false;
             }
@@ -162,9 +168,14 @@ namespace SubtitleSystem
         private static bool EnsureFallbackChLoaded()
         {
             if (_cache.ContainsKey(FallbackChCacheKey)) return true;
+            if (_failedLoads.Contains(FallbackChCacheKey)) return false;
 
             string dir = Subtitle.Config.PhraseFilterManager.DefaultLocalesDir;
-            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return false;
+            if (string.IsNullOrEmpty(dir))
+            {
+                _failedLoads.Add(FallbackChCacheKey);
+                return false;
+            }
             return LoadIntoCache(FallbackChCacheKey, Path.Combine(dir, DefaultVoice + ".jsonc"));
         }
 
@@ -183,6 +194,7 @@ namespace SubtitleSystem
             {
                 if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 {
+                    _failedLoads.Add(cacheKey);
                     return false;
                 }
 
@@ -239,6 +251,7 @@ namespace SubtitleSystem
             }
             catch (Exception ex)
             {
+                _failedLoads.Add(cacheKey);
                 Debug.LogError("[SubtitleSystem] Load voice '" + cacheKey + "' failed: " + ex);
                 return false;
             }

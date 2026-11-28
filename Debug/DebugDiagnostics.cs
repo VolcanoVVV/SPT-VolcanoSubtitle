@@ -74,15 +74,19 @@ namespace Subtitle.DebugTools
         internal static string BuildEventReport()
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Volcano Subtitle - recent voice events");
-            sb.AppendLine("Language: " + (I18n.CurrentLanguage ?? "?"));
+            sb.AppendLine(I18n.Text("Diagnostic.ReportTitle", "Volcano Subtitle - 最近语音事件"));
+            sb.AppendLine(I18n.Format("Diagnostic.Language", "语言：{0}", I18n.CurrentLanguage ?? "?"));
+            var manager = SubtitleSystem.SubtitleManager.Instance;
+            sb.AppendLine(manager != null ? manager.GetDiagnosticsSummary() : I18n.Text("Diagnostic.NoManager", "字幕管理器未就绪。"));
+            sb.AppendLine(I18n.Format("Diagnostic.LogSuppressed", "本次运行已限频跳过日志：{0} 条", LogThrottle.SuppressedCount));
+            sb.AppendLine(I18n.Text("Diagnostic.AcceptedNote", "已接收表示已创建或排队，不保证之后不会被优先级抢占或因场景切换清理。"));
             foreach (var e in Snapshot())
             {
                 sb.AppendLine(string.Format("[{0}] {1} / {2} / #{3} | {4} ({5}) | {6}",
                     e.Time, e.VoiceKey, e.Trigger, e.NetId, e.Speaker, e.AiType, e.Distance));
-                sb.AppendLine("  Subtitle: " + e.Subtitle);
-                sb.AppendLine("  Danmaku:  " + e.Danmaku);
-                sb.AppendLine("  World3D:  " + e.World3D);
+                sb.AppendLine("  " + I18n.Text("Preview.Channel.Subtitle", "字幕") + ": " + DiagnosticText.Localize(e.Subtitle));
+                sb.AppendLine("  " + I18n.Text("Preview.Channel.Danmaku", "弹幕") + ": " + DiagnosticText.Localize(e.Danmaku));
+                sb.AppendLine("  " + I18n.Text("Preview.Channel.World3D", "3D 气泡") + ": " + DiagnosticText.Localize(e.World3D));
             }
             return sb.ToString();
         }
@@ -167,6 +171,9 @@ namespace Subtitle.DebugTools
 
     internal sealed class DebugDiagnosticsPanel : MonoBehaviour
     {
+#if GAME_IL2CPP
+        public DebugDiagnosticsPanel(System.IntPtr pointer) : base(pointer) { }
+#endif
         private static DebugDiagnosticsPanel s_Instance;
         private GameObject _panel;
         private Text _body;
@@ -174,6 +181,7 @@ namespace Subtitle.DebugTools
         private Button _resources;
         private bool _showResources;
         private bool _dirty = true;
+        private float _nextRefresh;
 
         internal static void ToggleVisible()
         {
@@ -192,7 +200,21 @@ namespace Subtitle.DebugTools
 
         internal static void NotifyChanged()
         {
-            if (s_Instance != null) s_Instance._dirty = true;
+            // 资源页只在用户进入该页或重载语言时扫描，不跟随每条语音反复读盘。
+            if (s_Instance != null && !s_Instance._showResources) s_Instance._dirty = true;
+        }
+
+        internal static void RefreshLocalization()
+        {
+            if (s_Instance == null || s_Instance._panel == null) return;
+            bool visible = s_Instance._panel.activeSelf;
+            var canvas = s_Instance._panel.transform.parent.gameObject;
+            canvas.SetActive(false);
+            Destroy(canvas);
+            s_Instance._panel = null;
+            s_Instance.BuildUI();
+            s_Instance._panel.SetActive(visible);
+            s_Instance._dirty = true;
         }
 
         internal static void CloseAndDestroy()
@@ -202,7 +224,11 @@ namespace Subtitle.DebugTools
         }
 
         private void OnDestroy() { if (s_Instance == this) s_Instance = null; }
-        private void Update() { if (_dirty && _panel != null && _panel.activeSelf) RefreshBody(); }
+        private void Update()
+        {
+            if (_dirty && _panel != null && _panel.activeSelf && Time.unscaledTime >= _nextRefresh)
+                RefreshBody();
+        }
 
         private void BuildUI()
         {
@@ -230,11 +256,11 @@ namespace Subtitle.DebugTools
             var clear = UiWidgets.CreateButton(top, "Clear", I18n.Text("Debug.Diagnostics.Clear", "清空"), new Vector2(0.79f, 0.1f), new Vector2(0.85f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 12, false);
             var copy = UiWidgets.CreateButton(top, "Copy", I18n.Text("Debug.Diagnostics.Copy", "复制"), new Vector2(0.86f, 0.1f), new Vector2(0.91f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 12, false);
             var close = UiWidgets.CreateButton(top, "Close", I18n.Text("Close", "关闭"), new Vector2(0.92f, 0.1f), new Vector2(0.98f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 12, false);
-            _events.onClick.AddListener(delegate { _showResources = false; _dirty = true; });
-            _resources.onClick.AddListener(delegate { _showResources = true; _dirty = true; });
-            clear.onClick.AddListener(delegate { if (!_showResources) DebugDiagnostics.Clear(); });
-            copy.onClick.AddListener(delegate { GUIUtility.systemCopyBuffer = _showResources ? DebugDiagnostics.ScanCurrentLocale() : DebugDiagnostics.BuildEventReport(); });
-            close.onClick.AddListener(delegate { _panel.SetActive(false); });
+            _events.onClick.AddManagedListener(delegate { _showResources = false; _dirty = true; });
+            _resources.onClick.AddManagedListener(delegate { _showResources = true; _dirty = true; });
+            clear.onClick.AddManagedListener(delegate { if (!_showResources) DebugDiagnostics.Clear(); });
+            copy.onClick.AddManagedListener(delegate { GUIUtility.systemCopyBuffer = _showResources ? DebugDiagnostics.ScanCurrentLocale() : DebugDiagnostics.BuildEventReport(); });
+            close.onClick.AddManagedListener(delegate { _panel.SetActive(false); });
 
             var bodyArea = UiWidgets.CreateRect(root, "Body", Vector2.zero, new Vector2(1f, 0.91f), new Vector2(8f, 8f), new Vector2(-8f, -4f));
             ScrollRect scroll;
@@ -245,6 +271,7 @@ namespace Subtitle.DebugTools
             _body = bodyGo.AddComponent<Text>();
             _body.font = UiWidgets.DefaultFont;
             _body.fontSize = 13;
+            _body.supportRichText = false;
             _body.color = Color.white;
             _body.alignment = TextAnchor.UpperLeft;
             _body.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -258,6 +285,7 @@ namespace Subtitle.DebugTools
         private void RefreshBody()
         {
             _dirty = false;
+            _nextRefresh = Time.unscaledTime + 0.25f;
             if (_body == null) return;
             _body.text = _showResources ? DebugDiagnostics.ScanCurrentLocale() : DebugDiagnostics.BuildEventReport();
             var le = _body.GetComponent<LayoutElement>();

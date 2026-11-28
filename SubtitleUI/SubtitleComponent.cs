@@ -1,3 +1,7 @@
+using Subtitle.Utils;
+#if GAME_IL2CPP
+using BepInEx.Unity.IL2CPP.Utils;
+#endif
 using EFT.UI;
 using System;
 using System.Collections;
@@ -11,6 +15,16 @@ namespace SubtitleSystem
 {
     public partial class SubtitleManager : MonoBehaviour
     {
+#if GAME_IL2CPP
+        public SubtitleManager(System.IntPtr pointer) : base(pointer) { }
+
+        internal static void RegisterLineComponents()
+        {
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<SubtitleRawText>();
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<SubtitleMarqueeState>();
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<SubtitleLineState>();
+        }
+#endif
         // 单例模式实例，用于全局访问 SubtitleManager
         private static SubtitleManager _instance;
 
@@ -42,6 +56,9 @@ namespace SubtitleSystem
 
         private sealed class SubtitleRawText : MonoBehaviour
         {
+#if GAME_IL2CPP
+            public SubtitleRawText(System.IntPtr pointer) : base(pointer) { }
+#endif
             public string Value;
         }
 
@@ -49,6 +66,9 @@ namespace SubtitleSystem
         // 每次重新布局 Version+1，旧滚动协程据此自行退出，避免池化复用后新旧协程串扰
         private sealed class SubtitleMarqueeState : MonoBehaviour
         {
+#if GAME_IL2CPP
+            public SubtitleMarqueeState(System.IntPtr pointer) : base(pointer) { }
+#endif
             public int Version;     // 布局版本号
             public bool Active;     // 本行是否处于滚动模式
             public bool AutoLong;   // 是否由超长台词规则强制进入滚动模式
@@ -58,6 +78,9 @@ namespace SubtitleSystem
         // 字幕行生命周期状态随对象池复用；版本号用于让旧协程安全退出
         private sealed class SubtitleLineState : MonoBehaviour
         {
+#if GAME_IL2CPP
+            public SubtitleLineState(System.IntPtr pointer) : base(pointer) { }
+#endif
             public int Version;
             public int Priority;
             public long Sequence;
@@ -70,6 +93,19 @@ namespace SubtitleSystem
 
         // 单例访问器
         public static SubtitleManager Instance => _instance;
+
+        internal string GetDiagnosticsSummary()
+        {
+            return Subtitle.Utils.I18n.Format("Diagnostic.Runtime", "字幕行：{0}；弹幕队列：{1}；3D 角色：{2}",
+                _activeLines.Count, _danmakuQueue.Count, _world3dBubbles.Count);
+        }
+
+        // Destroy 在帧末才执行；主动退休时立即释放单例并停止旧实例更新。
+        internal void ReleaseInstance()
+        {
+            if (UnityCompat.SameObject(_instance, this)) _instance = null;
+            gameObject.SetActive(false);
+        }
 
         private void Awake()
         {
@@ -309,7 +345,7 @@ namespace SubtitleSystem
         // 将字幕系统附加到战斗 UI 屏幕
         public static GameObject TryAttachToBattleUIScreen(EftBattleUIScreen screen)
         {
-            var root = new GameObject("SubtitleRoot", typeof(RectTransform));
+            var root = UnityCompat.CreateGameObject("SubtitleRoot", typeof(RectTransform));
             root.transform.SetParent(screen.transform, false);
 
             var rt = root.GetComponent<RectTransform>();
@@ -333,10 +369,15 @@ namespace SubtitleSystem
         // 带角色类别的普通字幕入口：满行时由优先级决定是否抢占
         internal void AddSubtitle(string text, Color color, float durationSec, Subtitle.Config.Settings.RoleKind roleKind)
         {
-            if (_subtitlePanel == null || string.IsNullOrEmpty(text)) return;
+            TryAddSubtitle(text, color, durationSec, roleKind);
+        }
+
+        internal bool TryAddSubtitle(string text, Color color, float durationSec, Subtitle.Config.Settings.RoleKind roleKind)
+        {
+            if (_subtitlePanel == null || string.IsNullOrEmpty(text)) return false;
 
             int priority = Subtitle.Config.Settings.GetSubtitleRolePriority(roleKind);
-            if (!ReserveSubtitleSlot(priority)) return;
+            if (!ReserveSubtitleSlot(priority)) return false;
 
             float extraSec = 0f;
             try
@@ -358,7 +399,8 @@ namespace SubtitleSystem
             int version = state.Version;
 
             _activeLines.Add(line);
-            StartCoroutine(SubtitleLifecycleCoroutine(line, state, version, dur));
+            this.StartCoroutine(SubtitleLifecycleCoroutine(line, state, version, dur));
+            return true;
         }
 
         // 添加新字幕
@@ -477,16 +519,16 @@ namespace SubtitleSystem
             if (row == null)
             {
                 // Row 容器
-                row = new GameObject("SubtitleRow", typeof(RectTransform));
+                row = UnityCompat.CreateGameObject("SubtitleRow", typeof(RectTransform));
                 row.transform.SetParent(_subtitlePanel.transform, false);
 
                 // 裁剪窗口节点（RectMask2D 默认关闭；仅超长滚动时启用，把文本限制在固定宽窗口内）
-                var clipGo = new GameObject("Clip", typeof(RectTransform), typeof(RectMask2D));
+                var clipGo = UnityCompat.CreateGameObject("Clip", typeof(RectTransform), typeof(RectMask2D));
                 clipGo.transform.SetParent(row.transform, false);
                 clipGo.GetComponent<RectMask2D>().enabled = false;
 
                 // Text 子节点（挂在裁剪窗口下；窗口不启用裁剪时与直接挂 Row 下视觉一致）
-                var textGo = new GameObject("Text", typeof(RectTransform), typeof(Text));
+                var textGo = UnityCompat.CreateGameObject("Text", typeof(RectTransform), typeof(Text));
                 textGo.transform.SetParent(clipGo.transform, false);
                 textComponent = textGo.GetComponent<Text>();
             }
@@ -536,7 +578,7 @@ namespace SubtitleSystem
             ApplyRowLayoutAndBackground(row, textComponent);
             // 兜底：首帧真实渲染后（动态字体图集/度量彻底就绪）再重测重铺一次，
             // 防止任何“测量时机早于渲染就绪”的残余偏差（同步预热已覆盖绝大部分情况，这里双保险）
-            StartCoroutine(DeferredRelayoutCoroutine(row, textComponent, lineState, lineState.Version));
+            this.StartCoroutine(DeferredRelayoutCoroutine(row, textComponent, lineState, lineState.Version));
             return row;
         }
 
@@ -689,7 +731,7 @@ namespace SubtitleSystem
                 // 滚动时长与超出长度成正比；速度随字号缩放
                 float charsPerSec = mq.AutoLong ? GetLongLineCharsPerSecond() : GetSubtitleMarqueeCharsPerSecond();
                 mq.Duration = (rr.fullTextW - rr.clipW) / Mathf.Max(MarqueeMinSpeedPx, txt.fontSize * charsPerSec);
-                StartCoroutine(MarqueeScrollCoroutine(row, mq, mq.Version, txt.rectTransform, rr.posX0, rr.posX1, rr.posY));
+                this.StartCoroutine(MarqueeScrollCoroutine(row, mq, mq.Version, txt.rectTransform, rr.posX0, rr.posX1, rr.posY));
             }
 
             // 8) 背景（可选）
@@ -698,7 +740,7 @@ namespace SubtitleSystem
             {
                 if (bgTr == null)
                 {
-                    var bgGo = new GameObject("BG", typeof(RectTransform), typeof(Image));
+                    var bgGo = UnityCompat.CreateGameObject("BG", typeof(RectTransform), typeof(Image));
                     bgGo.transform.SetParent(row.transform, false);
                     bgTr = bgGo.transform;
                     // 放在 Text 之下
@@ -851,7 +893,7 @@ namespace SubtitleSystem
             if (clipRt == null)
             {
                 // 兜底：旧池化对象可能缺 Clip 节点，懒建并把 Text 挂进去
-                var clipGo = new GameObject("Clip", typeof(RectTransform), typeof(RectMask2D));
+                var clipGo = UnityCompat.CreateGameObject("Clip", typeof(RectTransform), typeof(RectMask2D));
                 clipGo.transform.SetParent(row.transform, false);
                 clipRt = (RectTransform)clipGo.transform;
                 clipMask = clipGo.GetComponent<RectMask2D>();
@@ -968,7 +1010,7 @@ namespace SubtitleSystem
                 mq.Version++;
                 mq.Active = false;
             }
-            StartCoroutine(SubtitleExitCoroutine(line, state, version));
+            this.StartCoroutine(SubtitleExitCoroutine(line, state, version));
         }
 
         private IEnumerator SubtitleExitCoroutine(GameObject line, SubtitleLineState state, int version)

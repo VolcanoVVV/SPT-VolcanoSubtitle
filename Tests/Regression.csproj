@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- 使用 SDK 自带依赖，不需要从 NuGet 下载，也不加载游戏或 Unity。 -->
+    <Reference Include="Newtonsoft.Json" HintPath="$(MSBuildSDKsPath)/../Newtonsoft.Json.dll" />
+    <Compile Include="Regression.cs" />
+    <Compile Include="Stubs.cs" />
+    <Compile Include="../Utils/JsoncUtils.cs" />
+    <Compile Include="../Utils/LogThrottle.cs" />
+    <Compile Include="../Utils/I18n.cs" />
+    <Compile Include="../Utils/DiagnosticText.cs" />
+    <Compile Include="../Patch/LabRadioPatch.cs" />
+    <Compile Include="../SubtitleUI/PhraseSubtitle.cs" />
+  </ItemGroup>
+</Project>

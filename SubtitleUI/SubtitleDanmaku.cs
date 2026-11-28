@@ -1,4 +1,9 @@
+using Subtitle.Utils;
+#if GAME_IL2CPP
+using BepInEx.Unity.IL2CPP.Utils;
+#endif
 // Filename: Subtitle.Danmaku.cs
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -14,7 +19,8 @@ namespace SubtitleSystem
         {
             try
             {
-                if (!Subtitle.Config.Settings.DanmakuDebugVerbose.Value) return;
+                if (!Subtitle.Config.Settings.DanmakuDebugVerbose.Value ||
+                    !Subtitle.Utils.LogThrottle.Allow("danmaku.verbose", 1)) return;
                 Subtitle.Plugin.Log?.LogInfo(msg);
             }
             catch { }
@@ -53,6 +59,7 @@ namespace SubtitleSystem
 
         // === 新增：发送队列与节流 ===
         private struct DanmakuItem { public string Text; public Color Color; }
+        private const int MaxQueuedDanmaku = 32;
         private readonly Queue<DanmakuItem> _danmakuQueue = new Queue<DanmakuItem>();
         private bool _spawnLoopRunning;
         private float _spawnDelaySec = 0.2f; // 默认 0.2s（可被设置覆盖）
@@ -65,7 +72,7 @@ namespace SubtitleSystem
             if (this == null || this.transform == null) return;
 
             // 创建全屏 RectTransform 容器
-            var go = new GameObject("DanmakuLayer", typeof(RectTransform));
+            var go = UnityCompat.CreateGameObject("DanmakuLayer", typeof(RectTransform));
             go.transform.SetParent(this.transform, false);
             _danmakuLayer = go.GetComponent<RectTransform>();
             _danmakuLayer.anchorMin = new Vector2(0f, 0f);
@@ -178,10 +185,19 @@ namespace SubtitleSystem
         // ===== 外部 API：添加一条弹幕 =====
         public void AddDanmaku(string text, Color color)
         {
+            TryAddDanmaku(text, color);
+        }
+
+        internal bool TryAddDanmaku(string text, Color color)
+        {
             if (!_danmakuInited) InitializeDanmakuLayer();
-            if (_danmakuLayer == null || string.IsNullOrEmpty(text)) return;
+            if (_danmakuLayer == null || string.IsNullOrEmpty(text)) return false;
+            // 弹幕优先跟上当前语音，积压时丢弃最旧的一条。
+            if (_danmakuQueue.Count >= MaxQueuedDanmaku)
+                _danmakuQueue.Dequeue();
             _danmakuQueue.Enqueue(new DanmakuItem { Text = text, Color = color });
-            if (!_spawnLoopRunning) StartCoroutine(CoSpawnLoop());
+            if (!_spawnLoopRunning) this.StartCoroutine(CoSpawnLoop());
+            return true;
         }
 
         // 逐条发送弹幕（有间隔），车道不可用时等待直到可用
@@ -190,23 +206,37 @@ namespace SubtitleSystem
         private IEnumerator CoSpawnLoop()
         {
             _spawnLoopRunning = true;
-            while (_danmakuQueue.Count > 0)
+            try
             {
-                var item = _danmakuQueue.Peek();
-                // 尝试生成；若车道暂不可用，等一小会再试，不丢消息
-                if (TrySpawnDanmaku(item.Text, item.Color))
+                while (_danmakuQueue.Count > 0)
                 {
-                    _danmakuQueue.Dequeue();
-                    // 两条弹幕之间留出极短间隔（可在设置改 0.1 或 0.3）
-                    if (_spawnDelayWait != null)
+                    var item = _danmakuQueue.Peek();
+                    bool spawned = false;
+                    bool failed = false;
+                    try
+                    {
+                        spawned = TrySpawnDanmaku(item.Text, item.Color);
+                    }
+                    catch (Exception error)
+                    {
+                        failed = true;
+                        if (LogThrottle.Allow("danmaku.spawn", 10))
+                            Subtitle.Plugin.Log?.LogWarning("[Danmaku] Could not display queued line: " + error);
+                    }
+
+                    if (spawned || failed)
+                        _danmakuQueue.Dequeue();
+
+                    if (!spawned)
+                        yield return _laneBusyWait;
+                    else if (_spawnDelayWait != null)
                         yield return _spawnDelayWait;
                 }
-                else
-                {
-                    yield return _laneBusyWait;
-                }
             }
-            _spawnLoopRunning = false;
+            finally
+            {
+                _spawnLoopRunning = false;
+            }
         }
 
         // ===== 内部：移动协程（右→左） =====
@@ -257,8 +287,20 @@ namespace SubtitleSystem
         // 真的去生成一条弹幕；成功 true，车道忙 false  
         private bool TrySpawnDanmaku(string text, Color color)
         {
-            // 创建/复用
             var go = GetDanmakuItem();
+            try
+            {
+                return TrySpawnDanmaku(go, text, color);
+            }
+            catch
+            {
+                if (go != null) Destroy(go);
+                throw;
+            }
+        }
+
+        private bool TrySpawnDanmaku(GameObject go, string text, Color color)
+        {
             var rt = (RectTransform)go.transform;
             var txt = go.GetComponent<Text>();
             Subtitle.Config.Settings.ApplyDanmakuTextOverrides(txt);
@@ -322,7 +364,7 @@ namespace SubtitleSystem
             _lanes[lane].lastSpeed = itemSpeed;
 
             // 开始移动
-            StartCoroutine(CoMoveLeft(go, startX, endX, itemSpeed));
+            this.StartCoroutine(CoMoveLeft(go, startX, endX, itemSpeed));
             return true;
         }
 
@@ -343,7 +385,7 @@ namespace SubtitleSystem
 
             if (go == null)
             {
-                go = new GameObject("DanmakuItem", typeof(RectTransform), typeof(Text), typeof(CanvasGroup));
+                go = UnityCompat.CreateGameObject("DanmakuItem", typeof(RectTransform), typeof(Text), typeof(CanvasGroup));
                 go.transform.SetParent(_danmakuLayer, false);
 
                 var txt = go.GetComponent<Text>();

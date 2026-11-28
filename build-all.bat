@@ -6,8 +6,8 @@ set "FONT_ROOT=%ROOT%..\SPT-FontReplace"
 set "CONFIGURATIONS=Debug-3.11 Debug-4.0 Debug-4.1 Release-3.11 Release-4.0 Release-4.1"
 
 for %%C in (%CONFIGURATIONS%) do (
-    echo Building Subtitle %%C...
-    dotnet build "%ROOT%Subtitle.sln" -c %%C
+    echo Building and packaging Subtitle %%C...
+    dotnet msbuild "%ROOT%Subtitle.csproj" -t:Package -p:Configuration=%%C -p:DeployToGame=false
     if errorlevel 1 exit /b 1
 )
 

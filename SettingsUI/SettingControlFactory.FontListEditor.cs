@@ -98,13 +98,13 @@ namespace Subtitle.SettingsUI
                     CreateLayoutLabel(row, fonts[i], 0f, 13, TextAnchor.MiddleLeft, Color.white);
 
                     var up = CreateLayoutButton(row, "Up", "↑", 24f);
-                    up.onClick.AddListener(delegate
+                    up.onClick.AddManagedListener(delegate
                     {
                         MoveFont(entry, captured, -1); // 首位再上移为无操作
                         rebuildList();
                     });
                     var del = CreateLayoutButton(row, "Del", "✕", 24f);
-                    del.onClick.AddListener(delegate
+                    del.onClick.AddManagedListener(delegate
                     {
                         RemoveFont(entry, captured);
                         rebuildList();
@@ -144,19 +144,19 @@ namespace Subtitle.SettingsUI
             };
             refresh();
 
-            prev.onClick.AddListener(delegate
+            prev.onClick.AddManagedListener(delegate
             {
                 if (pool == null || pool.Count == 0) return;
                 idx = (idx - 1 + pool.Count) % pool.Count;
                 refresh();
             });
-            next.onClick.AddListener(delegate
+            next.onClick.AddManagedListener(delegate
             {
                 if (pool == null || pool.Count == 0) return;
                 idx = (idx + 1) % pool.Count;
                 refresh();
             });
-            add.onClick.AddListener(delegate
+            add.onClick.AddManagedListener(delegate
             {
                 if (pool == null || pool.Count == 0) return;
                 var token = toCsvToken(pool[idx]);

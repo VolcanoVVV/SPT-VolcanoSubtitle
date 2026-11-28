@@ -17,7 +17,9 @@ namespace Subtitle.Utils
                 if (c == '"')
                 {
                     // 处理转义引号
-                    bool escaped = (i > 0 && src[i - 1] == '\\');
+                    int backslashes = 0;
+                    for (int j = i - 1; j >= 0 && src[j] == '\\'; j--) backslashes++;
+                    bool escaped = (backslashes % 2) != 0;
                     if (!escaped) inStr = !inStr;
                     sb.Append(c);
                 }
@@ -34,8 +36,16 @@ namespace Subtitle.Utils
                     // 块注释 /* ... */
                     else if (n == '*')
                     {
+                        // 保留空白和行号，避免把相邻 token 拼接成另一个合法值。
+                        sb.Append(' ');
                         i += 2;
-                        while (i + 1 < src.Length && !(src[i] == '*' && src[i + 1] == '/')) i++;
+                        while (i + 1 < src.Length && !(src[i] == '*' && src[i + 1] == '/'))
+                        {
+                            if (src[i] == '\r' || src[i] == '\n') sb.Append(src[i]);
+                            i++;
+                        }
+                        if (i + 1 >= src.Length)
+                            throw new System.FormatException("Unterminated JSONC block comment.");
                         i++; // 跳过 '/'
                     }
                     else

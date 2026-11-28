@@ -159,6 +159,18 @@ namespace Subtitle.Utils
             return Lookup(s_Common, id, fallback);
         }
 
+        public static string Format(string id, string fallback, params object[] args)
+        {
+            try { return string.Format(Text(id, fallback), args); }
+            catch (FormatException)
+            {
+                // 玩家自定义翻译格式损坏时保留操作可用性。
+                if (LogThrottle.Allow("i18n.format", 30))
+                    s_Log.LogWarning("[I18n] Invalid format string: " + id);
+                return string.Format(fallback, args);
+            }
+        }
+
         private static string LookupSetting(string key, string field, string fallback)
         {
             if (s_Settings == null || string.IsNullOrEmpty(key)) return fallback;

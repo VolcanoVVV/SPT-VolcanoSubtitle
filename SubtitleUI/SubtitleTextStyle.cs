@@ -1,3 +1,4 @@
+using Subtitle.Utils;
 using Newtonsoft.Json; // 需确保项目里已有\
 using Newtonsoft.Json.Linq;
 using Subtitle.Config;
@@ -29,7 +30,8 @@ namespace SubtitleSystem
         {
             if (!File.Exists(presetPath))
             {
-                Debug.LogWarning("[SubtitleStyle] Preset file not found: " + presetPath);
+                if (Subtitle.Utils.LogThrottle.Allow("SubtitleUI.SubtitleTextStyle.cs.32", 10))
+                    Debug.LogWarning("[SubtitleStyle] Preset file not found: " + presetPath);
                 return null;
             }
 
@@ -46,13 +48,15 @@ namespace SubtitleSystem
             }
             catch (Exception e)
             {
-                Debug.LogError("[SubtitleStyle] Parse preset failed: " + e);
+                if (Subtitle.Utils.LogThrottle.Allow("SubtitleUI.SubtitleTextStyle.cs.49", 10))
+                    Debug.LogError("[SubtitleStyle] Parse preset failed: " + e);
                 return null;
             }
 
             if (preset == null)
             {
-                Debug.LogWarning("[SubtitleStyle] Empty preset: " + presetPath);
+                if (Subtitle.Utils.LogThrottle.Allow("SubtitleUI.SubtitleTextStyle.cs.55", 10))
+                    Debug.LogWarning("[SubtitleStyle] Empty preset: " + presetPath);
                 return null;
             }
 
@@ -106,7 +110,8 @@ namespace SubtitleSystem
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[SubtitleStyle] Parse Setting section failed: " + e.Message);
+                if (Subtitle.Utils.LogThrottle.Allow("SubtitleUI.SubtitleTextStyle.cs.109", 10))
+                    Debug.LogWarning("[SubtitleStyle] Parse Setting section failed: " + e.Message);
             }
 
             return preset;
@@ -470,7 +475,7 @@ public sealed class BackgroundSpec
                     }
 
                     Font font = null;
-                    var fonts = ab.LoadAllAssets<Font>();
+                    var fonts = ab.LoadTypedAssets<Font>();
                     if (fonts != null && fonts.Length > 0)
                     {
                         font = fonts[0];
@@ -480,10 +485,10 @@ public sealed class BackgroundSpec
                         var fontAssetName = Path.GetFileNameWithoutExtension(path);
                         TMP_FontAsset pick = null;
                         if (!string.IsNullOrEmpty(fontAssetName))
-                            pick = ab.LoadAsset<TMP_FontAsset>(fontAssetName);
+                            pick = ab.LoadTypedAsset<TMP_FontAsset>(fontAssetName);
                         if (pick == null)
                         {
-                            var tmpFonts = ab.LoadAllAssets<TMP_FontAsset>();
+                            var tmpFonts = ab.LoadTypedAssets<TMP_FontAsset>();
                             if (tmpFonts != null && tmpFonts.Length > 0)
                                 pick = tmpFonts[0];
                         }
@@ -503,7 +508,8 @@ public sealed class BackgroundSpec
                 catch (Exception e)
                 {
                     _bundleFontMissCache.Add(key);
-                    Debug.LogWarning("[SubtitleStyle] Load FontReplace bundle failed: " + e.Message);
+                    if (Subtitle.Utils.LogThrottle.Allow("SubtitleUI.SubtitleTextStyle.cs.506", 10))
+                        Debug.LogWarning("[SubtitleStyle] Load FontReplace bundle failed: " + e.Message);
                 }
                 finally
                 {
@@ -561,11 +567,11 @@ public sealed class BackgroundSpec
 
                     string assetName = Path.GetFileNameWithoutExtension(path);
                     TMP_FontAsset font = !string.IsNullOrEmpty(assetName)
-                        ? bundle.LoadAsset<TMP_FontAsset>(assetName)
+                        ? bundle.LoadTypedAsset<TMP_FontAsset>(assetName)
                         : null;
                     if (font == null)
                     {
-                        TMP_FontAsset[] fonts = bundle.LoadAllAssets<TMP_FontAsset>();
+                        TMP_FontAsset[] fonts = bundle.LoadTypedAssets<TMP_FontAsset>();
                         if (fonts != null && fonts.Length > 0) font = fonts[0];
                     }
                     if (font != null)
@@ -578,7 +584,8 @@ public sealed class BackgroundSpec
                 catch (Exception e)
                 {
                     _bundleTmpFontMissCache.Add(key);
-                    Debug.LogWarning("[SubtitleStyle] Load TMP font bundle failed: " + e.Message);
+                    if (Subtitle.Utils.LogThrottle.Allow("SubtitleUI.SubtitleTextStyle.cs.581", 10))
+                        Debug.LogWarning("[SubtitleStyle] Load TMP font bundle failed: " + e.Message);
                 }
                 finally
                 {
@@ -693,7 +700,8 @@ public sealed class BackgroundSpec
             catch (Exception e)
             {
                 _osFontMissCache.Add(requestKey);
-                Debug.LogWarning("[SubtitleStyle] Load OS font failed: " + e.Message);
+                if (Subtitle.Utils.LogThrottle.Allow("SubtitleUI.SubtitleTextStyle.cs.696", 10))
+                    Debug.LogWarning("[SubtitleStyle] Load OS font failed: " + e.Message);
             }
             return null;
         }
@@ -717,7 +725,8 @@ public sealed class BackgroundSpec
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning("[SubtitleStyle] Read installed OS fonts failed: " + e.Message);
+                    if (Subtitle.Utils.LogThrottle.Allow("SubtitleUI.SubtitleTextStyle.cs.720", 10))
+                        Debug.LogWarning("[SubtitleStyle] Read installed OS fonts failed: " + e.Message);
                 }
             }
 

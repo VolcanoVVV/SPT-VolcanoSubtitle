@@ -2,7 +2,6 @@ using BepInEx.Logging;
 using Comfort.Common;
 using EFT;
 using HarmonyLib;
-using SPT.Common.Utils;
 using Subtitle;
 using Subtitle.Config;
 using Subtitle.Utils;
@@ -100,7 +99,7 @@ public static class SubtitlePatch
                     var pl = list[i];
                     if (pl == null || pl.AIData == null) continue;
                     var bo = pl.AIData.BotOwner;
-                    if (bo != null && object.ReferenceEquals(bo.GetPlayer, p)) return bo;
+                    if (bo != null && UnityCompat.SameObject(bo.GetPlayer, p)) return bo;
                 }
             }
         }
@@ -165,7 +164,7 @@ public static class SubtitlePatch
     // voiceKey → 标签 的映射函数
     private static string MapVoiceKeyLabel(string voiceKey)
     {
-        if (string.IsNullOrEmpty(voiceKey)) return "Voice";
+        if (string.IsNullOrEmpty(voiceKey)) return I18n.Text("Speaker.Voice", "声线");
         string mapped;
         if (SubtitleEnum.DEFAULT_VOICE_KEY_LABELS.TryGetValue(voiceKey, out mapped) && !string.IsNullOrEmpty(mapped))
             return mapped;
@@ -175,14 +174,14 @@ public static class SubtitlePatch
         {
             // usec_1 -> USEC-1
             var pretty = voiceKey.Replace('_', '-').ToUpperInvariant();
-            return string.IsNullOrEmpty(pretty) ? "Voice" : pretty;
+            return string.IsNullOrEmpty(pretty) ? I18n.Text("Speaker.Voice", "声线") : pretty;
         }
-        catch { return "Voice"; }
+        catch { return I18n.Text("Speaker.Voice", "声线"); }
     }
 
     private static string GetDisplayName(IPlayer p)
     {
-        if (p == null) return "Unknown";
+        if (p == null) return I18n.Text("Speaker.Unknown", "未知");
 
         // 1) 先用 Profile.Nickname（玩家/AI 都常有，4.1.x 强类型）
         try
@@ -234,19 +233,21 @@ public static class SubtitlePatch
         var profId = p.Profile != null ? Traverse.Create(p.Profile).Property("Id")?.GetValue() : null;
         if (profId != null) return profId.ToString();
 
-        return "Unknown";
+        return I18n.Text("Speaker.Unknown", "未知");
     }
 
     // 实际说话层：只做 Postfix
+#if GAME_IL2CPP
+    [HarmonyPatch(typeof(SpeakerClass), "Play", new[] { typeof(EPhraseTrigger), typeof(ETagStatus), typeof(bool), typeof(Il2CppSystem.Nullable<int>), typeof(ETagFilter) })]
+#else
     [HarmonyPatch(typeof(SpeakerClass), "Play")]
+#endif
     [HarmonyPostfix]
     public static void PhraseSpeakerPlayPostfix(
         SpeakerClass __instance,
         EPhraseTrigger trigger,
         ETagStatus tags,
-        bool demand,
-        int? importance,
-        ref TagBank __result)
+        TagBank __result)
     {
         // 1) 失败/忽略直接退出
         if (__result == null) return;
@@ -294,7 +295,6 @@ public static class SubtitlePatch
         string textSub = PhraseSubtitle.GetSubtitleForChannel("Subtitle", voiceKey, trigStr, netIdStr);
         string textDm = PhraseSubtitle.GetSubtitleForChannel("Danmaku", voiceKey, trigStr, netIdStr);
         string textW3d = PhraseSubtitle.GetSubtitleForChannel("World3D", voiceKey, trigStr, netIdStr);
-        if (string.IsNullOrEmpty(textSub) && string.IsNullOrEmpty(textDm) && string.IsNullOrEmpty(textW3d)) return;
 
         // 6) 次信息与过滤：距离 & 友军判定（每事件各算一次）
         IPlayer mainPlayer = gw != null ? gw.MainPlayer as IPlayer : null;
@@ -306,7 +306,8 @@ public static class SubtitlePatch
         string nameForShow = GetDisplayName(speakerPlayer);    // 玩家/AI 昵称优先
 
         // 8) 控制台实时事件日志与 GUI 调试工具相互独立。
-        if (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value)
+        if (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value &&
+            LogThrottle.Allow("voice.events", 0.2))
         {
             try
             {
@@ -323,7 +324,8 @@ public static class SubtitlePatch
             }
             catch (Exception e)
             {
-                s_Log.LogWarning("[SubtitleDbg] log failed: " + e);
+                if (Subtitle.Utils.LogThrottle.Allow("Patch.SpeakPatch.cs.327", 10))
+                    s_Log.LogWarning("[SubtitleDbg] log failed: " + e);
             }
         }
 
@@ -464,7 +466,8 @@ public static class SubtitlePatch
             if (d > limitW3d) { allowWorld3d = false; reasonW3d = "FILTER: distance " + d.ToString("0.0") + "m > " + limitW3d.ToString("0.0") + "m"; }
 
             // 距离过滤调试日志（仅 Play 路径原有此日志）
-            if (localPlayPath && (!allowSubtitle || !allowDanmaku))
+            if (localPlayPath && Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value &&
+                (!allowSubtitle || !allowDanmaku) && LogThrottle.Allow("voice.distance", 2))
             {
                 try
                 {
@@ -528,25 +531,21 @@ public static class SubtitlePatch
         bool duplicateSuppressed = localPlayPath && SuppressDuplicate(speakerInstance, netIdStr, trigger);
         bool diagnosticsOn = (Settings.EnableDebugTools != null && Settings.EnableDebugTools.Value) ||
             (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value);
-        if (diagnosticsOn)
+        string triggerText = trigger.ToString();
+        string subStatus = !Settings.EnableSubtitle.Value ? "FILTER: channel disabled"
+            : duplicateSuppressed ? "FILTER: duplicate voice event"
+            : allowSubtitle ? "PENDING" : (reasonSub ?? "FILTER");
+        string dmStatus = !Settings.EnableDanmaku.Value ? "FILTER: channel disabled"
+            : duplicateSuppressed ? "FILTER: duplicate voice event"
+            : allowDanmaku ? "PENDING" : (reasonDm ?? "FILTER");
+        string w3dStatus = duplicateSuppressed ? "FILTER: duplicate voice event"
+            : allowWorld3d ? "PENDING" : (reasonW3d ?? "FILTER");
+        if (duplicateSuppressed)
         {
-            string triggerText = trigger.ToString();
-            string subStatus = Settings.EnableSubtitle != null && !Settings.EnableSubtitle.Value
-                ? "FILTER: channel disabled"
-                : duplicateSuppressed ? "FILTER: duplicate voice event"
-                : allowSubtitle ? "SHOW | " + PhraseSubtitle.DescribeResolution("Subtitle", voiceKey, triggerText, netIdStr) : (reasonSub ?? "FILTER");
-            string dmStatus = Settings.EnableDanmaku != null && !Settings.EnableDanmaku.Value
-                ? "FILTER: channel disabled"
-                : duplicateSuppressed ? "FILTER: duplicate voice event"
-                : allowDanmaku ? "SHOW | " + PhraseSubtitle.DescribeResolution("Danmaku", voiceKey, triggerText, netIdStr) : (reasonDm ?? "FILTER");
-            string w3dStatus = duplicateSuppressed ? "FILTER: duplicate voice event" : allowWorld3d
-                ? "SHOW | " + PhraseSubtitle.DescribeResolution("World3D", voiceKey, triggerText, netIdStr)
-                : (reasonW3d ?? "FILTER");
-            Subtitle.DebugTools.DebugDiagnostics.RecordVoice(voiceKey, triggerText, netIdStr,
+            if (diagnosticsOn) Subtitle.DebugTools.DebugDiagnostics.RecordVoice(voiceKey, triggerText, netIdStr,
                 nameForShow, aiTypeRaw, distMeters, subStatus, dmStatus, w3dStatus);
+            return;
         }
-
-        if (duplicateSuppressed) return;
 
         // —— 距离文本后缀（仅非本地、且对应通道仍允许时附加）——
         string distanceSuffix = null;
@@ -565,42 +564,64 @@ public static class SubtitlePatch
                 fullW3d += distanceSuffix;
         }
 
-        // —— 最终投递 + 成功后更新时间戳 ——
-        try
+        // 各频道独立投递；诊断在投递结束后记录，失败不会阻断另外两个频道。
+        var manager = SubtitleManager.Instance;
+        float dur = clipLength >= 0f ? Mathf.Max(0f, clipLength) + 0.5f : 0.8f;
+        if (subStatus == "PENDING")
         {
-            // 计算本次建议显示时长：用已选 Clip 的长度 + 0.5s 缓冲；无 Clip 时给 0.8s 兜底
-            float dur = clipLength >= 0f ? Mathf.Max(0f, clipLength) + 0.5f : 0.8f;
-
-            if (Settings.EnableSubtitle.Value && allowSubtitle)
+            try
             {
-                SubtitleManager.Instance.AddSubtitle(fullSub, colorSub, dur, kind);
-                if (isZombieNonTagilla) s_LastZombieSubtitleTime = Time.unscaledTime;
+                bool accepted = manager != null && manager.isActiveAndEnabled &&
+                    manager.TryAddSubtitle(fullSub, colorSub, dur, kind);
+                subStatus = manager == null || !manager.isActiveAndEnabled ? "DROP: manager unavailable" :
+                    accepted ? "ACCEPTED | " + (diagnosticsOn ? PhraseSubtitle.DescribeResolution("Subtitle", voiceKey, triggerText, netIdStr) : "") : "DROP: subtitle capacity or panel";
+                if (accepted && isZombieNonTagilla) s_LastZombieSubtitleTime = Time.unscaledTime;
             }
-
-            if (Settings.EnableDanmaku.Value && allowDanmaku)
+            catch (Exception e)
             {
-                if (Settings.DanmakuDebugVerbose.Value)
-                {
-                    // 两条路径原有的日志文案差异，按原样保留
-                    s_Log.LogInfo(localPlayPath
-                        ? "[Danmaku] -> call AddDanmaku | text=\"" + fullDm + "\" color=" + colorDm
-                        : "[Danmaku] -> AddDanmaku | text=\"" + fullDm + "\"");
-                }
-                SubtitleManager.Instance.AddDanmaku(fullDm, colorDm);
-                if (isZombieNonTagilla) s_LastZombieDanmakuTime = Time.unscaledTime;
-            }
-            if (allowWorld3d && speakerPlayer != null)
-            {
-                SubtitleManager.Instance.AddWorld3D(speakerPlayer, fullW3d, colorW3d, dur);
-                if (isZombieNonTagilla) s_LastZombieWorld3DTime = Time.unscaledTime;
+                subStatus = "ERROR: dispatch";
+                if (LogThrottle.Allow("dispatch.subtitle", 10)) s_Log.LogWarning("[Subtitle] dispatch failed: " + e);
             }
         }
-        catch (Exception e)
+        if (dmStatus == "PENDING")
         {
-            s_Log.LogWarning(localPlayPath
-                ? "[Subtitle] AddSubtitle/Danmaku failed: " + e
-                : "[Subtitle] PlayDirect output failed: " + e);
+            try
+            {
+                bool accepted = manager != null && manager.isActiveAndEnabled && manager.TryAddDanmaku(fullDm, colorDm);
+                dmStatus = manager == null || !manager.isActiveAndEnabled ? "DROP: manager unavailable" :
+                    accepted ? "QUEUED | " + (diagnosticsOn ? PhraseSubtitle.DescribeResolution("Danmaku", voiceKey, triggerText, netIdStr) : "") : "DROP: danmaku layer";
+                if (accepted && isZombieNonTagilla) s_LastZombieDanmakuTime = Time.unscaledTime;
+            }
+            catch (Exception e)
+            {
+                dmStatus = "ERROR: dispatch";
+                if (LogThrottle.Allow("dispatch.danmaku", 10)) s_Log.LogWarning("[Danmaku] dispatch failed: " + e);
+            }
         }
+        if (w3dStatus == "PENDING")
+        {
+            try
+            {
+                bool accepted = manager != null && manager.isActiveAndEnabled && speakerPlayer != null &&
+                    manager.TryAddWorld3D(speakerPlayer, fullW3d, colorW3d, dur);
+                w3dStatus = manager == null || !manager.isActiveAndEnabled ? "DROP: manager unavailable" :
+                    speakerPlayer == null ? "DROP: speaker unresolved" :
+                    accepted ? "ACCEPTED | " + (diagnosticsOn ? PhraseSubtitle.DescribeResolution("World3D", voiceKey, triggerText, netIdStr) : "") : "DROP: world anchor or capacity";
+                if (accepted && isZombieNonTagilla) s_LastZombieWorld3DTime = Time.unscaledTime;
+            }
+            catch (Exception e)
+            {
+                w3dStatus = "ERROR: dispatch";
+                if (LogThrottle.Allow("dispatch.world3d", 10)) s_Log.LogWarning("[World3D] dispatch failed: " + e);
+            }
+        }
+        if (diagnosticsOn) Subtitle.DebugTools.DebugDiagnostics.RecordVoice(voiceKey, triggerText, netIdStr,
+            nameForShow, aiTypeRaw, distMeters, subStatus, dmStatus, w3dStatus);
+        if (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value &&
+            LogThrottle.Allow("voice.dispatch-summary", 0.5))
+            s_Log.LogInfo("[SubtitleDispatch] voice=" + voiceKey + " trigger=" + triggerText + " netId=" + netIdStr +
+                " | subtitle=" + subStatus + " | danmaku=" + dmStatus + " | world3d=" + w3dStatus);
+
     }
 
     // ========== 通过 BaseSpeaker.Id 直连 GameWorld 的 ProfileId→Player 映射 ==========
@@ -627,6 +648,7 @@ public static class SubtitlePatch
             var gw = Singleton<GameWorld>.Instance;
             if (gw == null) return null;
 
+#if !GAME_IL2CPP
             var tgw = Traverse.Create(gw);
 
             // 私有字段或公开属性两种命名都兼容
@@ -651,7 +673,8 @@ public static class SubtitlePatch
                 }
             }
 
-            // 若没有字典，降级：遍历 AllAlivePlayersList 比 Id / ProfileId
+#endif
+            // 遍历 AllAlivePlayersList 比 Id / ProfileId
             var list = gw.AllAlivePlayersList;
             if (list != null)
             {
@@ -738,7 +761,7 @@ public static class SubtitlePatch
                     for (int i = 0; i < list.Count; i++)
                     {
                         var pl = list[i];
-                        if (pl != null && object.ReferenceEquals(pl.Speaker, sp))
+                        if (pl != null && UnityCompat.SameObject(pl.Speaker, sp))
                             return pl;
                     }
 
@@ -760,7 +783,7 @@ public static class SubtitlePatch
                     if (p == null) continue;
 
                     var spkObj = GetPlayerSpeakerObject(p);
-                    if (spkObj != null && object.ReferenceEquals(spkObj, sp))
+                    if (spkObj != null && UnityCompat.SameObject(spkObj, sp))
                         return p;
                 }
 
@@ -855,7 +878,7 @@ public static class SubtitlePatch
         try
         {
             // 强类型：Player.Speaker 是公开字段
-            var pl = p as Player;
+            var pl = SpeakerIndex.AsPlayer(p);
             if (pl != null) return pl.Speaker;
 
             // 反射兜底（非 Player 实现）
@@ -910,7 +933,7 @@ public static class SubtitlePatch
         float last;
 
         // —— 调试：打印当前检查的 Key 组合 ——
-        if (verbose)
+        if (verbose && LogThrottle.Allow("voice.dedup.check", 1))
         {
             try
             {
@@ -925,7 +948,7 @@ public static class SubtitlePatch
         // 命中任一键，都视为重复
         if (hasNet && s_RecentVoiceOnce.TryGetValue(keyNet, out last) && now - last < win)
         {
-            if (verbose)
+            if (verbose && LogThrottle.Allow("voice.dedup.hit", 1))
             {
                 try { s_Log.LogInfo("[DeDup] HIT " + spkId + "|N:" + netId + " dt=" + (now - last).ToString("0.000") + " <= " + win.ToString("0.000")); } catch { }
             }
@@ -933,7 +956,7 @@ public static class SubtitlePatch
         }
         if (s_RecentVoiceOnce.TryGetValue(keyTrig, out last) && now - last < win)
         {
-            if (verbose)
+            if (verbose && LogThrottle.Allow("voice.dedup.hit", 1))
             {
                 try { s_Log.LogInfo("[DeDup] HIT " + spkId + "|T:" + (int)trigger + " dt=" + (now - last).ToString("0.000") + " <= " + win.ToString("0.000")); } catch { }
             }
@@ -1133,6 +1156,20 @@ public static class SubtitlePatch
             yield break;
         }
 
+#if GAME_IL2CPP
+        var registered = gw.RegisteredPlayers;
+        if (registered != null)
+        {
+            for (int i = 0; i < registered.Count; i++)
+            {
+                if (registered[i] != null) yield return registered[i];
+            }
+        }
+        else if (gw.MainPlayer != null)
+        {
+            yield return gw.MainPlayer;
+        }
+#else
         var t = Traverse.Create(gw);
 
         // AllPlayers / AllPlayersList
@@ -1193,6 +1230,7 @@ public static class SubtitlePatch
                 if (bp is IPlayer ip3) yield return ip3;
             }
         }
+#endif
     }
 
     private static float? ComputeDistanceMeters(IPlayer speaker, IPlayer main)
@@ -1234,7 +1272,8 @@ public static class SubtitlePatch
             try
             {
                 // 1) 反解说话者 IPlayer（强解析 → 兜底，兜底内含 TrackRoot 策略）
-                IPlayer speaker = SpeakerResolver.TryResolveStrong(__instance);
+                IPlayer speaker = SpeakerIndex.TryGetBySpeaker(__instance);
+                if (speaker == null) speaker = SpeakerResolver.TryResolveStrong(__instance);
                 if (speaker == null) speaker = SpeakerResolver.TryResolveFallback(__instance);
                 if (speaker == null) return;
 
@@ -1244,13 +1283,20 @@ public static class SubtitlePatch
                 // 3) 三键：voiceKey + trigger + netId(index)
                 string netIdStr = index.ToString();
                 // —— 去重（防护 PlayDirect 自身的重复调用；本地玩家已被提前 return）——
-                if (SuppressDuplicate(__instance, netIdStr, trigger)) return;
+                if (SuppressDuplicate(__instance, netIdStr, trigger))
+                {
+                    if ((Settings.EnableDebugTools != null && Settings.EnableDebugTools.Value) ||
+                        (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value))
+                        Subtitle.DebugTools.DebugDiagnostics.RecordVoice(ResolveVoiceKeySmart(speaker, __instance),
+                            trigger.ToString(), netIdStr, GetDisplayName(speaker), GetAITypeOrPlayer(speaker), null,
+                            "FILTER: duplicate voice event", "FILTER: duplicate voice event", "FILTER: duplicate voice event");
+                    return;
+                }
                 string trigStr = trigger.ToString();
                 string voiceKey = ResolveVoiceKeySmart(speaker, __instance);
                 string textSub = PhraseSubtitle.GetSubtitleForChannel("Subtitle", voiceKey, trigStr, netIdStr);
                 string textDm = PhraseSubtitle.GetSubtitleForChannel("Danmaku", voiceKey, trigStr, netIdStr);
                 string textW3d = PhraseSubtitle.GetSubtitleForChannel("World3D", voiceKey, trigStr, netIdStr);
-                if (string.IsNullOrEmpty(textSub) && string.IsNullOrEmpty(textDm) && string.IsNullOrEmpty(textW3d)) return;
 
                 // 4) 友军判定（每事件一次）
                 bool isFriendly = false;
@@ -1261,7 +1307,8 @@ public static class SubtitlePatch
                 string nameForShow = GetDisplayName(speaker);
 
                 // 6) 控制台实时事件日志与 GUI 调试工具相互独立。
-                if (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value)
+                if (Settings.VoiceEventDebugLog != null && Settings.VoiceEventDebugLog.Value &&
+                    LogThrottle.Allow("voice.events", 0.2))
                 {
                     try
                     {
@@ -1289,7 +1336,8 @@ public static class SubtitlePatch
             }
             catch (Exception e)
             {
-                s_Log.LogWarning("[Subtitle] PlayDirectPatch failed: " + e);
+                if (Subtitle.Utils.LogThrottle.Allow("Patch.SpeakPatch.cs.1295", 10))
+                    s_Log.LogWarning("[Subtitle] PlayDirectPatch failed: " + e);
             }
         }
     }

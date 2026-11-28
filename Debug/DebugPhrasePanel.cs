@@ -1,3 +1,7 @@
+#if GAME_IL2CPP
+using BepInEx.Unity.IL2CPP.Utils;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+#endif
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -21,6 +25,9 @@ namespace Subtitle.DebugTools
 {
     public class DebugPhrasePanel : MonoBehaviour
     {
+#if GAME_IL2CPP
+        public DebugPhrasePanel(System.IntPtr pointer) : base(pointer) { }
+#endif
         private static DebugPhrasePanel s_Instance;
         private static readonly ManualLogSource s_Log =
         BepInEx.Logging.Logger.CreateLogSource("Subtitle.PhraseDebug");
@@ -157,16 +164,16 @@ namespace Subtitle.DebugTools
 
             _btnExport = UiWidgets.CreateButton(top, "ExportVoice", I18n.Text("Debug.ExportVoice", "导出声线"), new Vector2(0.46f, 0.1f), new Vector2(0.60f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
             _btnExport.interactable = false;
-            _btnExport.onClick.AddListener(new UnityEngine.Events.UnityAction(ExportSelectedVoice));
+            _btnExport.onClick.AddManagedListener(ExportSelectedVoice);
 
             _btnStop = UiWidgets.CreateButton(top, "Stop", I18n.Text("Debug.StopPlayback", "停止播放"), new Vector2(0.61f, 0.1f), new Vector2(0.72f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 13, false);
-            _btnStop.onClick.AddListener(delegate { if (_src2D != null) _src2D.Stop(); });
+            _btnStop.onClick.AddManagedListener(delegate { if (_src2D != null) _src2D.Stop(); });
 
             _btnRefresh = UiWidgets.CreateButton(top, "Refresh", I18n.Text("BtnRefresh", "刷新"), new Vector2(0.73f, 0.1f), new Vector2(0.84f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
-            _btnRefresh.onClick.AddListener(new UnityEngine.Events.UnityAction(RefreshVoiceKeys));
+            _btnRefresh.onClick.AddManagedListener(RefreshVoiceKeys);
 
             _btnClose = UiWidgets.CreateButton(top, "Close", I18n.Text("Close", "关闭"), new Vector2(0.85f, 0.1f), new Vector2(0.97f, 0.9f), new Color(0.25f, 0.25f, 0.25f, 1f), 14, false);
-            _btnClose.onClick.AddListener(new UnityEngine.Events.UnityAction(Hide));
+            _btnClose.onClick.AddManagedListener(Hide);
 
             // 底部提示
             var bottom = UiWidgets.CreateRect(panel.transform, "BottomBar", new Vector2(0f, 0f), new Vector2(1f, 0.08f), new Vector2(8f, 8f), new Vector2(-8f, -8f));
@@ -273,7 +280,7 @@ namespace Subtitle.DebugTools
 
                     var btn = UiWidgets.InstantiateButton(_voiceBtnTpl, _voiceContent, name, new Vector2(8f, 2f), new Vector2(-8f, -2f), false, 28f);
                     var capturedName = name;
-                    btn.onClick.AddListener(delegate { OnSelectVoiceKey(capturedName); });
+                    btn.onClick.AddManagedListener(delegate { OnSelectVoiceKey(capturedName); });
                 }
                 if (count == 0) UiWidgets.AddInfoRow(_voiceContent, I18n.Text("Debug.EmptyVoices", "PhraseSounds.Voices 为空。"), false, new Color(0.9f, 0.9f, 0.9f, 1f));
                 UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(_voiceContent);
@@ -310,7 +317,7 @@ namespace Subtitle.DebugTools
                 var capturedSpeaker = sp;
                 var capturedVoiceKey = vk;
                 var capturedLabel = label;
-                btn.onClick.AddListener(delegate {
+                btn.onClick.AddManagedListener(delegate {
                     if (_currentSpeakerBtn != null) _currentSpeakerBtn.targetGraphic.color = new Color(0.2f, 0.2f, 0.2f, 1f);
                     _currentSpeakerBtn = btn;
                     _currentSpeakerBtn.targetGraphic.color = new Color(0.35f, 0.35f, 0.35f, 1f);
@@ -476,7 +483,7 @@ namespace Subtitle.DebugTools
 
         private static string GetDisplayName(IPlayer p)
         {
-            if (p == null) return "Speaker";
+            if (p == null) return I18n.Text("Speaker.Generic", "说话者");
             string nickname = null;
             string role = null;
             try
@@ -493,7 +500,7 @@ namespace Subtitle.DebugTools
             try
             {
                 if (!p.IsAI)
-                    return string.IsNullOrEmpty(nickname) ? "Player" : nickname;
+                    return string.IsNullOrEmpty(nickname) ? I18n.Text("Speaker.Player", "玩家") : nickname;
 
                 string roleLabel = string.IsNullOrEmpty(role) ? "AI" : Settings.GetRoleLabel(role, role);
                 if (!string.IsNullOrEmpty(nickname)) return nickname + " · " + roleLabel;
@@ -502,14 +509,14 @@ namespace Subtitle.DebugTools
             catch { }
 
             if (!string.IsNullOrEmpty(nickname)) return nickname;
-            return "Player";
+            return I18n.Text("Speaker.Player", "玩家");
         }
 
         private static object GetPlayerSpeakerObject(IPlayer player)
         {
             if (player == null) return null;
 
-            var concrete = player as Player;
+            var concrete = SpeakerIndex.AsPlayer(player);
             if (concrete != null)
             {
                 try { return concrete.Speaker; } catch { }
@@ -579,7 +586,7 @@ namespace Subtitle.DebugTools
 
                 // Header（可折叠）
                 var headerBtn = UiWidgets.InstantiateButton(_clipBtnTpl, groupRT, "▶ " + trigger, new Vector2(8f, 2f), new Vector2(-8f, -2f), false, 28f);
-                headerBtn.onClick.AddListener(delegate {
+                headerBtn.onClick.AddManagedListener(delegate {
                     // 切换子项显隐
                     bool anyActive = false;
                     for (int i = 1; i < groupRT.childCount; i++)
@@ -629,7 +636,7 @@ namespace Subtitle.DebugTools
                         else
                         {
                             var clipToPlay = ac;
-row.onClick.AddListener(delegate {
+row.onClick.AddManagedListener(delegate {
     if (_src2D != null && clipToPlay != null)
     {
         _src2D.PlayOneShot(clipToPlay);
@@ -721,8 +728,18 @@ row.onClick.AddListener(delegate {
             public string FilePath;
         }
 
+#if GAME_IL2CPP
+        internal static void RegisterAudioCaptureComponent()
+        {
+            Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<AudioPcmCapture>();
+        }
+#endif
+
         private sealed class AudioPcmCapture : MonoBehaviour
         {
+#if GAME_IL2CPP
+            public AudioPcmCapture(IntPtr pointer) : base(pointer) { }
+#endif
             private readonly object _sync = new object();
             private List<float> _samples = new List<float>();
             private bool _recording;
@@ -749,17 +766,29 @@ row.onClick.AddListener(delegate {
             }
 
             // Unity 在音频线程调用；这里只进行加锁复制，不访问其他 Unity 对象。
+#if GAME_IL2CPP
+            private void OnAudioFilterRead(Il2CppStructArray<float> data, int channels)
+#else
             private void OnAudioFilterRead(float[] data, int channels)
+#endif
             {
                 if (data == null || data.Length == 0) return;
                 lock (_sync)
                 {
                     if (!_recording) return;
                     if (_channels == 0) _channels = channels;
+#if GAME_IL2CPP
+                    for (int i = 0; i < data.Length; i++)
+                    {
+                        _samples.Add(data[i]);
+                        data[i] = 0f;
+                    }
+#else
                     _samples.AddRange(data);
 
                     // 捕获用 AudioSource 必须实际进入 DSP 管线，但不应被用户听见。
                     Array.Clear(data, 0, data.Length);
+#endif
                 }
             }
         }
@@ -774,7 +803,7 @@ row.onClick.AddListener(delegate {
             }
             if (string.IsNullOrEmpty(_currentVoiceKey)) return;
             _exportCancelRequested = false;
-            _exportRoutine = StartCoroutine(ExportVoiceCoroutine(_currentVoiceKey, _currentSpeaker));
+            _exportRoutine = this.StartCoroutine(ExportVoiceCoroutine(_currentVoiceKey, _currentSpeaker));
             SetButtonText(_btnExport, I18n.Text("Debug.CancelExport", "取消导出"));
         }
 
@@ -876,14 +905,14 @@ row.onClick.AddListener(delegate {
                     if (captureSucceeded)
                     {
                         exported++;
-                        s_Log.LogInfo(
+                        if (LogThrottle.Allow("export.capture", 2)) s_Log.LogInfo(
                             "[VoiceExport] 已通过实时捕获导出 " + voiceKey + "/" +
                             item.Trigger + "/" + item.NetId + " clip=" + item.Clip.name);
                     }
                     else
                     {
                         failed++;
-                        s_Log.LogWarning(
+                        if (LogThrottle.Allow("export.failed", 5)) s_Log.LogWarning(
                             "[VoiceExport] 导出失败 " + voiceKey + "/" + item.Trigger + "/" + item.NetId +
                             "：GetData=" + directError + "；实时捕获=" + captureError);
                     }
@@ -913,11 +942,8 @@ row.onClick.AddListener(delegate {
                 if (!string.IsNullOrEmpty(outputDir))
                 {
                     File.WriteAllText(Path.Combine(outputDir, "VoiceExportReport.txt"),
-                        "VoiceKey: " + voiceKey + Environment.NewLine +
-                        "Exported: " + exported + Environment.NewLine +
-                        "Skipped: " + skipped + Environment.NewLine +
-                        "Failed: " + failed + Environment.NewLine +
-                        "Canceled: " + (canceled ? "yes" : "no") + Environment.NewLine,
+                        I18n.Format("Debug.ExportReport", "声线：{0}\n已导出：{1}\n跳过：{2}\n失败：{3}\n已取消：{4}\n",
+                            voiceKey, exported, skipped, failed, canceled ? I18n.Text("Bool.On", "是") : I18n.Text("Bool.Off", "否")),
                         System.Text.Encoding.UTF8);
                 }
             }
@@ -936,7 +962,7 @@ row.onClick.AddListener(delegate {
         {
             if (item == null || item.Clip == null || _exportSource == null || _exportCapture == null)
             {
-                completed(false, "实时捕获组件不可用。");
+                completed(false, I18n.Text("Debug.Error.CaptureUnavailable", "实时捕获组件不可用。"));
                 yield break;
             }
 
@@ -981,18 +1007,18 @@ row.onClick.AddListener(delegate {
             // 用户主动取消时丢弃本次不完整捕获，避免留下一个看似有效的残缺 WAV。
             if (_exportCancelRequested)
             {
-                completed(false, "export canceled");
+                completed(false, I18n.Text("Debug.ExportCanceled", "导出已取消。"));
                 yield break;
             }
 
             if (timedOut)
             {
-                completed(false, "播放超时。捕获样本=" + (captured != null ? captured.Length : 0));
+                completed(false, I18n.Format("Debug.Error.CaptureTimeout", "播放超时。捕获样本={0}", captured != null ? captured.Length : 0));
                 yield break;
             }
             if (captured == null || captured.Length == 0 || capturedChannels <= 0)
             {
-                completed(false, "音频回调没有捕获到 PCM 数据。");
+                completed(false, I18n.Text("Debug.Error.NoPcm", "音频回调没有捕获到 PCM 数据。"));
                 yield break;
             }
 
@@ -1011,12 +1037,12 @@ row.onClick.AddListener(delegate {
             var result = new List<VoiceExportItem>();
             var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var ps = FindPhraseSounds();
-            if (ps == null) throw new InvalidOperationException("找不到 PhraseSounds。");
+            if (ps == null) throw new InvalidOperationException(I18n.Text("Debug.Error.NoPhraseSounds", "找不到 PhraseSounds。"));
 
             TagBank[] banks = null;
             try { banks = ps.GetVoice(voiceKey, EPlayerSide.Usec); } catch { }
             if (banks == null || banks.Length == 0)
-                throw new InvalidOperationException("该 VoiceKey 没有可用的 TagBank。");
+                throw new InvalidOperationException(I18n.Text("Debug.Error.NoTagBank", "该 VoiceKey 没有可用的 TagBank。"));
 
             string safeVoiceKey = SanitizePathPart(voiceKey, "Voice");
             for (int i = 0; i < banks.Length; i++)
@@ -1038,7 +1064,7 @@ row.onClick.AddListener(delegate {
                     if (clip == null || !netId.HasValue)
                     {
                         failed++;
-                        s_Log.LogWarning(
+                        if (LogThrottle.Allow("export.collect", 5)) s_Log.LogWarning(
                             "[VoiceExport] 无法收集 voiceKey=" + voiceKey +
                             " trigger=" + trigger +
                             " netId=" + (netId.HasValue ? netId.Value.ToString() : "?") +
@@ -1077,7 +1103,7 @@ row.onClick.AddListener(delegate {
             var result = new List<VoiceExportItem>();
             var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var map = GetTriggerBankMap(speaker);
-            if (map == null) throw new InvalidOperationException("未能读取该 Speaker 的短句映射。");
+            if (map == null) throw new InvalidOperationException(I18n.Text("Debug.Error.NoPhraseMap", "未能读取该 Speaker 的短句映射。"));
 
             string safeVoiceKey = SanitizePathPart(voiceKey, "Voice");
             foreach (DictionaryEntry entry in map)
@@ -1097,7 +1123,7 @@ row.onClick.AddListener(delegate {
                     if (clip == null || !netId.HasValue)
                     {
                         failed++;
-                        s_Log.LogWarning(
+                        if (LogThrottle.Allow("export.collect", 5)) s_Log.LogWarning(
                             "[VoiceExport] 无法收集 voiceKey=" + voiceKey +
                             " trigger=" + trigger +
                             " netId=" + (netId.HasValue ? netId.Value.ToString() : "?") +
@@ -1151,12 +1177,12 @@ row.onClick.AddListener(delegate {
             error = null;
             if (clip == null)
             {
-                error = "AudioClip 为空。";
+                error = I18n.Text("Debug.Error.NullClip", "AudioClip 为空。");
                 return false;
             }
             if (clip.loadState != AudioDataLoadState.Loaded)
             {
-                error = "音频数据未加载，状态=" + clip.loadState;
+                error = I18n.Format("Debug.Error.AudioNotLoaded", "音频数据未加载，状态={0}", clip.loadState);
                 return false;
             }
 
@@ -1164,17 +1190,17 @@ row.onClick.AddListener(delegate {
             try
             {
                 if (clip.loadType == AudioClipLoadType.Streaming)
-                    throw new InvalidOperationException("AudioClip 使用 Streaming 加载，GetData 不可用。");
+                    throw new InvalidOperationException(I18n.Text("Debug.Error.Streaming", "AudioClip 使用 Streaming 加载，GetData 不可用。"));
 
                 int channels = clip.channels;
                 int sampleRate = clip.frequency;
                 int sampleCount = checked(clip.samples * channels);
                 if (channels <= 0 || sampleRate <= 0 || sampleCount <= 0)
-                    throw new InvalidDataException("无效的音频参数。");
+                    throw new InvalidDataException(I18n.Text("Debug.Error.AudioParameters", "无效的音频参数。"));
 
                 var samples = new float[sampleCount];
                 if (!clip.GetData(samples, 0))
-                    throw new InvalidOperationException("AudioClip.GetData 返回失败；该资源可能采用不可读取的流式/压缩加载方式。");
+                    throw new InvalidOperationException(I18n.Text("Debug.Error.GetData", "AudioClip.GetData 返回失败；该资源可能采用不可读取的流式/压缩加载方式。"));
 
                 return TryWritePcm16Wav(samples, channels, sampleRate, destinationPath, out error);
             }
@@ -1198,9 +1224,9 @@ row.onClick.AddListener(delegate {
             try
             {
                 if (samples == null || samples.Length == 0)
-                    throw new InvalidDataException("PCM 样本为空。");
+                    throw new InvalidDataException(I18n.Text("Debug.Error.EmptyPcm", "PCM 样本为空。"));
                 if (channels <= 0 || sampleRate <= 0)
-                    throw new InvalidDataException("无效的 PCM 参数。");
+                    throw new InvalidDataException(I18n.Text("Debug.Error.PcmParameters", "无效的 PCM 参数。"));
                 if (File.Exists(destinationPath)) return true;
 
                 using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -1306,7 +1332,7 @@ row.onClick.AddListener(delegate {
                     var btn = UiWidgets.InstantiateButton(_clipBtnTpl, _clipContent, text, new Vector2(8f, 2f), new Vector2(-8f, -2f), false, 28f);
 
                     var clipToPlay = ac; // 闭包捕获
-                    btn.onClick.AddListener(delegate {
+                    btn.onClick.AddManagedListener(delegate {
                         if (clipToPlay != null && _src2D != null)
                         {
                             _src2D.PlayOneShot(clipToPlay);
@@ -1320,8 +1346,8 @@ row.onClick.AddListener(delegate {
 
         private static PhraseSounds FindPhraseSounds()
         {
-            UnityEngine.Object[] arr = Resources.FindObjectsOfTypeAll(typeof(PhraseSounds));
-            if (arr != null && arr.Length > 0) return arr[0] as PhraseSounds;
+            var arr = Resources.FindObjectsOfTypeAll<PhraseSounds>();
+            if (arr != null && arr.Length > 0) return arr[0];
             return null;
         }
 
@@ -1389,7 +1415,6 @@ row.onClick.AddListener(delegate {
         private static System.Collections.IEnumerable GetClipsFromBank(object bank)
         {
             if (bank == null) return null;
-            const BindingFlags BF = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
             // TagBank 在部分声线中同时保存：
             //   1) 顶层 Clips；
@@ -1400,6 +1425,30 @@ row.onClick.AddListener(delegate {
             var merged = new List<object>();
             var indexByNetId = new Dictionary<int, int>();
 
+#if GAME_IL2CPP
+            if (!(bank is TagBank nativeBank)) return null;
+
+            MergeTaggedClips(nativeBank.Clips, merged, indexByNetId);
+            var groups = nativeBank.SpreadGroups;
+            if (groups != null)
+            {
+                foreach (var group in groups)
+                {
+                    if (group != null) MergeTaggedClips(group.Clips, merged, indexByNetId);
+                }
+            }
+
+            if (merged.Count == 0)
+            {
+                var fallback = nativeBank._clips;
+                if (fallback != null)
+                {
+                    for (int i = 0; i < fallback.Count; i++)
+                        merged.Add(fallback[i]);
+                }
+            }
+#else
+            const BindingFlags BF = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             System.Collections.IEnumerable direct = GetEnumerableMember(
                 bank, BF, "Clips", "_clips", "clips");
             MergeTaggedClips(direct, merged, indexByNetId);
@@ -1417,9 +1466,11 @@ row.onClick.AddListener(delegate {
                 }
             }
 
+#endif
             return merged.Count > 0 ? merged : null;
         }
 
+#if !GAME_IL2CPP
         private static System.Collections.IEnumerable GetEnumerableMember(
             object owner,
             BindingFlags bindingFlags,
@@ -1450,6 +1501,7 @@ row.onClick.AddListener(delegate {
             return null;
         }
 
+#endif
         private static void MergeTaggedClips(
             System.Collections.IEnumerable source,
             List<object> merged,
@@ -1574,6 +1626,15 @@ row.onClick.AddListener(delegate {
         private static System.Collections.IDictionary GetTriggerBankMap(SpeakerClass spk)
         {
             if (spk == null) return null;
+#if GAME_IL2CPP
+            var banks = spk.PhrasesBanks;
+            if (banks == null) return null;
+
+            var managedBanks = new Dictionary<EPhraseTrigger, TagBank>();
+            foreach (var entry in banks)
+                managedBanks[entry.Key] = entry.Value;
+            return managedBanks;
+#else
             const System.Reflection.BindingFlags BF =
                 System.Reflection.BindingFlags.Instance |
                 System.Reflection.BindingFlags.Public |
@@ -1617,6 +1678,7 @@ row.onClick.AddListener(delegate {
             }
 
             return null;
+#endif
         }
 
         private static void CollectSpeakersFromObject(object obj, System.Collections.Generic.List<SpeakerClass> dest)
